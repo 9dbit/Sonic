@@ -52,7 +52,7 @@ def test_device_status_and_read_only_queue(client):
     assert client.post("/api/device/jobs",json={"action":"shell.exec"},headers={"X-Sonic-CSRF":csrf}).status_code == 403
     device_headers={"Authorization":"Bearer device-test-token"}
     heartbeat={"device_id":"TRADEVICEPC","hostname":"TRADEVICEPC","platform":"Windows Test"}
-    assert client.post("/api/device/heartbeat",json=heartbeat).status_code == 503 if False else True
+    assert client.post("/api/device/heartbeat",json=heartbeat).status_code == 401
     assert client.post("/api/device/heartbeat",json=heartbeat,headers=device_headers).status_code == 200
     assert client.get("/api/device/status").json()["connected"] is True
     assert client.post("/api/device/jobs",json={"action":"delete.files"},headers={"X-Sonic-CSRF":csrf}).status_code == 403
