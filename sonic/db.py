@@ -1,0 +1,95 @@
+"""SQLAlchemy storage: local SQLite, durable Postgres on Railway."""
+from datetime import datetime, timezone
+from pathlib import Path
+import os
+
+from sqlalchemy import DateTime, Integer, String, Text, create_engine, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from .config import setting
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    role: Mapped[str] = mapped_column(String(12), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class MemoryNote(Base):
+    __tablename__ = "memory_notes"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class Device(Base):
+    __tablename__ = "devices"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    hostname: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    platform: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    last_seen: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class DeviceJob(Base):
+    __tablename__ = "device_jobs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    device_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
+    state: Mapped[str] = mapped_column(String(24), default="queued", nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+def database_url() -> str:
+    raw = setting("DATABASE_URL")
+    if raw:
+        if raw.startswith("postgres://"):
+            return "postgresql+psycopg://" + raw[len("postgres://"):]
+        if raw.startswith("postgresql://"):
+            return "postgresql+psycopg://" + raw[len("postgresql://"):]
+        return raw
+    return "sqlite:///" + str(Path(os.environ.get("SONIC_LOCAL_DB", "./sonic-local.sqlite3")).resolve())
+
+
+_engine = None
+_Session = None
+
+
+def session_factory():
+    global _engine, _Session
+    if _Session is None:
+        url = database_url()
+        kwargs = {"pool_pre_ping": True}
+        if url.startswith("sqlite:"):
+            kwargs["connect_args"] = {"check_same_thread": False}
+        _engine = create_engine(url, **kwargs)
+        Base.metadata.create_all(_engine)
+        _Session = sessionmaker(bind=_engine, expire_on_commit=False)
+    return _Session
+
+
+def get_db():
+    db = session_factory()()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def chat_history(db, limit: int = 16):
+    messages = db.scalars(select(ChatMessage).order_by(ChatMessage.id.desc()).limit(limit)).all()
+    return [{"role": m.role, "content": m.content} for m in reversed(messages)]
+
+
+def recent_messages(db, limit: int = 60):
+    return list(reversed(db.scalars(select(ChatMessage).order_by(ChatMessage.id.desc()).limit(limit)).all()))
