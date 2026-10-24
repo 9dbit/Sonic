@@ -24,4 +24,4 @@ jobs:
       - name: Compile SONIC
         run: python -m compileall -q sonic scripts
       - name: Test authentication, security boundaries, memory, and companion
-        run: pytest -q
+        run: python -m pytest -q
