@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 import os
 
+from fastapi import HTTPException
 from sqlalchemy import DateTime, Integer, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
-from .config import setting
+from .config import setting, database_ready
 
 
 def utcnow() -> datetime:
@@ -67,6 +68,8 @@ _Session = None
 
 def session_factory():
     global _engine, _Session
+    if not database_ready():
+        raise HTTPException(status_code=503, detail="Durable database is required for hosted SONIC")
     if _Session is None:
         url = database_url()
         kwargs = {"pool_pre_ping": True}

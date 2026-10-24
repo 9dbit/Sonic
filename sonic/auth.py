@@ -1,6 +1,7 @@
 """Single owner session cookies, CSRF enforcement and separately-scoped device tokens."""
 from __future__ import annotations
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -71,7 +72,7 @@ def read_session(request: Request) -> dict:
         if payload["exp"] <= time.time() or not isinstance(payload["csrf"], str):
             raise ValueError("expired")
         return payload
-    except (ValueError, KeyError, TypeError, UnicodeDecodeError, json.JSONDecodeError):
+    except (ValueError, KeyError, TypeError, UnicodeDecodeError, json.JSONDecodeError, binascii.Error):
         raise HTTPException(status_code=401, detail="Login required")
 
 

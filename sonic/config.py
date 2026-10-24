@@ -14,8 +14,9 @@ def owner_ready() -> bool:
 
 
 def database_ready() -> bool:
-    # Hosted deployments must not write conversation data to ephemeral container disks.
-    return not setting("RAILWAY_ENVIRONMENT_NAME") or bool(setting("DATABASE_URL"))
+    # Neither staging nor production may put private chats in an ephemeral container.
+    hosted = bool(setting("RAILWAY_ENVIRONMENT_NAME")) or setting("SONIC_ENV").lower() in {"staging", "production"}
+    return not hosted or bool(setting("DATABASE_URL"))
 
 
 def device_ready() -> bool:
