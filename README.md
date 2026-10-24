@@ -10,6 +10,7 @@
 | OpenAI Responses chat and bounded tool-calling | Implemented; requires API key |
 | Persistent chat and explicit memory | Implemented; Postgres on Railway |
 | Browser voice input and playback | Implemented where browser supports it |
+| Opt-in camera, one-frame screen capture, image analysis | Implemented; requires API key and browser permission |
 | Windows companion | Written, not installed on TRADEVICEPC |
 | Read-only PC status | Implemented behind distinct device credential |
 | Unrestricted computer/software automation | Not yet available |

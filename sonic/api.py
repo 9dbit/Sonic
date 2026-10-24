@@ -251,3 +251,17 @@ def device_result(payload: DeviceResult, request: Request, db: Session = Depends
     job.updated_at = utcnow()
     db.commit()
     return {"ok": True}
+
+
+class VisionForm(BaseModel):
+    mimeType: str = Field(min_length=8, max_length=20)
+    base64: str = Field(min_length=24, max_length=4 * (3 * 1024 * 1024 // 3 + 3))
+    question: str = Field(min_length=1, max_length=500)
+
+
+@app.post("/api/vision")
+async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write)):
+    # One-frame opt-in analysis. No image saved in SONIC's database.
+    from .vision import analyze_image
+    answer = await analyze_image(payload.mimeType, payload.base64, payload.question.strip())
+    return {"reply": answer, "image_stored": False, "pc_action": "none"}

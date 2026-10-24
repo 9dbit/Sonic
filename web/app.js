@@ -157,6 +157,70 @@
     $("voice").setAttribute("aria-pressed",String(voiceOn));
     if(!voiceOn)window.speechSynthesis?.cancel();
   });
+
+  async function sendVision(dataUrl, kind) {
+    if(waiting){showError("SONIC is still answering. Try again after the response.");return;}
+    const [header,base64]=dataUrl.split(",",2);
+    const mimeType=header.match(/^data:(image\/(?:png|jpeg|webp));base64$/)?.[1];
+    if(!mimeType || !base64){showError("Unsupported image format.");return;}
+    const question=$("message").value.trim().slice(0,500)||"Describe and analyze what you can see in this image.";
+    $("message").value="";
+    setTab("chat");
+    const text="["+kind+" snapshot] "+question;
+    line("user",text);
+    const pending=line("assistant","SONIC is looking at your image…");
+    waiting=true;$("send").disabled=true;
+    try{
+      const response=await API("/api/vision",{
+        method:"POST",body:JSON.stringify({mimeType,base64,question})
+      });
+      pending.querySelector(".body").textContent=response.reply;
+      speak(response.reply);
+    }catch(err){
+      pending.classList.add("error");
+      pending.querySelector(".body").textContent=err.message;
+    }finally{waiting=false;$("send").disabled=false;}
+  }
+  async function captureOnce(kind) {
+    const isScreen=kind==="Screen";
+    if(!window.confirm(
+      "SONIC will capture one "+(isScreen?"screen":"camera")+" frame and send it to the configured OpenAI vision provider. No continuous recording and no local saving. Continue?"
+    ))return;
+    let stream;
+    try {
+      stream=isScreen
+        ? await navigator.mediaDevices.getDisplayMedia({video:true,audio:false})
+        : await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+      const video=document.createElement("video");
+      video.muted=true;video.playsInline=true;video.srcObject=stream;
+      await video.play();
+      await new Promise(resolve=>setTimeout(resolve,350));
+      if(!video.videoWidth||!video.videoHeight)throw new Error("No video frame available.");
+      const width=Math.min(1280,video.videoWidth);
+      const height=Math.round(width*video.videoHeight/video.videoWidth);
+      const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+      canvas.getContext("2d").drawImage(video,0,0,width,height);
+      const dataUrl=canvas.toDataURL("image/jpeg",0.76);
+      stream.getTracks().forEach(track=>track.stop());stream=null;
+      await sendVision(dataUrl,kind);
+    }catch(error){showError("Vision capture cancelled or unavailable: "+error.message);}
+    finally{stream?.getTracks().forEach(track=>track.stop());}
+  }
+  $("camera").addEventListener("click",()=>captureOnce("Camera"));
+  $("screen").addEventListener("click",()=>captureOnce("Screen"));
+  $("image").addEventListener("click",()=>$("imageFile").click());
+  $("imageFile").addEventListener("change",async e=>{
+    const file=e.target.files?.[0];
+    e.target.value="";
+    if(!file)return;
+    if(file.size>3*1024*1024){showError("Image exceeds the 3 MB limit.");return;}
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){showError("Use JPG, PNG or WebP.");return;}
+    const reader=new FileReader();
+    reader.onerror=()=>showError("Could not read the selected image.");
+    reader.onload=()=>{sendVision(String(reader.result),"Image");};
+    reader.readAsDataURL(file);
+  });
+
   $("mic").addEventListener("click",()=>{
     const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!Recognition){showError("Voice recognition is unavailable in this browser. Text chat still works.");return;}

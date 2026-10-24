@@ -56,3 +56,7 @@ SONIC is a **general-purpose personal intelligence assistant**. ARCHON, SketchUp
 - No file system/network sandbox beyond the hardcoded companion capability; tighten security before expanding.
 - Owner authentication rate limits are in-process only; add edge rate limits before broader exposure.
 - Do not log prompts, secrets, raw tokens, or device responses.
+
+## V0.1 Opt-in Vision
+
+Camera, screen and local-image inputs are all initiated by a visible user action. Only one frame is captured, all media tracks are stopped immediately, and the frame is sent through the owner-authenticated SONIC endpoint to the configured OpenAI vision model with store=false. SONIC does not persist images or automatically invoke any tools based on them. Screenshots can include sensitive information; enable only when intended. Vision is not constant surveillance or live video.
