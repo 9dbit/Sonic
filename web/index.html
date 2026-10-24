@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="theme-color" content="#080b10"/>
+  <title>SONIC | Personal Intelligence</title>
+  <link rel="stylesheet" href="/assets/style.css"/>
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="mark"><span></span><span></span><span></span></div><div><strong>SONIC</strong><small>PERSONAL INTELLIGENCE</small></div></div>
+      <div class="sidebar-content">
+        <div class="section-label">WORKSPACE</div>
+        <button type="button" class="nav active" data-tab="chat"><span>◈</span> Chat</button>
+        <button type="button" class="nav" data-tab="memory"><span>◇</span> Memory Vault</button>
+        <button type="button" class="nav" data-tab="devices"><span>▣</span> Devices</button>
+        <div class="sidebar-spacer"></div>
+        <div class="system-card">
+          <div class="tiny-dot"></div><strong>Privacy-first</strong>
+          <p>Nothing executes on your computer without an authorized capability.</p>
+        </div>
+      </div>
+      <button id="logout" class="logout" type="button">Sign out <span>↗</span></button>
+    </aside>
+    <main class="content">
+      <header class="topbar">
+        <div class="top-title"><span class="mono-badge">S</span><div><strong id="pageTitle">Command Center</strong><small>Owner controlled · Version 0.1</small></div></div>
+        <div class="top-right"><span id="devicePill" class="pill"><span class="status-dot"></span>PC offline</span><span id="brainPill" class="pill muted">Model: Setup</span></div>
+      </header>
+      <section class="panel chat-panel" id="chatPanel">
+        <div id="chatFeed" class="chat-feed">
+          <div class="hero" id="hero">
+            <div class="orb"><div class="orb-inner">S</div></div>
+            <div class="eyebrow">YOUR SPACE. YOUR INTELLIGENCE.</div>
+            <h1>What can I do for you?</h1>
+            <p>SONIC is your private personal AI command center. Connect your mind, memory and authorized devices.</p>
+            <div class="prompts">
+              <button type="button" data-prompt="Perkenalkan dirimu dan jelaskan kemampuan SONIC saat ini.">Apa yang bisa SONIC lakukan?</button>
+              <button type="button" data-prompt="Cek status PC TRADEVICEPC saya.">Cek status TRADEVICEPC</button>
+              <button type="button" data-prompt="Apa saja kemampuan SONIC yang sudah aktif, dan mana yang belum?">Status capabilities</button>
+            </div>
+          </div>
+        </div>
+        <div class="compose-wrap">
+          <div class="composer">
+            <textarea id="message" rows="1" placeholder="Ask SONIC anything…" maxlength="3500" aria-label="Message"></textarea>
+            <div class="compose-actions">
+              <div class="compose-left">
+                <button id="mic" class="icon-button" type="button" title="Voice input" aria-label="Voice input">◉</button>
+                <button id="voice" class="voice-button" type="button" aria-pressed="false">◌ Voice off</button>
+              </div>
+              <button id="send" class="send-button" type="button" aria-label="Send message">↑</button>
+            </div>
+          </div>
+          <p class="disclaimer" id="notice">SONIC needs a configured OpenAI API key to respond. Your device remains read-only in V0.1.</p>
+        </div>
+      </section>
+      <section class="panel info-panel hidden" id="memoryPanel">
+        <div class="section-head"><div><div class="eyebrow">EXPLICIT MEMORY</div><h2>Memory Vault</h2><p>Only memories you intentionally save. Each one can be deleted.</p></div><span class="soft-icon">◇</span></div>
+        <form id="memoryForm" class="memory-form"><input id="memoryInput" maxlength="500" required placeholder="A fact you want SONIC to remember…"/><button type="submit">Save memory</button></form>
+        <div id="memoryList" class="card-list"></div>
+      </section>
+      <section class="panel info-panel hidden" id="devicesPanel">
+        <div class="section-head"><div><div class="eyebrow">LOCAL CONNECTIVITY</div><h2>Devices</h2><p>Explicitly paired devices and their restricted capabilities.</p></div><span class="soft-icon">▣</span></div>
+        <div class="device-card"><div class="device-icon">▣</div><div class="device-copy"><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Allowed action: read-only system.status</small></div><span id="deviceBadge" class="pill">Offline</span></div>
+        <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button></div>
+        <pre id="deviceResult" class="device-output">No device response yet.</pre>
+        <p class="device-note">SONIC V0.1 cannot execute shell commands, modify files, control SketchUp, or touch MT5. Future controls will require explicit permission.</p>
+      </section>
+    </main>
+  </div>
+  <div class="login-overlay" id="loginOverlay">
+    <form class="login-card" id="loginForm">
+      <div class="login-orb">S</div>
+      <span class="eyebrow">WELCOME TO SONIC</span><h2>Personal intelligence</h2>
+      <p>Enter your owner access token. It stays in this login request and is not stored in your browser.</p>
+      <label for="ownerToken">Owner access token</label>
+      <input id="ownerToken" type="password" minlength="1" autocomplete="off" placeholder="Enter your private token" required/>
+      <button type="submit">Unlock SONIC →</button>
+      <span id="loginError" role="alert"></span>
+    </form>
+  </div>
+</body>
+</html>
