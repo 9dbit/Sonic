@@ -14,8 +14,11 @@
    this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
    this.focused=false;this.lastTap=-Infinity;this.home=null;this.running=true;this.paused=false;this.lastTime=0;this.time=0;
-   this.points=Array.from({length:980},(_,i)=>{
-     const f=i+.5,y=1-2*f/980,r=Math.sqrt(Math.max(0,1-y*y)),theta=i*2.39996322972865;
+   this.visual=math.PARTICLE_VISUAL;
+   this.sprite=this.makeGlowSprite();
+   const particleCount=this.visual.count;
+   this.points=Array.from({length:particleCount},(_,i)=>{
+     const f=i+.5,y=1-2*f/particleCount,r=Math.sqrt(Math.max(0,1-y*y)),theta=i*2.39996322972865;
      return [Math.cos(theta)*r,y,Math.sin(theta)*r,i];
    });
    document.body.append(this.float);this.updateHome(true);this.attach();
@@ -57,14 +60,32 @@
   dimensions(){const w=this.canvas.clientWidth,h=this.canvas.clientHeight,dpr=clamp(devicePixelRatio||1,1,2),nw=Math.max(1,Math.round(w*dpr)),nh=Math.max(1,Math.round(h*dpr));
    if(this.canvas.width!==nw||this.canvas.height!==nh){this.canvas.width=nw;this.canvas.height=nh;}return [nw,nh];
   }
+  makeGlowSprite(){
+   // Pre-bake the cyan bloom once. 2940 drawImage calls remain inexpensive
+   // compared with creating thousands of gradients or per-dot shadowBlur.
+   const size=this.visual.spritePixels,sprite=document.createElement('canvas');
+   sprite.width=sprite.height=size;
+   const sc=sprite.getContext('2d',{alpha:true});
+   if(!sc)return sprite;
+   const center=size/2,gradient=sc.createRadialGradient(center,center,0,center,center,center);
+   for(const [stop,color] of this.visual.stops)gradient.addColorStop(stop,color);
+   sc.fillStyle=gradient;sc.fillRect(0,0,size,size);
+   return sprite;
+  }
   draw(){const ctx=this.ctx;if(!ctx)return;const [width,height]=this.dimensions();if(width<2||height<2)return;
-   ctx.clearRect(0,0,width,height);const radius=Math.min(width,height)*.443,centerX=width*.5,centerY=height*.5;
+   ctx.clearRect(0,0,width,height);
+   ctx.save();
+   // Additive blending makes cyan bloom emissive without replacing the
+   // transparent background with a dark or colored canvas.
+   ctx.globalCompositeOperation='lighter';
+   const radius=Math.min(width,height)*.443,centerX=width*.5,centerY=height*.5;
    const a=this.time*.38,ca=Math.cos(a),sa=Math.sin(a),tilt=.12*Math.sin(this.time*.44),ct=Math.cos(tilt),st=Math.sin(tilt);
    const speaking=this.state==='speaking'?1:this.state==='listening'?.32:0;
    this.energy+=(speaking-this.energy)*.065;
-   // Fibonacci sphere, breathing surface ripples and slight toroidal concavity.
+   // Preserve the existing Fibonacci sphere, breathing ripples and concavity.
+   // Density is exactly 2940 points versus 980 in SONIC V0.7.
    for(let i=0;i<this.points.length;i++){
-     const [ox,oy,oz]=this.points[i],f=i+.5;
+     const [ox,oy,oz]=this.points[i];
      const swirl=ox*ca-oz*sa,depth=ox*sa+oz*ca;
      const z=depth*ct+oy*st,y=oy*ct-depth*st;
      const wave=Math.sin(ox*8.2+this.time*1.18+oy*3.7)*Math.cos(oy*7.2-this.time*.71+oz*2.5);
@@ -73,12 +94,16 @@
      const x=swirl*warp*contour,y2=y*warp;
      const perspective=1+.15*z,px=centerX+x*radius*perspective,py=centerY+y2*radius*perspective;
      if(px<0||py<0||px>=width||py>=height)continue;
-     const light=clamp(.48+.27*z+.31*(x*.55-y2*.65),.12,1.0),silver=Math.round(135+110*light);
-     const alpha=clamp(.28+.5*light+.11*z,.27,.96);
-     const size=clamp((width/190)*(.42+.52*light+.08*Math.sin(f*1.3)),.42,2.8);
-     ctx.fillStyle=`rgba(${silver},${Math.min(255,silver+5)},${Math.min(255,silver+13)},${alpha})`;
-     ctx.fillRect(px,py,size,size);
+     const light=clamp(.48+.27*z+.31*(x*.55-y2*.65),.12,1);
+     // Bright, granular cyan cores with a soft shared sprite halo. Scale with
+     // DPR and focused view, but cap large glow surfaces for mobile GPUs.
+     const core=clamp((width/190)*(.72+.66*light)*this.visual.coreSizeMultiplier,.95,9.5);
+     const halo=clamp(core*this.visual.haloSizeMultiplier*(1+this.energy*.13),3,48);
+     const alpha=clamp(.20+.42*light+.07*z+this.energy*.08,.22,.78);
+     ctx.globalAlpha=alpha;
+     ctx.drawImage(this.sprite,px-halo*.5,py-halo*.5,halo,halo);
    }
+   ctx.restore();
   }
   frame(timestamp){if(!this.running)return;const dt=this.lastTime?clamp((timestamp-this.lastTime)/1000,0,.12):0;this.lastTime=timestamp;
    const desired=math.targetSpeed(this.state,this.reduced);this.speed+=(desired-this.speed)*clamp(dt*4,0,1);
