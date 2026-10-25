@@ -140,8 +140,19 @@
       $('telemetryFill').style.width=ready?Math.max(0,Math.min(100,100-(100*m.ram_available_bytes/m.ram_total_bytes)))+'%':'0%';
       $('telemetrySource').textContent=ready?('Authenticated Windows telemetry · '+telemetry.metrics_age_seconds+' sec ago'):
         (d.connected?'PC is connected, but legacy companion does not transmit RAM. Upgrade companion from a trusted local Windows session.':telemetry.notice);
-      const hint=$('companionUpgradeHint');if(hint){hint.classList.toggle('hidden',ready||!d.connected);}
+      renderTaskManager(m,telemetry.metrics_available);
+       const hint=$('companionUpgradeHint');if(hint){hint.classList.toggle('hidden',ready||!d.connected);}
     }catch(error){$('deviceDetail').textContent=error.message;$('devicePill').textContent='PC unavailable';$('devicePill').className='pill offline';}}
+  function renderTaskManager(m,available){
+    const host=$('taskManagerStats'),detail=$('taskManagerDetails');if(!host||!detail)return;
+    host.replaceChildren();detail.replaceChildren();
+    const fmt=(v,u='')=>Number.isFinite(v)?(Math.round(v*10)/10)+u:'Not reported';
+    const cards=[['CPU',fmt(m.cpu_usage_percent,'%')],['Memory',fmt(m.ram_used_percent,'%')],['Processes',fmt(m.process_count)],['Uptime',fmt(Number.isFinite(m.uptime_seconds)?m.uptime_seconds/3600:null,' h')],['Disk read',fmt(m.disk_read_bytes_per_second,' B/s')],['Disk write',fmt(m.disk_write_bytes_per_second,' B/s')],['Network RX',fmt(m.network_rx_bytes_per_second,' B/s')],['Network TX',fmt(m.network_tx_bytes_per_second,' B/s')]];
+    for(const [name,value] of cards){const card=el('div','task-stat');card.append(el('span','',name),el('strong','',available?value:'Offline / unavailable'));host.append(card);}
+    const sections=[['Performance / Storage',(m.disks||[]).map(x=>x.drive+' '+(x.free_bytes/2**30).toFixed(1)+' / '+(x.total_bytes/2**30).toFixed(1)+' GiB free / total')],['GPU',(m.gpus||[]).map(x=>x.name+' '+fmt(x.usage_percent,'%'))],['Network adapters',(m.network_interfaces||[]).map(x=>x.name+' '+(x.is_up?'Up':'Down'))],['Top processes',(m.processes||[]).map(x=>x.name+' (PID '+x.pid+') '+fmt(x.cpu_percent,'% CPU')+' '+fmt(Number.isFinite(x.ram_bytes)?x.ram_bytes/2**20:null,' MiB'))],['Services',(m.services||[]).map(x=>x.name+' / '+x.status)],['Startup apps',(m.startup_apps||[]).map(x=>x.name+' / '+x.scope)]];
+    for(const [name,items] of sections){const section=el('details','task-section');section.append(el('summary','',name+' ('+items.length+')'));section.append(el('pre','',items.length?items.join('\n'):'No verified data'));detail.append(section);}
+    if((m.unavailable||[]).length)detail.append(el('p','small-note','Not available on this device: '+m.unavailable.join(', ')));
+  }
   async function snapshot(){$('snapshotDevice').disabled=true;try{const job=await API('/api/device/jobs',{method:'POST',body:JSON.stringify({action:'system.status'})});$('deviceResult').textContent='Waiting for Windows companion...';
       for(let i=0;i<40;i++){await new Promise(r=>setTimeout(r,1500));const latest=await API('/api/device/jobs/'+job.id);if(['done','failed'].includes(latest.state)){$('deviceResult').textContent=JSON.stringify(latest.result,null,2);return;}}
       $('deviceResult').textContent='No result received yet. Refresh status before trying again.';
@@ -209,12 +220,12 @@
     if(box.children.length){box.prepend(el('span','small-note','Catatan yang dibaca: '));host.append(box);}
   }
   async function loadRuns(){try{const r=await API('/api/engine/runs');$('engineRuns').replaceChildren();if(!r.runs.length)$('engineRuns').append(el('p','small-note','Belum ada eksekusi pada engine V0.4.'));for(const run of r.runs.slice(0,10)){const row=el('div','engine-run');row.append(el('span','',run.route),el('small','',run.status+' / '+run.duration_ms+' ms'));$('engineRuns').append(row);}}catch(e){$('engineRuns').textContent=e.message;}}
-  async function loadVoiceStatus(){const status=await API('/api/voice/status');$('voiceReadiness').textContent=(status.enabled&&status.configured?'Configured, live audio not yet verified. ':'Not enabled. ')+status.model+' / '+status.max_session_seconds+' sec / '+status.sessions_started_today_utc+' of '+status.daily_session_limit+' sessions today (UTC).';return status;}
+  async function loadVoiceStatus(){const status=await API('/api/voice/status');$('voiceReadiness').textContent=(status.enabled&&status.configured?'Configured, live audio not yet verified. ':'Not enabled. ')+status.model+' / '+status.max_session_seconds+' sec / '+status.sessions_started_today_utc+' of '+(status.daily_limit_enabled?status.daily_session_limit+' sessions today (UTC)':'No SONIC daily session cap')+'.';return status;}
   async function openVoiceDialog(){
     if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
     if(waiting){notify('Tunggu respons chat selesai sebelum memulai suara.');return;}
     $('voiceAgree').checked=false;$('startVoice').disabled=true;$('voiceDialogStatus').textContent='Checking voice configuration...';$('voiceConsent').showModal();
-    try{const status=await loadVoiceStatus();$('voiceLimits').textContent='Maksimal '+Math.round(status.max_session_seconds/60)+' menit per sesi, '+status.daily_session_limit+' sesi/hari (UTC). Pemakaian OpenAI API dapat dikenakan biaya.';
+    try{const status=await loadVoiceStatus();$('voiceLimits').textContent='Maksimal '+Math.round(status.max_session_seconds/60)+' menit per sesi, '+(status.daily_limit_enabled?status.daily_session_limit+' sesi/hari (UTC)':'tanpa batas harian internal SONIC')+'. Pemakaian OpenAI API dikenakan biaya dan provider masih memiliki batasnya.';
       if(status.active_session){$('voiceDialogStatus').textContent='Sesi sebelumnya masih tercatat. Tutup sesi itu sebelum memulai lagi.';const b=button('Close previous session',async()=>{b.disabled=true;try{await API('/api/voice/sessions/'+status.active_session.id+'/stop',{method:'POST',body:'{}'});$('voiceConsent').close();}catch(e){notify(e.message);}finally{b.disabled=false;}});$('voiceDialogStatus').append(b);}
       else{$('startVoice').disabled=!(status.enabled&&status.configured);$('voiceDialogStatus').textContent=status.enabled&&status.configured?'Siap untuk pengujian suara pada perangkat ini.':'Realtime voice belum diaktifkan pada server. Chat dan input suara browser tetap tersedia.';}
     }catch(e){$('voiceDialogStatus').textContent=e.message;}
@@ -231,7 +242,7 @@
     const m=d.metrics||{},valid=d.metrics_available&&Number.isFinite(m.ram_available_bytes);
     const format=n=>(n/2**30).toFixed(2)+' GiB';
     $('nodePopupTitle').textContent='TRADEVICEPC / '+(d.connected?'Online':'Offline');
-    $('nodePopupText').textContent=valid?('RAM free: '+format(m.ram_available_bytes)+' / RAM total: '+format(m.ram_total_bytes)+'\nRAM used: '+m.ram_used_percent+'%\nTelemetry age: '+d.metrics_age_seconds+' seconds'):d.notice;
+    $('nodePopupText').textContent=valid?('CPU: '+(m.cpu_usage_percent??'N/A')+'%\\nDisk: '+(m.disks||[]).length+' volumes\\nProcesses: '+(m.process_count??'N/A')+'\\nRAM free: '+format(m.ram_available_bytes)+' / RAM total: '+format(m.ram_total_bytes)+'\nRAM used: '+m.ram_used_percent+'%\nTelemetry age: '+d.metrics_age_seconds+' seconds'):d.notice;
     $('nodePopupSource').textContent='Source: authenticated SONIC companion heartbeat; no estimated figures.';
     $('nodeDetailPopup').classList.remove('hidden');
     $('telemetryValue').textContent=valid?(format(m.ram_available_bytes)+' available'):'No fresh reading';
@@ -250,6 +261,7 @@
   function updateOperatorForm(){
     const a=$('operatorAction').value;
     $('operatorRecipeWrap').classList.toggle('hidden',a!=='shell.run');
+    $('operatorCommandWrap').classList.toggle('hidden',a!=='shell.inspect');
     $('operatorPathWrap').classList.toggle('hidden',a!=='file.read'&&a!=='file.list');
     $('operatorWindowWrap').classList.toggle('hidden',!a.startsWith('mouse.')&&!a.startsWith('keyboard.'));
     $('operatorTextWrap').classList.toggle('hidden',a!=='keyboard.type');
@@ -260,6 +272,7 @@
   async function proposePCAction(){
     const action=$('operatorAction').value,payload={};
     if(action==='shell.run')payload.recipe=$('operatorRecipe').value;
+    if(action==='shell.inspect')payload.command=$('operatorCommand').value.trim();
     if(action==='file.read'||action==='file.list')payload.path=$('operatorPath').value.trim();
     if(action.includes('keyboard')||action.includes('mouse'))payload.window=$('operatorWindow').value.trim();
     if(action==='keyboard.type')payload.text=$('operatorText').value;
