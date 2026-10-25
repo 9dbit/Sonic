@@ -1,5 +1,5 @@
 """Owner-only readiness and explicit, bounded provider connectivity test."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 import httpx
@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/api/setup/status")
-def setup_status(_: dict = Depends(auth.require_owner), db: Session = Depends(get_db)):
+def setup_status(request: Request, _: dict = Depends(auth.require_owner), db: Session = Depends(get_db)):
     try:
         db.connection().exec_driver_sql("SELECT 1")
     except SQLAlchemyError:
@@ -21,7 +21,7 @@ def setup_status(_: dict = Depends(auth.require_owner), db: Session = Depends(ge
     key_present = bool(setting("OPENAI_API_KEY"))
     online = bool(device and (utcnow() - device.last_seen).total_seconds() < 120)
     return {
-        "version": "0.6.1", "owner_configured": owner_ready(),
+        "version": request.app.version, "owner_configured": owner_ready(),
         "database_connected": True, "provider_key_configured": key_present,
         "provider_verified": False, "provider_verification": "Use Test OpenAI for a live check",
         "model": model_name(), "device_credential_configured": device_ready(),
