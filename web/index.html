@@ -1,99 +1,109 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="theme-color" content="#080b10"/>
-  <title>SONIC | Personal Intelligence</title>
-  <link rel="stylesheet" href="/assets/style.css"/>
-  <script src="/assets/app.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#06090d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SONIC | Neural Brain</title>
+  <link rel="stylesheet" href="/assets/style.css?v=0.3.0">
+  <script src="/assets/graph.js?v=0.3.0" defer></script>
+  <script src="/assets/app.js?v=0.3.0" defer></script>
 </head>
 <body>
+  <svg class="icon-sprite" aria-hidden="true"><defs>
+    <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="11" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 7 3 3m3 1 4-4M9 14l-3 3m7-3 4 3M8 5l8 1M7 19l10-1"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 1-8 8H5l-3 2V11a9 9 0 0 1 18 0Z"/><path d="M7 10h9M7 14h6"/></symbol>
+    <symbol id="i-memory" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/></symbol>
+    <symbol id="i-device" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0m-7 7v5m-4 0h8"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="m8 5 2-3h4l2 3h5v16H3V5Z"/><circle cx="12" cy="12" r="4"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-7 5 8"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2-8-8-2Z"/><path d="m11 13 10-10"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 24 24"><path d="M4 10v4h4l5 5V5l-5 5Zm12-3a8 8 0 0 1 0 10m3-13a12 12 0 0 1 0 16"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M3 8V3h5m8 0h5v5m0 8v5h-5M8 21H3v-5"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7a9 9 0 1 0 1 8M20 2v6h-6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M9 3H3v18h6m6-15 6 6-6 6m-8-6h14"/></symbol>
+  </defs></svg>
   <div class="app">
-    <aside class="sidebar">
-      <div class="brand"><div class="mark"><span></span><span></span><span></span></div><div><strong>SONIC</strong><small>PERSONAL INTELLIGENCE</small></div></div>
-      <div class="sidebar-content">
-        <div class="section-label">WORKSPACE</div>
-        <button type="button" class="nav active" data-tab="chat"><span>◈</span> Chat</button>
-        <button type="button" class="nav" data-tab="memory"><span>◇</span> Memory Vault</button>
-        <button type="button" class="nav" data-tab="devices"><span>▣</span> Devices</button>
-        <button type="button" class="nav" data-tab="setup"><span>S</span> Setup</button>
-        <div class="sidebar-spacer"></div>
-        <div class="system-card">
-          <div class="tiny-dot"></div><strong>Privacy-first</strong>
-          <p>Nothing executes on your computer without an authorized capability.</p>
-        </div>
-      </div>
-      <button id="logout" class="logout" type="button">Sign out <span>↗</span></button>
+    <aside class="sidebar" aria-label="Navigasi utama">
+      <a class="brand" href="/" aria-label="SONIC">S<span>SONIC</span></a>
+      <nav class="sidebar-content">
+        <button class="nav active" data-tab="brain" aria-label="Neural Brain"><svg><use href="#i-brain"/></svg><span>Neural</span></button>
+        <button class="nav" data-tab="chat" aria-label="Chat"><svg><use href="#i-chat"/></svg><span>Chat</span></button>
+        <button class="nav" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span>Memory</span></button>
+        <button class="nav" data-tab="devices" aria-label="Devices"><svg><use href="#i-device"/></svg><span>Devices</span></button>
+        <button class="nav" data-tab="setup" aria-label="Setup"><svg><use href="#i-settings"/></svg><span>Setup</span></button>
+      </nav>
+      <button id="logout" class="logout" title="Sign out" aria-label="Sign out"><svg><use href="#i-exit"/></svg></button>
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="mono-badge">S</span><div><strong id="pageTitle">Command Center</strong><small>Owner controlled · Version 0.2</small></div></div>
-        <div class="top-right"><span id="devicePill" class="pill"><span class="status-dot"></span>PC offline</span><span id="brainPill" class="pill muted">Model: Setup</span></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.3</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-right"><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
-      <section class="panel chat-panel" id="chatPanel">
-        <div id="chatFeed" class="chat-feed">
-          <div class="hero" id="hero">
-            <div class="orb"><div class="orb-inner">S</div></div>
-            <div class="eyebrow">YOUR SPACE. YOUR INTELLIGENCE.</div>
-            <h1>What can I do for you?</h1>
-            <p>SONIC is your private personal AI command center. Connect your mind, memory and authorized devices.</p>
-            <div class="prompts">
-              <button type="button" data-prompt="Perkenalkan dirimu dan jelaskan kemampuan SONIC saat ini.">Apa yang bisa SONIC lakukan?</button>
-              <button type="button" data-prompt="Cek status PC TRADEVICEPC saya.">Cek status TRADEVICEPC</button>
-              <button type="button" data-prompt="Apa saja kemampuan SONIC yang sudah aktif, dan mana yang belum?">Status capabilities</button>
-            </div>
-          </div>
+      <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
+        <div id="graphStage" class="graph-stage" tabindex="0" aria-label="Graph 3D. Drag untuk memutar, scroll atau pinch untuk zoom. Gunakan Search untuk memilih node dengan keyboard."></div>
+        <div class="graph-toolbar">
+          <button id="toggleInspector" class="mobile-control" aria-expanded="false" aria-label="Search and inspector"><svg><use href="#i-search"/></svg></button>
+          <button id="fitGraph" title="Fit all nodes"><svg><use href="#i-fit"/></svg><span>Fit</span></button>
+          <button id="dimensionGraph" aria-pressed="true">3D</button>
+          <button id="rotateGraph" aria-pressed="false">Orbit off</button>
+          <button id="refreshGraph" title="Refresh graph" aria-label="Refresh graph"><svg><use href="#i-refresh"/></svg></button>
+          <button id="toggleFilters" class="mobile-control" aria-expanded="false" aria-label="Filters"><svg><use href="#i-settings"/></svg></button>
         </div>
-        <div class="compose-wrap">
-          <div class="composer">
-            <textarea id="message" rows="1" placeholder="Ask SONIC anything…" maxlength="3500" aria-label="Message"></textarea>
-            <div class="compose-actions">
-              <div class="compose-left">
-                <button id="mic" class="icon-button" type="button" title="Voice input" aria-label="Voice input">◉</button>
-                <button id="voice" class="voice-button" type="button" aria-pressed="false">◌ Voice off</button>
-                <button id="camera" class="voice-button" type="button" title="Capture one webcam frame">◉ Camera</button>
-                <button id="screen" class="voice-button" type="button" title="Capture one screen frame">▣ Screen</button>
-                <button id="image" class="voice-button" type="button" title="Analyze a local image">＋ Image</button>
-                <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden/>
-              </div>
-              <button id="send" class="send-button" type="button" aria-label="Send message">↑</button>
-            </div>
+        <aside id="graphInspector" class="brain-side glass">
+          <div class="side-heading"><div><h2>YOUR KNOWLEDGE</h2><p id="graphCounts">Loading saved data...</p></div><button id="closeInspector" class="mobile-control plain" aria-label="Close inspector"><svg><use href="#i-close"/></svg></button></div>
+          <label class="graph-search"><svg><use href="#i-search"/></svg><input id="graphSearch" placeholder="Search the brain..." maxlength="150" aria-label="Search the brain"></label>
+          <div id="searchResults" class="search-results" role="list"></div>
+          <div class="eyebrow section-label">INSPECTOR</div>
+          <div id="nodeInspector" class="node-inspector"><p>Pilih sebuah node untuk melihat isi, sumber, dan koneksinya.</p></div>
+          <div class="depth-controls"><span>Depth</span><button data-depth="1" class="active">1</button><button data-depth="2">2</button><button data-depth="3">3</button><button id="clearFocus" class="plain">Reset</button></div>
+          <div class="eyebrow section-label">TOP CONNECTIONS</div><div id="topHubs" class="hub-list"></div>
+          <p class="small-note">Solid: struktur / relasi tersimpan.<br>Putus-putus: kata yang muncul di catatan.<br>Shift + klik node kedua: telusuri jalur.</p>
+        </aside>
+        <aside class="brain-right">
+          <div id="graphFilters" class="filter-panel glass"><div class="side-heading"><h2>FILTER</h2><button id="closeFilters" class="mobile-control plain" aria-label="Close filters"><svg><use href="#i-close"/></svg></button></div><div id="filterList"></div><p id="graphLimit" class="small-note"></p></div>
+          <div class="assistant-core" id="assistantCore" data-state="idle">
+            <div class="core-orbit"><div class="core-ticks"></div><div class="core-arc"></div><div class="core-inner"><strong>S.O.N.I.C.</strong><span>PERSONAL AI</span></div></div>
+            <div class="core-state"><i></i><span id="activityLabel">READY</span></div><span id="coreModel" class="model-label">Model checking</span>
           </div>
-          <p class="disclaimer" id="notice">SONIC needs a configured OpenAI API key to respond. Your device remains read-only in V0.1.</p>
+        </aside>
+        <div id="graphEmpty" class="graph-empty hidden"><span class="eyebrow">START WITH ONE THOUGHT</span><h2>Belum ada memory tersimpan.</h2><p>Ucapkan atau tulis &ldquo;Ingat bahwa ...&rdquo;.<br>Catatanmu akan menjadi node di sini.</p></div>
+        <div class="brain-console">
+          <div id="brainAnswer" class="brain-answer glass hidden" aria-live="polite"><div class="answer-label"><strong>SONIC</strong><button id="openFullChat" class="plain">Full conversation &#8599;</button></div><p id="brainAnswerText"></p><div id="brainReceipt"></div></div>
+          <form id="brainForm" class="composer brain-composer"><label class="sr-only" for="brainMessage">Pesan untuk SONIC</label><textarea id="brainMessage" rows="1" maxlength="3500" placeholder="Ask SONIC... or say &quot;ingat bahwa ...&quot;"></textarea><div class="compose-actions"><div class="compose-left"><button id="brainMic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="brainVoice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="brainCamera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="brainScreen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="brainImage" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="brainSend" class="send-button" aria-label="Send to SONIC"><svg><use href="#i-send"/></svg></button></div></form>
+          <p id="graphHint" class="graph-hint">Drag to orbit &middot; scroll / pinch to zoom &middot; select to explore</p>
         </div>
+        <div id="graphEngine" class="graph-engine"></div>
+      </section>
+      <section class="panel chat-panel hidden" id="chatPanel">
+        <div id="chatFeed" class="chat-feed" aria-live="polite"><div class="hero" id="hero"><div class="hero-mark">S</div><span class="eyebrow">YOUR SPACE. YOUR INTELLIGENCE.</span><h2>What can I do for you?</h2><p>Percakapan, memory, dan pengetahuan dalam satu ruang.</p><button id="goToBrain" class="outline-button">Explore Neural Brain &#8599;</button></div></div>
+        <div class="compose-wrap"><form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><p class="disclaimer">Memory hanya tersimpan setelah ada konfirmasi database.</p></div>
       </section>
       <section class="panel info-panel hidden" id="memoryPanel">
-        <div class="section-head"><div><div class="eyebrow">EXPLICIT MEMORY</div><h2>Memory Vault</h2><p>Only memories you intentionally save. Each one can be deleted.</p></div><span class="soft-icon">◇</span></div>
-        <form id="memoryForm" class="memory-form"><input id="memoryInput" maxlength="500" required placeholder="A fact you want SONIC to remember…"/><button type="submit">Save memory</button></form>
-        <div id="memoryList" class="card-list"></div>
+        <div class="section-head"><div><span class="eyebrow">PERSISTENT KNOWLEDGE</span><h2>Memory Vault</h2><p>Catatan yang kamu simpan. Bukan seluruh riwayat percakapan.</p></div><span id="memoryTotal" class="number-badge">0</span></div>
+        <form id="memoryForm" class="memory-form"><input id="memoryInput" maxlength="500" required placeholder="Fakta atau catatan yang ingin disimpan..." aria-label="Memory text"><button type="submit">Save memory</button></form>
+        <p id="memoryStatus" class="small-note" aria-live="polite"></p><div id="memoryList" class="card-list"></div>
       </section>
       <section class="panel info-panel hidden" id="devicesPanel">
-        <div class="section-head"><div><div class="eyebrow">LOCAL CONNECTIVITY</div><h2>Devices</h2><p>Explicitly paired devices and their restricted capabilities.</p></div><span class="soft-icon">▣</span></div>
-        <div class="device-card"><div class="device-icon">▣</div><div class="device-copy"><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Allowed action: read-only system.status</small></div><span id="deviceBadge" class="pill">Offline</span></div>
-        <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button></div>
-        <pre id="deviceResult" class="device-output">No device response yet.</pre>
-        <p class="device-note">SONIC V0.1 cannot execute shell commands, modify files, control SketchUp, or touch MT5. Future controls will require explicit permission.</p>
+        <div class="section-head"><div><span class="eyebrow">AUTHORIZED CONNECTIONS</span><h2>Devices</h2><p>Status nyata dari companion yang terdaftar.</p></div></div>
+        <div class="device-card"><svg class="device-icon"><use href="#i-device"/></svg><div><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Allowed action: read-only system.status</small></div><span id="deviceBadge" class="pill offline">Offline</span></div>
+        <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button></div><pre id="deviceResult" class="device-output">No device response yet.</pre><p class="small-note">Kontrol aplikasi, shell, trading, dan architecture belum diaktifkan.</p>
       </section>
       <section class="panel info-panel hidden" id="setupPanel">
-        <div class="section-head"><div><div class="eyebrow">ACTIVATION CHECKLIST</div><h2>SONIC Setup</h2><p>Live readiness, without exposing any credentials.</p></div></div>
-        <div id="setupList" class="card-list" aria-live="polite"></div>
-        <div class="device-controls"><button id="setupLogout" type="button">Sign out</button><button id="refreshSetup" type="button">Refresh readiness</button><button id="testProvider" type="button">Test OpenAI</button></div>
-        <p id="setupMessage" class="device-note" aria-live="polite"></p>
-        <div class="setup-help"><strong>Activate the AI brain</strong><p>In Railway, open SONIC / staging / sonic-web / Variables and add <code>OPENAI_API_KEY</code>. Let the service redeploy, then refresh readiness and run Test OpenAI.</p><p>Never paste an API key into this chat or save it as a memory. Login, memory and read-only device status work independently of the AI provider.</p></div>
+        <div class="section-head"><div><span class="eyebrow">ACTIVATION CHECKLIST</span><h2>SONIC Setup</h2><p>Kesiapan sistem, tanpa menampilkan kredensial.</p></div></div><div id="setupList" class="card-list"></div>
+        <div class="device-controls"><button id="refreshSetup">Refresh readiness</button><button id="testProvider">Test OpenAI</button><button id="setupLogout">Sign out</button></div><p id="setupMessage" class="small-note" aria-live="polite"></p>
+        <div class="setup-help"><strong>OpenAI brain</strong><p>Konfigurasikan <code>OPENAI_API_KEY</code> langsung di Railway SONIC / staging / sonic-web. Jangan menaruh key di chat atau memory.</p><p>Memory eksplisit dan graph dapat digunakan tanpa panggilan model. Voice saat ini menggunakan fitur browser, bukan realtime AI.</p></div>
       </section>
+      <div id="notice" class="notice hidden" role="status"></div>
     </main>
   </div>
-  <div class="login-overlay" id="loginOverlay">
-    <form class="login-card" id="loginForm">
-      <div class="login-orb">S</div>
-      <span class="eyebrow">WELCOME TO SONIC</span><h2>Personal intelligence</h2>
-      <p>Enter your owner access token. It stays in this login request and is not stored in your browser.</p>
-      <label for="ownerToken">Owner access token</label>
-      <input id="ownerToken" type="password" minlength="1" autocomplete="off" placeholder="Enter your private token" required/>
-      <button type="submit">Unlock SONIC →</button>
-      <span id="loginError" role="alert"></span>
-    </form>
-  </div>
+  <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.3</small></form></div>
 </body>
 </html>

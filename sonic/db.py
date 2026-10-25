@@ -2,9 +2,10 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import os
+from threading import Lock
 
 from fastapi import HTTPException
-from sqlalchemy import DateTime, Integer, String, Text, create_engine, select
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from .config import setting, database_ready
 
@@ -36,6 +37,27 @@ class MemoryNote(Base):
     __tablename__ = "memory_notes"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class MemorySource(Base):
+    """Additive provenance. Existing memory_notes schema is not altered."""
+    __tablename__ = "memory_sources"
+    memory_id: Mapped[int] = mapped_column(ForeignKey("memory_notes.id", ondelete="CASCADE"), primary_key=True)
+    content_sha256: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    source_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class MemoryLink(Base):
+    """Only owner-confirmed, persisted relationships between existing notes."""
+    __tablename__ = "memory_links"
+    __table_args__ = (UniqueConstraint("source_id", "target_id", name="uq_memory_link_pair"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("memory_notes.id", ondelete="CASCADE"), nullable=False)
+    target_id: Mapped[int] = mapped_column(ForeignKey("memory_notes.id", ondelete="CASCADE"), nullable=False)
+    label: Mapped[str] = mapped_column(String(80), default="related to", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
@@ -71,20 +93,27 @@ def database_url() -> str:
 
 _engine = None
 _Session = None
+_initialization_lock = Lock()
 
 
 def session_factory():
     global _engine, _Session
     if not database_ready():
         raise HTTPException(status_code=503, detail="Durable database is required for hosted SONIC")
-    if _Session is None:
-        url = database_url()
-        kwargs = {"pool_pre_ping": True}
-        if url.startswith("sqlite:"):
-            kwargs["connect_args"] = {"check_same_thread": False}
-        _engine = create_engine(url, **kwargs)
-        Base.metadata.create_all(_engine)
-        _Session = sessionmaker(bind=_engine, expire_on_commit=False)
+    with _initialization_lock:
+        if _Session is None:
+            url = database_url()
+            kwargs = {"pool_pre_ping": True}
+            if url.startswith("sqlite:"):
+                kwargs["connect_args"] = {"check_same_thread": False}
+            engine = create_engine(url, **kwargs)
+            try:
+                Base.metadata.create_all(engine)
+            except Exception:
+                engine.dispose()
+                raise
+            _engine = engine
+            _Session = sessionmaker(bind=_engine, expire_on_commit=False)
     return _Session
 
 
