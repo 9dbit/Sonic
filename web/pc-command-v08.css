@@ -1,0 +1,58 @@
+/* SONIC V0.8: black workspace, dark-grey PC Command Center, flat blue controls. */
+.pc-command-center{max-width:1180px;margin:28px 0 36px;background:#171717!important;padding:24px;border:0!important;border-radius:22px}
+.pc-command-heading,.pc-performance-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.pc-command-heading h3{font-size:24px;letter-spacing:-.035em;margin:8px 0}
+.pc-command-heading p{font-size:12px;color:#fff;line-height:1.6;margin:0 0 8px;opacity:.8}
+.pc-command-heading .pill{white-space:nowrap}
+.pc-performance,.pc-process-panel,.pc-console,.pc-audit{margin-top:16px;background:#222!important;border-radius:16px;padding:17px 18px;border:0!important;box-shadow:none!important}
+.pc-performance-title{align-items:center;flex-wrap:wrap}
+.pc-performance-title strong{font-size:13px;color:#fff;font-weight:650}
+.pc-performance-title span{color:#4da3ff;font-size:10px}
+#pcTrend{display:block;width:100%;height:150px;margin:12px 0 0;background:#000;border-radius:9px}
+.pc-legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:12px}
+.pc-legend span{color:#4da3ff!important;font-size:11px}.pc-legend b{color:#fff!important;font-variant-numeric:tabular-nums;margin-left:5px}
+.pc-process-list{display:flex;flex-direction:column;gap:5px;margin-top:14px;min-height:25px;font-size:11px;color:#fff!important}
+.pc-process-row{display:grid;grid-template-columns:minmax(130px,1fr) 70px 80px 90px auto;align-items:center;gap:12px;padding:9px 10px;border:0!important;border-radius:9px;background:#171717!important;min-width:0}
+.pc-process-row.pc-process-heading{background:#222!important;color:#4da3ff!important;font-weight:600}
+.pc-process-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pc-process-row button{padding:7px 10px!important;font-size:10px!important;min-height:30px;background:#156bff!important;border:0!important}
+.pc-process-row button:disabled{background:#303030!important;color:#fff!important}
+.pc-console textarea{display:block;width:100%;min-height:105px;margin-top:14px;border:0!important;border-radius:11px;background:#090909!important;color:#fff!important;font:12px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;padding:14px;resize:vertical;box-shadow:none!important}
+.pc-console textarea:focus-visible{outline:2px solid #4da3ff!important}
+.pc-presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pc-presets button{background:#171717!important;color:#4da3ff!important;font-size:10px!important;padding:7px 11px!important;border-radius:999px!important;border:0!important;box-shadow:none!important}
+.pc-console-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0}
+.pc-console-actions label{font-size:10px;color:#4da3ff!important;display:flex;gap:8px;align-items:center}
+.pc-console-actions select{border:0!important;border-radius:8px;background:#171717!important;color:#fff!important;padding:10px}
+.pc-console-actions button{padding:10px 16px!important;border-radius:999px!important}
+.pc-console-actions #pcStop{background:#ff9f2f!important;color:#000!important}
+.pc-console-actions #pcStop:disabled{background:#343434!important;color:#fff!important}
+.pc-terminal-output{background:#050505!important;color:#fff!important;min-height:172px;max-height:410px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.6 ui-monospace,Consolas,monospace;padding:15px;border-radius:10px;border:0!important;scrollbar-width:thin}
+#pcExecState[data-state=failed],#pcExecState[data-state=cancelled],#pcExecState[data-state=expired]{color:#ff9f2f!important}
+#pcExecState[data-state=done]{color:#4da3ff!important}
+.pc-audit-row{display:grid;grid-template-columns:155px 1fr minmax(70px,105px);gap:12px;padding:10px 12px;margin-top:7px;border-radius:9px;background:#171717!important;font-size:10px;align-items:center}
+.pc-audit-row code{font-family:ui-monospace,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-audit-row time{color:#4da3ff!important;font-variant-numeric:tabular-nums}
+.pc-audit-row .pc-audit-state{color:#fff!important;text-transform:uppercase;letter-spacing:.04em}
+.pc-audit-row .pc-audit-state[data-state=failed],.pc-audit-row .pc-audit-state[data-state=cancelled]{color:#ff9f2f!important}
+.pc-approval{background:#171717!important;color:#fff!important;border:0!important;box-shadow:none!important;border-radius:22px;padding:26px;width:min(620px,calc(100% - 25px))}
+.pc-approval::backdrop{background:rgba(0,0,0,.86)}
+.pc-approval h3{color:#4da3ff!important;margin:0 0 12px}
+.pc-approval p{font-size:12px;line-height:1.6}
+.pc-approval pre{background:#000;color:#fff;padding:14px;border-radius:10px;max-height:310px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.pc-approval .button-row{display:flex;justify-content:flex-end;gap:9px}
+.pc-approval button{border:0;border-radius:999px;padding:10px 17px;background:#156bff;color:white!important}
+.pc-approval button.plain{background:#292929;color:#4da3ff!important}
+@media(max-width:700px){
+ .pc-command-center{margin:15px 0 24px;padding:14px;border-radius:16px}
+ .pc-command-heading h3{font-size:19px}
+ .pc-command-heading{flex-wrap:wrap}
+ .pc-performance,.pc-process-panel,.pc-console,.pc-audit{padding:12px;border-radius:12px}
+ .pc-process-row{grid-template-columns:minmax(100px,1fr) 47px 60px auto;gap:6px;padding:8px 6px}
+ .pc-process-row span:nth-child(4){display:none}
+ .pc-process-row button{font-size:9px!important;padding:6px!important}
+ .pc-legend{gap:11px}
+ .pc-audit-row{grid-template-columns:1fr auto;gap:6px}
+ .pc-audit-row time{grid-column:1/-1}
+ #pcTrend{height:125px}
+}
