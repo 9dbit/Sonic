@@ -1,57 +1,38 @@
-# SONIC companion update, initiated locally by the device owner.
-# Keeps a non-administrator Windows Scheduled Task and no inbound network ports.
-# Does not stop/restart Windows or access MetaTrader. Must run as the same Windows
-# account that created the DPAPI credential. Without -Install this is a dry run.
-param([switch]$Install)
+# SONIC V0.8 companion deployment. Owner-initiated, no inbound ports and
+# no elevation. PowerShell broker must be explicitly opted into with
+# -Install -EnablePowerShell and still requires approval in the SONIC browser.
+param([switch]$Install, [switch]$EnablePowerShell)
 $ErrorActionPreference = 'Stop'
 $root = 'D:\Sonic\companion'
 $workspace = 'D:\Sonic\work'
 $python = 'D:\Sonic\.venv\Scripts\python.exe'
 $tokenFile = Join-Path $root 'device-token.dpapi'
 $agentSource = Join-Path $PSScriptRoot 'windows_agent_v05.py'
+$brokerSource = Join-Path $PSScriptRoot 'windows_command_v08.py'
 $taskName = 'SONIC Read-only Companion'
-foreach ($path in @($root,$workspace,$python,$tokenFile,$agentSource)) {
+
+foreach ($path in @($root,$workspace,$python,$tokenFile,$agentSource,$brokerSource)) {
     if (-not (Test-Path -LiteralPath $path)) { throw "Missing requirement: $path" }
 }
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
 if ($task.Principal.RunLevel -eq 'Highest') { throw 'Refusing elevated task. SONIC must run with Limited privileges.' }
-Write-Host 'SONIC companion update preflight OK.'
-Write-Host 'Actions: read RAM, disk, bounded workspace files, list processes/windows; approved Notepad GUI and fixed shell recipes.'
-Write-Host 'No arbitrary PowerShell, no unrestricted filesystem or administrator access.'
+$enableValue = if($EnablePowerShell) { '1' } else { '0' }
+Write-Host 'SONIC V0.8 installer / Limited user / outbound HTTPS.'
+Write-Host ('PowerShell opt-in: ' + [bool]$EnablePowerShell)
+Write-Host 'Owner review and one-time digest confirmation required for every PC command.'
+Write-Host 'PowerShell is not a sandbox; commands inherit the Windows user permissions.'
 if (-not $Install) {
-    Write-Host 'Dry-run only. To install, run this command yourself with -Install.'
+    Write-Host 'Dry-run only. Use -Install to update. Add -EnablePowerShell to opt in locally.'
     return
 }
-$destination = Join-Path $root 'windows_agent_v05.py'
-$runner = Join-Path $root 'Start-SONIC-Companion-V05.ps1'
-$backup = Join-Path $root 'windows_agent_v05.previous.py'
-if(Test-Path $destination) { Copy-Item $destination $backup -Force }
-Copy-Item $agentSource $destination -Force
-@'
-$ErrorActionPreference = 'Stop'
-$root = 'D:\Sonic\companion'
-$tokenFile = Join-Path $root 'device-token.dpapi'
-$encrypted = Get-Content $tokenFile -Raw
-$secure = ConvertTo-SecureString $encrypted
-$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-try {
-    $env:SONIC_DEVICE_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-    $env:SONIC_BASE_URL = 'https://sonic-web-staging.up.railway.app'
-    $env:SONIC_DEVICE_ID = 'TRADEVICEPC'
-    $env:SONIC_WORKSPACE_ROOT = 'D:\Sonic\work'
-    & 'D:\Sonic\.venv\Scripts\python.exe' -u (Join-Path $root 'windows_agent_v05.py')
-} finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
-    $secure.Dispose()
-    Remove-Item Env:SONIC_DEVICE_TOKEN -ErrorAction SilentlyContinue
-    Remove-Item Env:SONIC_BASE_URL -ErrorAction SilentlyContinue
-    Remove-Item Env:SONIC_DEVICE_ID -ErrorAction SilentlyContinue
-    Remove-Item Env:SONIC_WORKSPACE_ROOT -ErrorAction SilentlyContinue
-}
-'@ | Set-Content -LiteralPath $runner -Encoding UTF8
-# One-shot HTTPS/credential/metrics check before changing the existing task.
-# Test credential is never echoed to logs or stored as plain text in a file.
-$encrypted = Get-Content $tokenFile -Raw
+
+$stage = Join-Path $workspace 'sonic-v08-install-candidate'
+New-Item -ItemType Directory -Force -Path $stage | Out-Null
+Copy-Item -LiteralPath $agentSource -Destination (Join-Path $stage 'windows_agent_v05.py') -Force
+Copy-Item -LiteralPath $brokerSource -Destination (Join-Path $stage 'windows_command_v08.py') -Force
+
+# Validate without dequeuing any owner-approved operation.
+$encrypted = Get-Content -LiteralPath $tokenFile -Raw
 $secure = ConvertTo-SecureString $encrypted
 $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try {
@@ -59,27 +40,66 @@ try {
     $env:SONIC_BASE_URL = 'https://sonic-web-staging.up.railway.app'
     $env:SONIC_DEVICE_ID = 'TRADEVICEPC'
     $env:SONIC_WORKSPACE_ROOT = $workspace
-    & $python -u $destination --once
-    if($LASTEXITCODE -ne 0) { throw 'SONIC telemetry preflight failed: old Scheduled Task preserved' }
+    $env:SONIC_ENABLE_POWERSHELL_EXEC = $enableValue
+    & $python -u (Join-Path $stage 'windows_agent_v05.py') --preflight
+    if ($LASTEXITCODE -ne 0) { throw 'SONIC V0.8 preflight failed; old Scheduled Task unchanged' }
 } finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
     $secure.Dispose()
-    Remove-Item Env:SONIC_DEVICE_TOKEN -ErrorAction SilentlyContinue
-    Remove-Item Env:SONIC_BASE_URL -ErrorAction SilentlyContinue
-    Remove-Item Env:SONIC_DEVICE_ID -ErrorAction SilentlyContinue
-    Remove-Item Env:SONIC_WORKSPACE_ROOT -ErrorAction SilentlyContinue
+    foreach ($key in @('SONIC_DEVICE_TOKEN','SONIC_BASE_URL','SONIC_DEVICE_ID',
+                       'SONIC_WORKSPACE_ROOT','SONIC_ENABLE_POWERSHELL_EXEC')) {
+        Remove-Item -Path ('Env:' + $key) -ErrorAction SilentlyContinue
+    }
 }
-$oldAction = $task.Actions
-$newAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File "' + $runner + '"')
+
+$destination = Join-Path $root 'windows_agent_v05.py'
+$brokerDest = Join-Path $root 'windows_command_v08.py'
+$runner = Join-Path $root 'Start-SONIC-Companion-V08.ps1'
+$backup = Join-Path $root 'windows_agent_v05.before_v08.py'
+$brokerBackup = Join-Path $root 'windows_command_v08.previous.py'
+if(Test-Path $destination) { Copy-Item -LiteralPath $destination -Destination $backup -Force }
+if(Test-Path $brokerDest) { Copy-Item -LiteralPath $brokerDest -Destination $brokerBackup -Force }
+
+$runnerText = @'
+$ErrorActionPreference = 'Stop'
+$root = 'D:\Sonic\companion'
+$encrypted = Get-Content -LiteralPath (Join-Path $root 'device-token.dpapi') -Raw
+$secure = ConvertTo-SecureString $encrypted
+$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+try {
+    $env:SONIC_DEVICE_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+    $env:SONIC_BASE_URL = 'https://sonic-web-staging.up.railway.app'
+    $env:SONIC_DEVICE_ID = 'TRADEVICEPC'
+    $env:SONIC_WORKSPACE_ROOT = 'D:\Sonic\work'
+    $env:SONIC_ENABLE_POWERSHELL_EXEC = '__SONIC_PS_ENABLE__'
+    & 'D:\Sonic\.venv\Scripts\python.exe' -u (Join-Path $root 'windows_agent_v05.py')
+} finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+    $secure.Dispose()
+    foreach ($key in @('SONIC_DEVICE_TOKEN','SONIC_BASE_URL','SONIC_DEVICE_ID',
+                       'SONIC_WORKSPACE_ROOT','SONIC_ENABLE_POWERSHELL_EXEC')) {
+        Remove-Item -Path ('Env:' + $key) -ErrorAction SilentlyContinue
+    }
+}
+'@
+$runnerText = $runnerText.Replace('__SONIC_PS_ENABLE__', $enableValue)
+$previousActions = $task.Actions
 try {
     Stop-ScheduledTask -TaskName $taskName -ErrorAction Stop
-    Set-ScheduledTask -TaskName $taskName -Action $newAction -ErrorAction Stop | Out-Null
+    Copy-Item -LiteralPath (Join-Path $stage 'windows_agent_v05.py') -Destination $destination -Force
+    Copy-Item -LiteralPath (Join-Path $stage 'windows_command_v08.py') -Destination $brokerDest -Force
+    $runnerText | Set-Content -LiteralPath $runner -Encoding UTF8
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument (
+        '-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File "' + $runner + '"')
+    Set-ScheduledTask -TaskName $taskName -Action $action -ErrorAction Stop | Out-Null
     Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
-    Write-Host 'SONIC telemetry companion installed as Limited user Scheduled Task.'
-    Write-Host 'Verify RAM appears within 60 seconds under SONIC Devices.'
+    Write-Host 'SONIC V0.8 installed as Limited user Scheduled Task.'
+    Write-Host 'No ports opened. Verify heartbeat and capability list in SONIC Devices.'
 } catch {
-    Write-Warning 'Install failed, restoring original task action.'
-    Set-ScheduledTask -TaskName $taskName -Action $oldAction | Out-Null
+    Write-Warning 'Install failed. Restoring the previous SONIC Scheduled Task.'
+    if(Test-Path $backup) { Copy-Item -LiteralPath $backup -Destination $destination -Force }
+    if(Test-Path $brokerBackup) { Copy-Item -LiteralPath $brokerBackup -Destination $brokerDest -Force }
+    Set-ScheduledTask -TaskName $taskName -Action $previousActions | Out-Null
     Start-ScheduledTask -TaskName $taskName
     throw
 }
