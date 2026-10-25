@@ -7,20 +7,22 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Neural Brain</title>
-  <link rel="stylesheet" href="/assets/style.css?v=0.7.2">
-  <link rel="stylesheet" href="/assets/engine-style.css?v=0.7.2">
-  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.7.2">
-  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.7.2">
-  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.7.2">
-  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.7.2">
-  <script src="/assets/graph.js?v=0.7.2" defer></script>
-  <script src="/assets/engine-ui.js?v=0.7.2" defer></script>
-  <script src="/assets/voice.js?v=0.7.2" defer></script>
-  <script src="/assets/wake-v05.js?v=0.7.2" defer></script>
-  <script src="/assets/motion-math.js?v=0.7.2" defer></script>
-  <script src="/assets/motion-core.js?v=0.7.2" defer></script>
-  <script src="/assets/persona-studio.js?v=0.7.2" defer></script>
-  <script src="/assets/app.js?v=0.7.2" defer></script>
+  <link rel="stylesheet" href="/assets/style.css?v=0.8.0">
+  <link rel="stylesheet" href="/assets/engine-style.css?v=0.8.0">
+  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.8.0">
+  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.8.0">
+  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.8.0">
+  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.8.0">
+  <link rel="stylesheet" href="/assets/pc-command-v08.css?v=0.8.0">
+  <script src="/assets/graph.js?v=0.8.0" defer></script>
+  <script src="/assets/engine-ui.js?v=0.8.0" defer></script>
+  <script src="/assets/voice.js?v=0.8.0" defer></script>
+  <script src="/assets/wake-v05.js?v=0.8.0" defer></script>
+  <script src="/assets/motion-math.js?v=0.8.0" defer></script>
+  <script src="/assets/motion-core.js?v=0.8.0" defer></script>
+  <script src="/assets/persona-studio.js?v=0.8.0" defer></script>
+  <script src="/assets/app.js?v=0.8.0" defer></script>
+  <script src="/assets/pc-command-v08.js?v=0.8.0" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -54,7 +56,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.7.2</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.8.0</b></span><h1 id="pageTitle">Neural Brain</h1></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
@@ -103,7 +105,7 @@
       </section>
       <section class="panel info-panel hidden" id="devicesPanel">
         <div class="section-head"><div><span class="eyebrow">AUTHORIZED CONNECTIONS</span><h2>Devices</h2><p>Status nyata dari companion yang terdaftar.</p></div></div>
-        <div class="device-card"><svg class="device-icon"><use href="#i-device"/></svg><div><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Allowed action: read-only system.status</small></div><span id="deviceBadge" class="pill offline">Offline</span></div>
+        <div class="device-card"><svg class="device-icon"><use href="#i-device"/></svg><div><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Windows telemetry and owner-approved commands</small></div><span id="deviceBadge" class="pill offline">Offline</span></div>
         <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button><button id="deviceRAM">Task Manager overview</button></div>
         <p id="companionUpgradeHint" class="small-note hidden">PC online, RAM telemetry belum aktif. Jalankan installer companion dari <a href="https://github.com/9dbit/Sonic/blob/feature/sonic-motion-persona-fixes-v061-20261026/scripts/Install-Sonic-Companion.ps1" target="_blank" rel="noopener noreferrer">GitHub SONIC</a> secara lokal setelah review source. Jangan kirim token perangkat ke browser atau chat.</p><div id="deviceTelemetry" class="device-telemetry" aria-live="polite"><div class="telemetry-row"><span>TRADEVICEPC RAM</span><b id="telemetryValue">Not available</b></div><div class="telemetry-bar"><span id="telemetryFill"></span></div><small id="telemetrySource">Waiting for fresh companion telemetry.</small></div>
         <section id="taskManagerPanel" class="operator-panel">
@@ -111,7 +113,47 @@
           <div id="taskManagerStats" class="task-stat-grid">Waiting for fresh companion telemetry</div>
           <div id="taskManagerDetails"></div>
         </section>
-        <div class="operator-panel" id="operatorPanel"><h3>PC Operator / owner approval</h3><p class="small-note">Perintah dibatasi untuk mencegah shutdown/restart melalui shell arbitrer. Aksi baru berjalan setelah kamu meninjau dan menyetujui.</p><label>Operation<select id="operatorAction"><option value="shell.run">PowerShell: preset</option><option value="shell.inspect">PowerShell: diagnostics</option><option value="file.read">Read workspace text file</option><option value="file.list">Browse workspace folder</option><option value="process.list">List processes</option><option value="window.list">List desktop windows</option><option value="mouse.click">Mouse click / Notepad</option><option value="keyboard.type">Type text / Notepad</option><option value="keyboard.key">Keypress / Notepad</option></select></label><label id="operatorRecipeWrap">Approved shell recipe<select id="operatorRecipe"><option value="memory">Memory status</option><option value="clock">Clock</option><option value="system">System overview</option></select></label><label id="operatorCommandWrap" class="hidden">PowerShell diagnostic command<input id="operatorCommand" maxlength="160" placeholder="Get-Process"></label><label id="operatorPathWrap" class="hidden">File path under D:\Sonic\work<input id="operatorPath" maxlength="500" placeholder="D:\Sonic\work\notes.txt"></label><label id="operatorWindowWrap" class="hidden">Foreground Notepad window ID<input id="operatorWindow" maxlength="20" placeholder="Notepad HWND"></label><label id="operatorTextWrap" class="hidden">Text<input id="operatorText" maxlength="300" placeholder="Text for Notepad"></label><label id="operatorKeyWrap" class="hidden">Key<select id="operatorKey"><option>ENTER</option><option>TAB</option><option>BACKSPACE</option><option>ESCAPE</option><option>LEFT</option><option>RIGHT</option></select></label><div id="operatorCoordWrap" class="hidden"><label>Screen X<input id="operatorX" type="number" min="0" max="16000" value="100"></label><label>Screen Y<input id="operatorY" type="number" min="0" max="16000" value="100"></label></div><div class="device-controls"><button id="proposeOperator" type="button">Review PC action</button></div><p id="operatorState" class="small-note" aria-live="polite"></p></div><pre id="deviceResult" class="device-output">No device response yet.</pre><p class="small-note">PC actions require explicit approval. No remote shutdown, restart, arbitrary shell, or secret-file access. Additional capabilities require the updated Windows companion. Trading and architecture remain disabled.</p>
+
+        <section id="pcCommandCenter" class="operator-panel pc-command-center" aria-label="SONIC PC Command Center">
+          <div class="pc-command-heading">
+            <div><span class="eyebrow">TRADEVICEPC / V0.8</span><h3>PC Command Center</h3>
+              <p>Live Windows telemetry, PowerShell console, process controls and audit history.</p></div>
+            <span id="pcBrokerStatus" class="pill offline">Broker checking</span>
+          </div>
+          <section class="pc-performance" aria-label="CPU and memory usage history">
+            <div class="pc-performance-title"><strong>System Performance</strong><span id="pcSampleTime">Waiting for authenticated telemetry</span></div>
+            <canvas id="pcTrend" height="150" role="img" aria-label="CPU and RAM time series"></canvas>
+            <div class="pc-legend"><span>CPU <b id="pcCPU">N/A</b></span><span>Memory <b id="pcRAM">N/A</b></span><span>Network <b id="pcNet">N/A</b></span><span>GPU <b id="pcGPU">N/A</b></span></div>
+          </section>
+          <section class="pc-process-panel" aria-label="Task Manager processes">
+            <div class="pc-performance-title"><strong>Running processes</strong><span>End Task always requires exact owner approval</span></div>
+            <div id="pcProcessList" class="pc-process-list" role="table" aria-label="Top processes">No authenticated process data yet.</div>
+          </section>
+          <section class="pc-console" aria-label="PowerShell remote console">
+            <div class="pc-performance-title"><strong><span aria-hidden="true">&gt;_</span> PowerShell</strong><span id="pcExecState" role="status">Not connected</span></div>
+            <label for="pcScript" class="sr-only">PowerShell script to execute on TRADEVICEPC</label>
+            <textarea id="pcScript" rows="5" maxlength="1200" spellcheck="false" autocomplete="off" placeholder="Get-Process | Sort-Object CPU -Descending | Select-Object -First 10 Name,Id,CPU">Get-Date</textarea>
+            <div class="pc-presets" aria-label="Insert example command">
+              <button type="button" data-pc-example="Get-Process | Sort-Object CPU -Descending | Select-Object -First 12 Name,Id,CPU">Top CPU</button>
+              <button type="button" data-pc-example="Get-Service | Where-Object Status -eq Running | Select-Object -First 20 Name,Status">Services</button>
+              <button type="button" data-pc-example="Get-NetAdapter | Select-Object Name,Status,LinkSpeed">Network</button>
+              <button type="button" data-pc-example="Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion">GPU</button>
+            </div>
+            <div class="pc-console-actions">
+              <label>Timeout <select id="pcTimeout"><option value="10">10 seconds</option><option value="30" selected>30 seconds</option><option value="60">60 seconds</option></select></label>
+              <button id="pcReview" type="button">Review command</button>
+              <button id="pcStop" type="button" disabled>Cancel running</button>
+              <button id="pcClear" type="button" class="plain">Clear terminal</button>
+            </div>
+            <p class="small-note">Setiap perintah diperlihatkan persis sebelum dijalankan. PowerShell berjalan dengan izin user Windows Limited, bukan administrator. Jangan memasukkan password, token, atau key dalam perintah. Tidak ada akses inbound.</p>
+            <pre id="pcOutput" class="pc-terminal-output" role="log" aria-live="polite">SONIC PC Command Center ready. Select a command and review.</pre>
+          </section>
+          <section class="pc-audit" aria-label="Recent PC command audit">
+            <div class="pc-performance-title"><strong>Command history</strong><button type="button" id="pcRefreshHistory" class="plain">Refresh history</button></div>
+            <div id="pcHistory">Login required</div>
+          </section>
+        </section>
+        <div class="operator-panel" id="operatorPanel"><h3>PC Operator / owner approval</h3><p class="small-note">Perintah dibatasi untuk mencegah shutdown/restart melalui shell arbitrer. Aksi baru berjalan setelah kamu meninjau dan menyetujui.</p><label>Operation<select id="operatorAction"><option value="shell.run">PowerShell: preset</option><option value="shell.inspect">PowerShell: diagnostics</option><option value="file.read">Read workspace text file</option><option value="file.list">Browse workspace folder</option><option value="process.list">List processes</option><option value="window.list">List desktop windows</option><option value="mouse.click">Mouse click / Notepad</option><option value="keyboard.type">Type text / Notepad</option><option value="keyboard.key">Keypress / Notepad</option></select></label><label id="operatorRecipeWrap">Approved shell recipe<select id="operatorRecipe"><option value="memory">Memory status</option><option value="clock">Clock</option><option value="system">System overview</option></select></label><label id="operatorCommandWrap" class="hidden">PowerShell diagnostic command<input id="operatorCommand" maxlength="160" placeholder="Get-Process"></label><label id="operatorPathWrap" class="hidden">File path under D:\Sonic\work<input id="operatorPath" maxlength="500" placeholder="D:\Sonic\work\notes.txt"></label><label id="operatorWindowWrap" class="hidden">Foreground Notepad window ID<input id="operatorWindow" maxlength="20" placeholder="Notepad HWND"></label><label id="operatorTextWrap" class="hidden">Text<input id="operatorText" maxlength="300" placeholder="Text for Notepad"></label><label id="operatorKeyWrap" class="hidden">Key<select id="operatorKey"><option>ENTER</option><option>TAB</option><option>BACKSPACE</option><option>ESCAPE</option><option>LEFT</option><option>RIGHT</option></select></label><div id="operatorCoordWrap" class="hidden"><label>Screen X<input id="operatorX" type="number" min="0" max="16000" value="100"></label><label>Screen Y<input id="operatorY" type="number" min="0" max="16000" value="100"></label></div><div class="device-controls"><button id="proposeOperator" type="button">Review PC action</button></div><p id="operatorState" class="small-note" aria-live="polite"></p></div><pre id="deviceResult" class="device-output">No device response yet.</pre><p class="small-note">PowerShell and End Task require per-action owner approval, valid device lease and Limited Windows user permissions. A remote shell is powerful and not a sandbox. No administrator rights are granted.</p>
       </section>
       <section class="panel info-panel hidden" id="setupPanel">
         <div class="section-head"><div><span class="eyebrow">ACTIVATION CHECKLIST</span><h2>SONIC Setup</h2><p>Kesiapan sistem, tanpa menampilkan kredensial.</p></div></div><div id="setupList" class="card-list"></div>
@@ -130,6 +172,12 @@
   </div>
   <div id="wakeIndicator" class="wake-indicator hidden" role="status">● Standby mic active · foreground only</div>
   <div id="nodeDetailPopup" class="sonic-popup hidden" role="dialog" aria-label="SONIC node details"><h3 id="nodePopupTitle">Node</h3><p id="nodePopupText"></p><small id="nodePopupSource"></small><div class="popup-actions"><button id="nodePopupSpeak" type="button">Read aloud</button><button id="nodePopupClose" type="button">Close</button></div></div>
+  <dialog id="pcApproval" class="operator-review pc-approval" aria-label="Approve exact Windows command">
+    <h3>Approve this exact Windows operation?</h3>
+    <p>One-time approval, subject to owner login, device lease and command timeout. The command runs as the Limited Windows user and may change files or launch applications.</p>
+    <pre id="pcApprovalText"></pre>
+    <div class="button-row"><button id="pcApprovalCancel" type="button" class="plain">Reject</button><button id="pcApprovalConfirm" type="button">Approve once</button></div>
+  </dialog>
   <dialog id="operatorApproval" class="operator-review"><h3>Approve this PC operation?</h3><p>Review the exact request. No action runs until approval, and approval expires shortly.</p><pre id="operatorApprovalText"></pre><div class="button-row"><button id="operatorCancel" type="button">Cancel</button><button id="operatorConfirm" type="button">Approve once</button></div></dialog>
   <dialog id="voiceConsent" class="voice-dialog">
     <form id="voiceConsentForm">
@@ -142,6 +190,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.7.2</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.8.0</small></form></div>
 </body>
 </html>
