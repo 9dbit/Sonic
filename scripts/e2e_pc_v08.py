@@ -69,6 +69,7 @@ with local_server(settings=settings) as (url,owner), sync_playwright() as p:
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('.*hidden.*'))
         page.locator('.nav[data-tab="devices"]').click()
         expect(page.locator('#pcCommandCenter')).to_be_visible()
+        expect(page.locator('#sonicMotionFloat')).to_be_hidden()
         expect(page.locator('#pcBrokerStatus')).to_have_text('PowerShell ready',timeout=12000)
         expect(page.locator('#pcProcessList')).to_contain_text('notepad.exe')
         expect(page.locator('#pcProcessList')).to_contain_text('lsass.exe')
