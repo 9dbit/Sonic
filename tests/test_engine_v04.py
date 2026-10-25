@@ -2,6 +2,7 @@ import json
 import pytest
 from sonic.graph_commands import direct_graph_command, run_graph_tool
 from sonic.db import session_factory
+from sonic.api import VERSION
 
 
 def login(client):
@@ -81,6 +82,6 @@ def test_failed_run_no_fake_success(client):
 
 
 def test_version_and_lifespan(client):
-    assert client.get('/api/health').json()['version']=='0.6.1'
+    assert client.get('/api/health').json()['version']==VERSION
     login(client)
-    assert client.get('/api/setup/status').json()['version']=='0.6.1'
+    assert client.get('/api/setup/status').json()['version']==VERSION
