@@ -182,3 +182,27 @@ class VoiceProposal(Base):
     state: Mapped[str] = mapped_column(String(24), default='pending', nullable=False)
     memory_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+# Additive SONIC V0.5 device telemetry and per-session approved operations.
+class DeviceTelemetry(Base):
+    __tablename__ = 'device_telemetry'
+    device_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    agent_version: Mapped[str] = mapped_column(String(30), default='', nullable=False)
+    capabilities_json: Mapped[str] = mapped_column(Text, default='[]', nullable=False)
+    metrics_json: Mapped[str] = mapped_column(Text, default='{}', nullable=False)
+    targets_json: Mapped[str] = mapped_column(Text, default='[]', nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+class OperatorRequest(Base):
+    __tablename__ = 'operator_requests'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_sid: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    device_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    action: Mapped[str] = mapped_column(String(40), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(20), default='pending', nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    lease_hash: Mapped[str] = mapped_column(String(64), default='', nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, default='', nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)

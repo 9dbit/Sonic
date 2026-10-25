@@ -7,19 +7,21 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Neural Brain</title>
-  <link rel="stylesheet" href="/assets/style.css?v=0.4.0">
-  <link rel="stylesheet" href="/assets/engine-style.css?v=0.4.0">
-  <script src="/assets/graph.js?v=0.4.0" defer></script>
-  <script src="/assets/engine-ui.js?v=0.4.0" defer></script>
-  <script src="/assets/voice.js?v=0.4.0" defer></script>
-  <script src="/assets/app.js?v=0.4.0" defer></script>
+  <link rel="stylesheet" href="/assets/style.css?v=0.5.0">
+  <link rel="stylesheet" href="/assets/engine-style.css?v=0.5.0">
+  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.5.0">
+  <script src="/assets/graph.js?v=0.5.0" defer></script>
+  <script src="/assets/engine-ui.js?v=0.5.0" defer></script>
+  <script src="/assets/voice.js?v=0.5.0" defer></script>
+  <script src="/assets/wake-v05.js?v=0.5.0" defer></script>
+  <script src="/assets/app.js?v=0.5.0" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
-    <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="11" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 7 3 3m3 1 4-4M9 14l-3 3m7-3 4 3M8 5l8 1M7 19l10-1"/></symbol>
-    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 1-8 8H5l-3 2V11a9 9 0 0 1 18 0Z"/><path d="M7 10h9M7 14h6"/></symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="5" cy="5" r="1.6"/><circle cx="19" cy="4" r="1.6"/><circle cx="20" cy="18" r="1.6"/><circle cx="5" cy="19" r="1.6"/><path d="M6 6.2 10.5 10.5M13.5 10.7 17.8 5.2M13.3 13.5l5.2 3.8M10.5 13.5 6.3 17.7M7 4.9l10.4-1M20.5 6l-.2 9.7M18.6 19 6.5 19"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H6L3 22V11.5a8.5 8.5 0 0 1 18 0Z"/><path d="M8 11h9m-9 4h5"/></symbol>
     <symbol id="i-memory" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/></symbol>
-    <symbol id="i-device" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></symbol>
+    <symbol id="i-device" viewBox="0 0 24 24"><rect x="2.5" y="3.5" width="19" height="14" rx="3"/><path d="M8 21h8m-4-3.5V21m-5-8h10M15.5 7.5h2"/></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0m-7 7v5m-4 0h8"/></symbol>
@@ -47,7 +49,7 @@
     <main class="content">
       <header class="topbar">
         <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.4</b></span><h1 id="pageTitle">Neural Brain</h1></div>
-        <div class="top-right"><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
+        <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
         <div id="graphStage" class="graph-stage" tabindex="0" aria-label="Graph 3D. Drag untuk memutar, scroll atau pinch untuk zoom. Gunakan Search untuk memilih node dengan keyboard."></div>
@@ -55,7 +57,7 @@
           <button id="toggleInspector" class="mobile-control" aria-expanded="false" aria-label="Search and inspector"><svg><use href="#i-search"/></svg></button>
           <button id="fitGraph" title="Fit all nodes"><svg><use href="#i-fit"/></svg><span>Fit</span></button>
           <button id="dimensionGraph" aria-pressed="true">3D</button>
-          <button id="rotateGraph" aria-pressed="false">Orbit off</button>
+          <button id="rotateGraph" aria-pressed="true">Orbit on</button>
           <button id="refreshGraph" title="Refresh graph" aria-label="Refresh graph"><svg><use href="#i-refresh"/></svg></button>
           <button id="toggleFilters" class="mobile-control" aria-expanded="false" aria-label="Filters"><svg><use href="#i-settings"/></svg></button>
         </div>
@@ -96,22 +98,27 @@
       <section class="panel info-panel hidden" id="devicesPanel">
         <div class="section-head"><div><span class="eyebrow">AUTHORIZED CONNECTIONS</span><h2>Devices</h2><p>Status nyata dari companion yang terdaftar.</p></div></div>
         <div class="device-card"><svg class="device-icon"><use href="#i-device"/></svg><div><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Allowed action: read-only system.status</small></div><span id="deviceBadge" class="pill offline">Offline</span></div>
-        <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button></div><pre id="deviceResult" class="device-output">No device response yet.</pre><p class="small-note">Kontrol aplikasi, shell, trading, dan architecture belum diaktifkan.</p>
+        <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button><button id="deviceRAM">Check live RAM</button></div>
+        <div id="deviceTelemetry" class="device-telemetry" aria-live="polite"><div class="telemetry-row"><span>TRADEVICEPC RAM</span><b id="telemetryValue">Not available</b></div><div class="telemetry-bar"><span id="telemetryFill"></span></div><small id="telemetrySource">Waiting for fresh companion telemetry.</small></div>
+        <div class="operator-panel" id="operatorPanel"><h3>PC Operator / owner approval</h3><p class="small-note">Perintah dibatasi, tidak ada shell arbitrer. Aksi baru berjalan setelah kamu meninjau dan menyetujui.</p><label>Operation<select id="operatorAction"><option value="shell.run">Shell: approved recipe</option><option value="file.read">Read workspace text file</option><option value="mouse.click">Mouse click / Notepad</option><option value="keyboard.type">Type text / Notepad</option><option value="keyboard.key">Keypress / Notepad</option></select></label><label id="operatorRecipeWrap">Approved shell recipe<select id="operatorRecipe"><option value="memory">Memory status</option><option value="clock">Clock</option><option value="system">System overview</option></select></label><label id="operatorPathWrap" class="hidden">File path under D:\Sonic\work<input id="operatorPath" maxlength="500" placeholder="D:\Sonic\work\notes.txt"></label><label id="operatorWindowWrap" class="hidden">Foreground Notepad window ID<input id="operatorWindow" maxlength="20" placeholder="Notepad HWND"></label><label id="operatorTextWrap" class="hidden">Text<input id="operatorText" maxlength="300" placeholder="Text for Notepad"></label><label id="operatorKeyWrap" class="hidden">Key<select id="operatorKey"><option>ENTER</option><option>TAB</option><option>BACKSPACE</option><option>ESCAPE</option><option>LEFT</option><option>RIGHT</option></select></label><div id="operatorCoordWrap" class="hidden"><label>Screen X<input id="operatorX" type="number" min="0" max="16000" value="100"></label><label>Screen Y<input id="operatorY" type="number" min="0" max="16000" value="100"></label></div><div class="device-controls"><button id="proposeOperator" type="button">Review PC action</button></div><p id="operatorState" class="small-note" aria-live="polite"></p></div><pre id="deviceResult" class="device-output">No device response yet.</pre><p class="small-note">PC actions require explicit approval and remain limited to safe workspace/Notepad. Trading and architecture remain disabled.</p>
       </section>
       <section class="panel info-panel hidden" id="setupPanel">
         <div class="section-head"><div><span class="eyebrow">ACTIVATION CHECKLIST</span><h2>SONIC Setup</h2><p>Kesiapan sistem, tanpa menampilkan kredensial.</p></div></div><div id="setupList" class="card-list"></div>
         <div class="device-controls"><button id="refreshSetup">Refresh readiness</button><button id="testProvider">Test OpenAI</button><button id="setupLogout">Sign out</button></div><p id="setupMessage" class="small-note" aria-live="polite"></p>
-        <div class="engine-readiness"><h3>Voice engine</h3><p id="voiceReadiness">Checking configuration...</p><h3>Execution receipts</h3><p class="small-note">Ringkasan eksekusi, bukan pikiran internal model.</p><button id="refreshRuns" type="button" class="outline-button">Refresh activity</button><div id="engineRuns" class="engine-runs"></div></div><div class="setup-help"><strong>OpenAI brain</strong><p>Konfigurasikan <code>OPENAI_API_KEY</code> langsung di Railway SONIC / staging / sonic-web. Jangan menaruh key di chat atau memory.</p><p>Memory eksplisit dan graph dapat digunakan tanpa panggilan model. Browser dictation dan playback tetap tersedia. Talk to SONIC menggunakan sesi OpenAI Realtime setelah persetujuan. Akses model dan mikrofon tetap perlu diuji pada perangkat.</p></div>
+        <div class="engine-readiness"><h3>SONIC Voice Studio</h3><p class="small-note">Default voice: standard synthetic Cedar. Audio referensi dapat ditranskripsi untuk teks, bukan voice cloning; musik tidak dipisahkan sepenuhnya.</p><div class="device-controls"><button id="testSonicSpeech" type="button">Play “Welcome back, sir”</button><label class="small-note">Reference MP3 <input id="referenceAudioFile" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/mp4,audio/webm"></label><button id="transcribeReference" type="button">Transcribe spoken words</button></div><pre id="referenceTranscript" class="device-output">No reference transcript yet.</pre><h3>Voice engine</h3><p id="voiceReadiness">Checking configuration...</p><h3>Execution receipts</h3><p class="small-note">Ringkasan eksekusi, bukan pikiran internal model.</p><button id="refreshRuns" type="button" class="outline-button">Refresh activity</button><div id="engineRuns" class="engine-runs"></div></div><div class="setup-help"><strong>OpenAI brain</strong><p>Konfigurasikan <code>OPENAI_API_KEY</code> langsung di Railway SONIC / staging / sonic-web. Jangan menaruh key di chat atau memory.</p><p>Memory eksplisit dan graph dapat digunakan tanpa panggilan model. Browser dictation dan playback tetap tersedia. Talk to SONIC menggunakan sesi OpenAI Realtime setelah persetujuan. Akses model dan mikrofon tetap perlu diuji pada perangkat.</p></div>
       </section>
       <div id="voiceSessionBar" class="voice-session-bar hidden" role="region" aria-label="Active voice session">
         <div class="voice-live"><i></i><strong id="voiceStateText">Connecting</strong><time id="voiceCountdown">05:00</time></div>
-        <div class="voice-bar-controls"><button id="voiceMute" type="button" aria-pressed="false">Mute</button><button id="voiceResume" type="button" class="hidden">Enable audio</button><button id="voiceStop" type="button" class="stop-voice">Stop</button></div>
+        <div class="voice-bar-controls"><button id="voiceMute" type="button" aria-pressed="false">Mute</button><button id="voiceResume" type="button" class="hidden">Enable audio</button><button id="voiceHide" type="button">Minimize</button><button id="voiceStop" type="button" class="stop-voice">Stop</button></div>
         <small>AI voice / OpenAI. Stop mematikan mikrofon.</small>
       </div>
       <div id="voiceProposalHost" class="voice-proposals"></div>
       <div id="notice" class="notice hidden" role="status"></div>
     </main>
   </div>
+  <div id="wakeIndicator" class="wake-indicator hidden" role="status">● Standby mic active · foreground only</div>
+  <div id="nodeDetailPopup" class="sonic-popup hidden" role="dialog" aria-label="SONIC node details"><h3 id="nodePopupTitle">Node</h3><p id="nodePopupText"></p><small id="nodePopupSource"></small><div class="popup-actions"><button id="nodePopupSpeak" type="button">Read aloud</button><button id="nodePopupClose" type="button">Close</button></div></div>
+  <dialog id="operatorApproval" class="operator-review"><h3>Approve this PC operation?</h3><p>Review the exact request. No action runs until approval, and approval expires shortly.</p><pre id="operatorApprovalText"></pre><div class="button-row"><button id="operatorCancel" type="button">Cancel</button><button id="operatorConfirm" type="button">Approve once</button></div></dialog>
   <dialog id="voiceConsent" class="voice-dialog">
     <form id="voiceConsentForm">
       <div class="dialog-heading"><span class="eyebrow">SONIC / REALTIME VOICE</span><button id="cancelVoice" type="button" class="plain" aria-label="Close voice setup"><svg><use href="#i-close"/></svg></button></div>
@@ -123,6 +130,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.4</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.5</small></form></div>
 </body>
 </html>
