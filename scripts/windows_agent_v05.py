@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""SONIC 0.5 Windows companion: telemetry plus explicitly approved, local-allowlisted actions.
+"""SONIC V0.8 outbound-only Windows companion: Task Manager + approval broker.
 
-No inbound ports, admin rights, trading access or unrestricted command execution.
-Local requirements: Windows desktop, owner account, compatible Python 3.12.
+PowerShell requires the separate local opt-in and cloud feature gate.
+Commands execute with the current Limited Windows user privileges, not admin.
+No inbound ports, broker-managed secret files or automatic model-initiated shell.
 """
 from __future__ import annotations
 import argparse
@@ -18,6 +19,7 @@ import re
 from datetime import datetime, timezone
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
+import windows_command_v08 as command_broker
 
 HERE=Path(__file__).resolve().parent
 DEVICE=os.environ.get('SONIC_DEVICE_ID','TRADEVICEPC')
@@ -29,6 +31,7 @@ RECIPES={
     'memory':'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress',
     'system':'[ordered]@{Computer=$env:COMPUTERNAME;OS=[Environment]::OSVersion.VersionString;CPUCount=[Environment]::ProcessorCount} | ConvertTo-Json -Compress',
 }
+_LAST_NET=None
 KEYS={'ENTER':0x0d,'TAB':0x09,'BACKSPACE':0x08,'DELETE':0x2e,'LEFT':0x25,'RIGHT':0x27,'UP':0x26,'DOWN':0x28,'HOME':0x24,'END':0x23,'ESCAPE':0x1b}
 
 
@@ -119,15 +122,29 @@ def extended_stats():
             out['disk_write_bytes_per_second']=max(0,(after.write_bytes-before[1])*5)
     except (OSError,AttributeError,TypeError):out['unavailable'].append('disk_io')
     try:
+        global _LAST_NET
         traffic=psutil.net_io_counters()
+        pernic=psutil.net_io_counters(pernic=True)
+        now=time.monotonic()
+        prior=_LAST_NET
         if traffic:
             out['network_rx_bytes']=traffic.bytes_recv
             out['network_tx_bytes']=traffic.bytes_sent
+            if prior and now>prior[0]+.1:
+                dt=now-prior[0]
+                out['network_rx_bytes_per_second']=max(0,(traffic.bytes_recv-prior[1].bytes_recv)/dt)
+                out['network_tx_bytes_per_second']=max(0,(traffic.bytes_sent-prior[1].bytes_sent)/dt)
         adapters=[]
         for name,stat in list(psutil.net_if_stats().items())[:12]:
-            adapters.append({'name':name,'is_up':stat.isup,'speed_mbps':max(0,stat.speed)})
+            item={'name':name,'is_up':stat.isup,'speed_mbps':max(0,stat.speed)}
+            if prior and name in prior[2] and name in pernic and now>prior[0]+.1:
+                dt=now-prior[0];old=prior[2][name];cur=pernic[name]
+                item['rx_bytes_per_second']=max(0,(cur.bytes_recv-old.bytes_recv)/dt)
+                item['tx_bytes_per_second']=max(0,(cur.bytes_sent-old.bytes_sent)/dt)
+            adapters.append(item)
         out['network_interfaces']=adapters
-    except (OSError,AttributeError):out['unavailable'].append('network')
+        _LAST_NET=(now,traffic,pernic)
+    except (OSError,AttributeError,TypeError):out['unavailable'].append('network')
     try:
         entries=[]
         for p in psutil.process_iter(['pid','name','memory_info','cpu_percent','num_threads','status']):
@@ -141,6 +158,9 @@ def extended_stats():
         out['process_count']=len(entries)
         out['processes']=sorted(entries,key=lambda x:x['ram_bytes'],reverse=True)[:35]
     except (OSError,AttributeError):out['unavailable'].append('processes')
+    try:
+        out['user_count']=len(psutil.users())
+    except (OSError,AttributeError):out['unavailable'].append('users')
     try:
         services=list(psutil.win_service_iter())
         out['service_count']=len(services)
@@ -362,14 +382,19 @@ def execute(action,params):
 
 def system_status():
     return {'hostname':platform.node(),'platform':platform.platform(),'logical_cpu_count':os.cpu_count(),
-            'sonic_agent_version':'0.5.0','capabilities':['system.status','system.metrics']}
+            'sonic_agent_version':'0.8.0','capabilities':['system.status','system.metrics']}
 
 
 def run_once():
     m=extended_stats()
+    shell_enabled=os.environ.get('SONIC_ENABLE_POWERSHELL_EXEC','').lower() in ('1','true','yes')
+    capabilities=['system.status','system.metrics','shell.run','file.read','file.list',
+                  'process.list','window.list','mouse.click','keyboard.type','keyboard.key',
+                  'shell.inspect','process.terminate']
+    if shell_enabled:capabilities.append('powershell.exec')
     api('/api/device/heartbeat',{'device_id':DEVICE,'hostname':platform.node()[:120],
-        'platform':platform.platform()[:200],'agent_version':'0.7.0',
-        'capabilities':['system.status','system.metrics','shell.run','file.read','file.list','process.list','window.list','mouse.click','keyboard.type','keyboard.key','shell.inspect'],
+        'platform':platform.platform()[:200],'agent_version':'0.8.0',
+        'capabilities':capabilities,
         'metrics':m,'gui_targets':[]})
     job=api('/api/device/next',{}).get('job')
     if job:
@@ -381,8 +406,17 @@ def run_once():
         lease={'request_id':operator['id'],'lease':operator['lease']}
         if api('/api/device/operator/check',lease).get('execute'):
             success=True
-            try:result=execute(operator['action'],operator['payload'])
-            except (Exception) as ex:
+            try:
+                if operator['action']=='powershell.exec':
+                    if not shell_enabled:raise PermissionError('LOCAL_POWERSHELL_OPT_IN_REQUIRED')
+                    p=operator['payload']
+                    result=command_broker.run_powershell(p['command'],p['timeout_seconds'],api,lease,ALLOWED_ROOT)
+                    success=not result['cancelled'] and not result['timed_out'] and result['exit_code']==0
+                elif operator['action']=='process.terminate':
+                    p=operator['payload'];result=command_broker.terminate_process(p['pid'],p['expected_name'])
+                else:
+                    result=execute(operator['action'],operator['payload'])
+            except Exception as ex:
                 success=False;result={'error':type(ex).__name__,'detail':str(ex)[:160]}
             api('/api/device/operator/result',{**lease,'success':success,'result':result})
 
@@ -396,7 +430,7 @@ def main():
             print('SONIC companion unavailable:',type(error).__name__,flush=True)
             if args.once:raise
         if args.once:break
-        time.sleep(20)
+        time.sleep(8)
 
 
 if __name__=='__main__':main()
