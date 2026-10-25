@@ -17,6 +17,7 @@
         <button type="button" class="nav active" data-tab="chat"><span>◈</span> Chat</button>
         <button type="button" class="nav" data-tab="memory"><span>◇</span> Memory Vault</button>
         <button type="button" class="nav" data-tab="devices"><span>▣</span> Devices</button>
+        <button type="button" class="nav" data-tab="setup"><span>S</span> Setup</button>
         <div class="sidebar-spacer"></div>
         <div class="system-card">
           <div class="tiny-dot"></div><strong>Privacy-first</strong>
@@ -27,7 +28,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="mono-badge">S</span><div><strong id="pageTitle">Command Center</strong><small>Owner controlled · Version 0.1</small></div></div>
+        <div class="top-title"><span class="mono-badge">S</span><div><strong id="pageTitle">Command Center</strong><small>Owner controlled · Version 0.2</small></div></div>
         <div class="top-right"><span id="devicePill" class="pill"><span class="status-dot"></span>PC offline</span><span id="brainPill" class="pill muted">Model: Setup</span></div>
       </header>
       <section class="panel chat-panel" id="chatPanel">
@@ -73,6 +74,13 @@
         <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button></div>
         <pre id="deviceResult" class="device-output">No device response yet.</pre>
         <p class="device-note">SONIC V0.1 cannot execute shell commands, modify files, control SketchUp, or touch MT5. Future controls will require explicit permission.</p>
+      </section>
+      <section class="panel info-panel hidden" id="setupPanel">
+        <div class="section-head"><div><div class="eyebrow">ACTIVATION CHECKLIST</div><h2>SONIC Setup</h2><p>Live readiness, without exposing any credentials.</p></div></div>
+        <div id="setupList" class="card-list" aria-live="polite"></div>
+        <div class="device-controls"><button id="setupLogout" type="button">Sign out</button><button id="refreshSetup" type="button">Refresh readiness</button><button id="testProvider" type="button">Test OpenAI</button></div>
+        <p id="setupMessage" class="device-note" aria-live="polite"></p>
+        <div class="setup-help"><strong>Activate the AI brain</strong><p>In Railway, open SONIC / staging / sonic-web / Variables and add <code>OPENAI_API_KEY</code>. Let the service redeploy, then refresh readiness and run Test OpenAI.</p><p>Never paste an API key into this chat or save it as a memory. Login, memory and read-only device status work independently of the AI provider.</p></div>
       </section>
     </main>
   </div>

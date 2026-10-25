@@ -5,7 +5,8 @@
   let voiceOn = false;
   let waiting = false;
   let speech = null;
-  const tabs = {chat:"chatPanel",memory:"memoryPanel",devices:"devicesPanel"};
+  let brainConfigured = false;
+  const tabs = {chat:"chatPanel",memory:"memoryPanel",devices:"devicesPanel",setup:"setupPanel"};
   const API = async (path, opts={}) => {
     const headers = {"Content-Type":"application/json", ...(opts.headers || {})};
     if (csrf && opts.method && opts.method !== "GET") headers["X-Sonic-CSRF"] = csrf;
@@ -18,9 +19,10 @@
   const setTab = tab => {
     Object.entries(tabs).forEach(([name,id])=>$(id).classList.toggle("hidden",name!==tab));
     document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
-    $("pageTitle").textContent = ({chat:"Command Center",memory:"Memory Vault",devices:"Device Hub"})[tab];
+    $("pageTitle").textContent = ({chat:"Command Center",memory:"Memory Vault",devices:"Device Hub",setup:"SONIC Setup"})[tab];
     if(tab==="memory") loadMemory();
     if(tab==="devices") loadDevice();
+    if(tab==="setup") loadSetup();
   };
   function line(role, content, error=false) {
     $("hero")?.remove();
@@ -48,6 +50,7 @@
   async function send() {
     const msg=$("message").value.trim();
     if(!msg || waiting)return;
+    if(!brainConfigured){setTab("setup");showError("Activate OPENAI_API_KEY in SONIC Railway Variables first.");return;}
     waiting=true;$("send").disabled=true;
     $("message").value="";line("user",msg);
     const placeholder=line("assistant","SONIC is thinking…");
@@ -102,14 +105,15 @@
     try{
       const job=await API("/api/device/jobs",{method:"POST",body:JSON.stringify({action:"system.status"})});
       $("deviceResult").textContent="Waiting for Windows companion…";
-      for(let i=0;i<12;i++){
+      for(let i=0;i<40;i++){
         await new Promise(resolve=>setTimeout(resolve,1500));
         const latest=await API("/api/device/jobs/"+job.id);
         if(latest.state==="done"||latest.state==="failed"){
           $("deviceResult").textContent=JSON.stringify(latest.result,null,2);
-          break;
+          return;
         }
       }
+      $("deviceResult").textContent="The companion has not returned a result yet. Refresh device status and retry.";
     }catch(e){$("deviceResult").textContent=e.message;}finally{loadDevice();}
   }
   async function initialize(){
@@ -118,7 +122,8 @@
     if(result.authenticated){
       csrf=result.csrf;
       $("brainPill").textContent="Model: "+result.model;
-      await Promise.all([loadHistory(),loadDevice()]);
+      await Promise.all([loadHistory(),loadDevice(),loadSetup()]);
+      if(!brainConfigured)setTab("setup");
     }
   }
   $("loginForm").addEventListener("submit",async event=>{
@@ -132,10 +137,13 @@
       await initialize();
     }catch(e){$("loginError").textContent=e.message;}
   });
-  $("logout").addEventListener("click",async()=>{
-    try{await API("/api/logout",{method:"POST"});}catch(e){}
-    csrf=null;window.speechSynthesis?.cancel();window.location.reload();
-  });
+  async function signOut(){
+    try{await API("/api/logout",{method:"POST"});}
+    catch(error){showError("Sign out failed. Your session has not been revoked: "+error.message);return;}
+    csrf=null;brainConfigured=false;speech?.stop();window.speechSynthesis?.cancel();window.location.reload();
+  }
+  $("logout").addEventListener("click",signOut);
+  $("setupLogout").addEventListener("click",signOut);
   $("send").addEventListener("click",send);
   $("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});
   document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
@@ -159,6 +167,7 @@
   });
 
   async function sendVision(dataUrl, kind) {
+    if(!brainConfigured){setTab("setup");showError("OpenAI is not configured yet.");return;}
     if(waiting){showError("SONIC is still answering. Try again after the response.");return;}
     const [header,base64]=dataUrl.split(",",2);
     const mimeType=header.match(/^data:(image\/(?:png|jpeg|webp));base64$/)?.[1];
@@ -182,6 +191,7 @@
     }finally{waiting=false;$("send").disabled=false;}
   }
   async function captureOnce(kind) {
+    if(!brainConfigured){setTab("setup");return;}
     const isScreen=kind==="Screen";
     if(!window.confirm(
       "SONIC will capture one "+(isScreen?"screen":"camera")+" frame and send it to the configured OpenAI vision provider. No continuous recording and no local saving. Continue?"
@@ -232,6 +242,32 @@
     recognizer.onend=()=>{speech=null;$("mic").textContent="◉";};
     speech=recognizer;$("mic").textContent="■";recognizer.start();
   });
+  async function loadSetup(){
+    try{
+      const status=await API("/api/setup/status");
+      brainConfigured=status.provider_key_configured;
+      $("brainPill").textContent=brainConfigured?"Model: "+status.model:"Brain: API key required";
+      $("testProvider").disabled=!brainConfigured;
+      const states=[
+        ["Owner authentication",status.owner_configured],
+        ["Persistent database",status.database_connected],
+        ["OpenAI key configured (not yet verified)",status.provider_key_configured],
+        ["PC credential configured",status.device_credential_configured],
+        ["TRADEVICEPC heartbeat",status.device_online]
+      ];
+      $("setupList").replaceChildren();
+      for(const [label,ready] of states){const row=document.createElement("div");row.className="memory-item";const name=document.createElement("span");name.textContent=label;const state=document.createElement("strong");state.textContent=ready?"Ready":"Pending";row.append(name,state);$("setupList").append(row);}
+      $("notice").textContent=brainConfigured?"AI requests use the configured OpenAI provider. PC access is read-only.":"Login and memory are active. OpenAI API key is required for chat and vision.";
+    }catch(error){$("setupMessage").textContent=error.message;}
+  }
+  $("refreshSetup").addEventListener("click",loadSetup);
+  $("testProvider").addEventListener("click",async()=>{
+    $("testProvider").disabled=true;$("setupMessage").textContent="Testing the configured OpenAI model...";
+    try{const r=await API("/api/setup/test-provider",{method:"POST",body:"{}"});$("setupMessage").textContent=r.verified?"OpenAI live test passed. Chat is ready.":"Provider test not verified.";}
+    catch(error){$("setupMessage").textContent=error.message;}
+    finally{$("testProvider").disabled=!brainConfigured;}
+  });
+  if(!navigator.mediaDevices?.getDisplayMedia){$("screen").disabled=true;$("screen").title="Screen capture is unavailable in this browser. Upload a screenshot instead.";}
   initialize().catch(e=>showError(e.message));
   setInterval(()=>{if(csrf)loadDevice();},30000);
 })();

@@ -19,7 +19,7 @@ from .config import database_ready, device_ready, model_name, owner_ready, setti
 from .db import ChatMessage, Device, DeviceJob, MemoryNote, get_db, recent_messages, utcnow
 
 ROOT = Path(__file__).resolve().parent.parent
-app = FastAPI(title="SONIC", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="SONIC", version="0.2.0", docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/assets", StaticFiles(directory=ROOT / "web"), name="assets")
 
 
@@ -76,7 +76,7 @@ def health():
     return {
         "service": "SONIC", "status": "ok",
         "setup_required": not (owner_ready() and database_ready() and bool(setting("OPENAI_API_KEY"))),
-        "version": "0.1.0"
+        "version": "0.2.0"
     }
 
 
@@ -106,6 +106,7 @@ def login(payload: LoginForm, request: Request, response: Response):
 
 @app.post("/api/logout")
 def logout(response: Response, _: dict = Depends(auth.require_owner_write)):
+    auth.revoke_session(_)
     response.delete_cookie(auth.COOKIE, path="/")
     return {"logged_out": True}
 
@@ -143,6 +144,8 @@ def save_memory(payload: MemoryForm, _: dict = Depends(auth.require_owner_write)
     check_db()
     from .brain import SECRET_PATTERN
     text = payload.text.strip()
+    if len(text) < 3:
+        raise HTTPException(status_code=422, detail="Memory must contain at least 3 characters")
     if SECRET_PATTERN.search(text):
         raise HTTPException(status_code=422, detail="Credentials must not be stored in memory")
     note = MemoryNote(content=text)
@@ -265,3 +268,27 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
     from .vision import analyze_image
     answer = await analyze_image(payload.mimeType, payload.base64, payload.question.strip())
     return {"reply": answer, "image_stored": False, "pc_action": "none"}
+
+
+# Activation routes and browser security headers. These never return credentials.
+from .activation import router as activation_router
+app.include_router(activation_router)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
+        "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    )
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), display-capture=(self)"
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    if setting("RAILWAY_ENVIRONMENT_NAME") or public_url().startswith("https://"):
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    return response

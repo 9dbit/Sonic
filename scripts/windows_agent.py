@@ -4,6 +4,7 @@
 Run manually on TRADEVICEPC after the owner explicitly authorizes pairing.
 Uses the Python standard library only and makes outbound HTTPS requests.
 """
+import argparse
 import json
 import os
 import platform
@@ -69,31 +70,41 @@ def execute_allowed(action):
     raise ValueError("Action not allowed")
 
 
+def run_once(base, token, device):
+    """One bounded heartbeat/job cycle. No shell, file operations, or GUI commands."""
+    post(base, token, "/api/device/heartbeat", {
+        "device_id": device, "hostname": socket.gethostname()[:120],
+        "platform": platform.platform()[:200]
+    })
+    job = post(base, token, "/api/device/next", {}).get("job")
+    if not job:
+        return
+    try:
+        result = execute_allowed(str(job.get("action", "")))
+        success = True
+    except Exception:
+        result, success = {"error": "UNSUPPORTED_ACTION"}, False
+    post(base, token, "/api/device/result", {
+        "device_id": device, "job_id": str(job.get("id", "")),
+        "success": success, "result": result
+    })
+
+
 def main():
+    parser = argparse.ArgumentParser(description="SONIC read-only companion")
+    parser.add_argument("--once", action="store_true", help="Run one heartbeat/job cycle and exit")
+    args = parser.parse_args()
     base, token, device = config()
     print("SONIC Windows companion started. Read-only: system.status. Stop with Ctrl+C.")
     while True:
         try:
-            post(base, token, "/api/device/heartbeat", {
-                "device_id": device, "hostname": socket.gethostname()[:120],
-                "platform": platform.platform()[:200]
-            })
-            job = post(base, token, "/api/device/next", {}).get("job")
-            if job:
-                job_id = str(job.get("id", ""))
-                action = str(job.get("action", ""))
-                try:
-                    result = execute_allowed(action)
-                    success = True
-                except Exception:
-                    result, success = {"error": "UNSUPPORTED_ACTION"}, False
-                post(base, token, "/api/device/result", {
-                    "device_id": device, "job_id": job_id,
-                    "success": success, "result": result
-                })
+            run_once(base, token, device)
         except (HTTPError, URLError, ValueError, RuntimeError, TimeoutError) as error:
-            # Never print token or full request URL with query parameters.
             print("SONIC companion connection unavailable:", type(error).__name__)
+            if args.once:
+                raise RuntimeError("Companion cycle failed") from None
+        if args.once:
+            return
         time.sleep(20)
 
 

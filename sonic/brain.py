@@ -121,7 +121,7 @@ async def reply(db: Session, latest_user_text: str) -> str:
     request = {
         "model": model_name(), "instructions": SYSTEM,
         "input": items, "tools": TOOLS,
-        "store": False, "max_output_tokens": 1000
+        "store": False, "max_output_tokens": 1000, "parallel_tool_calls": False
     }
     try:
         async with httpx.AsyncClient(timeout=75) as client:
@@ -151,14 +151,15 @@ async def reply(db: Session, latest_user_text: str) -> str:
                     break
                 request["input"] = [*request["input"], *parts]
                 request["tool_choice"] = "auto"
-                for call in calls[:5]:
+                for call_index, call in enumerate(calls):
                     try:
                         arguments = json.loads(call.get("arguments", "{}"))
                         if not isinstance(arguments, dict):
                             arguments = {}
                     except (ValueError, TypeError):
                         arguments = {}
-                    result = run_tool(db, call.get("name", ""), arguments, latest_user_text)
+                    result = (run_tool(db, call.get("name", ""), arguments, latest_user_text)
+                              if call_index < 5 else {"error": "TOOL_BATCH_LIMIT_REACHED"})
                     request["input"].append({
                         "type": "function_call_output",
                         "call_id": call["call_id"],

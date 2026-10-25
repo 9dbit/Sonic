@@ -7,6 +7,9 @@ import hmac
 import json
 import secrets
 import time
+from datetime import datetime, timezone
+from sqlalchemy import delete
+from .db import OwnerSession, session_factory, utcnow
 from collections import defaultdict
 from fastapi import HTTPException, Request
 from .config import setting, owner_ready, device_ready
@@ -52,9 +55,14 @@ def verify_login(token: str, remote_address: str) -> bool:
 
 def issue_session() -> tuple[str, str]:
     csrf = secrets.token_urlsafe(24)
-    body = _b64(json.dumps({"exp": int(time.time()) + SESSION_SECONDS, "csrf": csrf},
+    body = _b64(json.dumps({"exp": int(time.time()) + SESSION_SECONDS, "csrf": csrf, "sid": secrets.token_urlsafe(32)},
                            separators=(",", ":")).encode())
     mac = _b64(hmac.new(setting("SONIC_SESSION_SECRET").encode(), body.encode(), hashlib.sha256).digest())
+    data = json.loads(_unb64(body))
+    with session_factory()() as db:
+        db.execute(delete(OwnerSession).where(OwnerSession.expires_at <= utcnow()))
+        db.add(OwnerSession(id=sha256(data["sid"]), expires_at=datetime.fromtimestamp(data["exp"], timezone.utc).replace(tzinfo=None)))
+        db.commit()
     return body + "." + mac, csrf
 
 
@@ -63,6 +71,8 @@ def read_session(request: Request) -> dict:
         raise HTTPException(status_code=503, detail="Owner not configured")
     cookie = request.cookies.get(COOKIE, "")
     try:
+        if len(cookie) > 2048:
+            raise ValueError("invalid cookie")
         body, supplied_mac = cookie.split(".", 1)
         actual_mac = _b64(hmac.new(setting("SONIC_SESSION_SECRET").encode(),
                                    body.encode(), hashlib.sha256).digest())
@@ -71,6 +81,13 @@ def read_session(request: Request) -> dict:
         payload = json.loads(_unb64(body))
         if payload["exp"] <= time.time() or not isinstance(payload["csrf"], str):
             raise ValueError("expired")
+        sid = payload.get("sid")
+        if not isinstance(sid, str) or not 32 <= len(sid) <= 128:
+            raise ValueError("invalid session")
+        with session_factory()() as db:
+            active = db.get(OwnerSession, sha256(sid))
+            if active is None or active.expires_at <= utcnow():
+                raise ValueError("revoked session")
         return payload
     except (ValueError, KeyError, TypeError, UnicodeDecodeError, json.JSONDecodeError, binascii.Error):
         raise HTTPException(status_code=401, detail="Login required")
@@ -96,3 +113,10 @@ def require_device(request: Request) -> None:
     if not authorization.startswith("Bearer ") or not token_valid(
             authorization[7:].strip(), setting("SONIC_DEVICE_TOKEN_SHA256")):
         raise HTTPException(status_code=401, detail="Device authentication failed")
+
+
+def revoke_session(payload: dict) -> None:
+    """Persist revocation so replaying a logged-out cookie fails on every replica."""
+    with session_factory()() as db:
+        db.execute(delete(OwnerSession).where(OwnerSession.id == sha256(payload["sid"])))
+        db.commit()
