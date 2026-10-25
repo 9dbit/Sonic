@@ -2,7 +2,7 @@
 import math
 from typing import Any
 
-ACTIONS = frozenset({'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key'})
+ACTIONS = frozenset({'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list'})
 RECIPES = {
     'clock': 'Get-Date -Format o',
     'memory': 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress',
@@ -15,12 +15,13 @@ def clean_request(action: str, payload: dict) -> dict:
     if action not in ACTIONS or not isinstance(payload, dict):
         raise ValueError('ACTION_NOT_ALLOWED')
     fields = {'shell.run': {'recipe'}, 'file.read': {'path'}, 'mouse.click': {'window', 'x', 'y'},
-              'keyboard.type': {'window', 'text'}, 'keyboard.key': {'window', 'key'}}[action]
+              'keyboard.type': {'window', 'text'}, 'keyboard.key': {'window', 'key'},
+              'file.list': {'path'}, 'process.list': set(), 'window.list': set()}[action]
     if set(payload) != fields:
         raise ValueError('INVALID_ARGUMENTS')
     if action == 'shell.run' and (not isinstance(payload['recipe'], str) or payload['recipe'] not in RECIPES):
         raise ValueError('SHELL_RECIPE_NOT_ALLOWED')
-    if action == 'file.read':
+    if action in ('file.read','file.list'):
         path = payload['path']
         if not isinstance(path, str) or not 1 <= len(path) <= 500 or '\0' in path or path.startswith(('\\\\', '//')):
             raise ValueError('INVALID_PATH')

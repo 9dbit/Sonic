@@ -1,83 +1,93 @@
-/* SONIC V0.6: true-alpha WebGL keyed rendering of the user's original particles.
-   Browser-decoded MP4 carries the dynamics; black pixels are removed in the
-   GPU fragment shader, not via CSS blending against a black rectangle.
-   Mouse/touch focus uses fixed-position rect interpolation and restores home. */
+/* SONIC Motion Core: transparent procedural silver particles inspired by the
+   owner's looping reference. No codec, GPU or autoplay dependency is required.
+   Motion responds to actual application voice states, never simulated speech. */
 (()=>{'use strict';
- const el=id=>document.getElementById(id);
- const math=window.SonicMotionMath;
+ const el=id=>document.getElementById(id),math=window.SonicMotionMath;
+ const TAU=Math.PI*2;
+ const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
  class SonicMotionCore {
   constructor(anchor){
    this.anchor=anchor;this.float=document.createElement('div');this.float.id='sonicMotionFloat';
-   this.float.className='sonic-motion-float';this.float.dataset.state='idle';
-   this.float.setAttribute('role','button');this.float.tabIndex=0;
-   this.float.setAttribute('aria-label','SONIC Motion Core. Tap to enlarge. Double-tap within one second to focus in the center.');
+   this.float.className='sonic-motion-float';this.float.dataset.state='idle';this.float.tabIndex=0;
+   this.float.setAttribute('role','button');this.float.setAttribute('aria-label','SONIC Motion Core: tap once to enlarge 10%, twice within one second to center, Escape to return');
    this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');this.float.append(this.canvas);
-   this.video=document.createElement('video');this.video.src='/assets/sonic-particles.mp4';
-   this.video.preload='auto';this.video.loop=true;this.video.muted=true;this.video.playsInline=true;
-   this.video.setAttribute('playsinline','');this.video.setAttribute('webkit-playsinline','');
-   this.video.setAttribute('aria-hidden','true');this.video.style.display='none';this.float.append(this.video);
-   this.reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
-   this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.focused=false;this.lastTap=-Infinity;this.preview=false;
-   this.context=null;this.program=null;this.ready=false;this.paused=false;this.home=null;this.running=true;
-   document.body.append(this.float);
-   this.makeGL();this.updateHome(true);this.attach();
-   this.video.addEventListener('loadeddata',()=>{this.video.play().catch(()=>{});});
-   this.video.play().catch(()=>{});
-   this.raf=window.requestAnimationFrame(()=>this.frame());
-  }
-  makeGL(){
-   const canvas=this.canvas, gl=canvas.getContext('webgl',{alpha:true,depth:false,antialias:false,premultipliedAlpha:false})||canvas.getContext('experimental-webgl',{alpha:true,depth:false,premultipliedAlpha:false});
-   if(!gl){this.context=canvas.getContext('2d',{willReadFrequently:true});return;}
-   const shader=(type,source)=>{const sh=gl.createShader(type);gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error('Motion shader unavailable');return sh;};
-   try{
-    const program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,'attribute vec2 p;varying vec2 v;void main(){v=(p+1.0)*.5;gl_Position=vec4(p,0.,1.);}'));
-    gl.attachShader(program,shader(gl.FRAGMENT_SHADER,'precision mediump float;varying vec2 v;uniform sampler2D image;uniform float energy;void main(){vec3 rgb=texture2D(image,vec2(v.x,1.0-v.y)).rgb;float peak=max(max(rgb.r,rgb.g),rgb.b);float a=smoothstep(.045,.22,peak);vec3 silver=mix(rgb,vec3(dot(rgb,vec3(.29,.59,.12))),.34);silver*=1.0+energy*.04;gl_FragColor=vec4(silver,a);}'));
-    gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error('Motion shader link failed');gl.useProgram(program);
-    const pos=gl.getAttribLocation(program,'p'), buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
-    const tex=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-    this.gl=gl;this.tex=tex;this.program=program;this.energy=gl.getUniformLocation(program,'energy');gl.uniform1i(gl.getUniformLocation(program,'image'),0);this.ready=true;
-   }catch(_){this.gl=null;this.context=canvas.getContext('2d',{willReadFrequently:true});}
+   this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+   this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
+   this.focused=false;this.lastTap=-Infinity;this.home=null;this.running=true;this.paused=false;this.lastTime=0;this.time=0;
+   this.points=Array.from({length:980},(_,i)=>{
+     const f=i+.5,y=1-2*f/980,r=Math.sqrt(Math.max(0,1-y*y)),theta=i*2.39996322972865;
+     return [Math.cos(theta)*r,y,Math.sin(theta)*r,i];
+   });
+   document.body.append(this.float);this.updateHome(true);this.attach();
+   this.frameRequest=requestAnimationFrame(t=>this.frame(t));
   }
   attach(){
-   const press=()=>{const now=performance.now();if(math.doubleTap(this.lastTap,now)){this.lastTap=-Infinity;this.setFocus(!this.focused);}else{this.lastTap=now;this.preview=true;this.float.classList.add('preview');window.setTimeout(()=>{this.preview=false;this.float.classList.remove('preview');},1300);}};
+   const press=()=>{const now=performance.now();if(math.doubleTap(this.lastTap,now)){this.lastTap=-Infinity;this.setFocus(!this.focused);}else{this.lastTap=now;this.float.classList.add('preview');clearTimeout(this.tapTimer);this.tapTimer=setTimeout(()=>this.float.classList.remove('preview'),1100);}};
    this.float.addEventListener('click',e=>{e.stopPropagation();press();});
-   this.float.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();press();}if(e.key==='Escape'){this.returnHome();}});
+   this.float.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();press();}else if(e.key==='Escape')this.returnHome();});
    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.focused)this.returnHome();});
    window.addEventListener('resize',()=>this.updateHome(!this.focused));
    window.addEventListener('scroll',()=>this.updateHome(!this.focused),{passive:true});
-   document.addEventListener('visibilitychange',()=>{this.paused=document.hidden;if(!document.hidden)this.video.play().catch(()=>{});else this.video.pause();});
-   const inspector=document.getElementById('graphInspector'),filters=document.getElementById('graphFilters');
-   const prioritizePanels=()=>{const open=inspector?.classList.contains('open')||filters?.classList.contains('open');this.float.classList.toggle('under-panel',!!open);};
-   for(const panel of [inspector,filters])if(panel)new MutationObserver(prioritizePanels).observe(panel,{attributes:true,attributeFilter:['class']});
-   prioritizePanels();
+   document.addEventListener('visibilitychange',()=>{this.paused=document.hidden;});
+   // When switching between panels, the anchor may have zero dimensions.
+   const observer=new MutationObserver(()=>{if(!this.focused)this.updateHome(true);this.prioritizePanels();});
+   for(const node of [this.anchor.closest('section'),el('graphInspector'),el('graphFilters')])if(node)observer.observe(node,{attributes:true,attributeFilter:['class','style']});
+   this.observer=observer;this.prioritizePanels();
    this.float.addEventListener('mouseenter',()=>{if(!this.focused)this.float.classList.add('hover');});
    this.float.addEventListener('mouseleave',()=>this.float.classList.remove('hover'));
   }
-  updateHome(apply=false){
-   const r=this.anchor.getBoundingClientRect();if(r.width&&r.height){this.home={left:r.left,top:r.top,width:r.width,height:r.height};}
-   if(apply&&!this.focused&&this.home)this.place(this.home);
+  prioritizePanels(){const inspector=el('graphInspector'),filters=el('graphFilters');
+   const open=!!(inspector?.classList.contains('open')||filters?.classList.contains('open'));
+   this.float.classList.toggle('under-panel',open&&!this.focused);
+  }
+  updateHome(apply=false){const r=this.anchor.getBoundingClientRect();
+   if(r.width>10&&r.height>10)this.home={left:r.left,top:r.top,width:r.width,height:r.height};
+   else if(!this.home)this.home={left:Math.max(6,innerWidth-205),top:Math.min(innerHeight-160,142),width:152,height:152};
+   if(apply&&!this.focused)this.place(this.home);
   }
   place(rect){for(const key of ['left','top','width','height'])this.float.style[key]=rect[key]+'px';}
-  setFocus(on){if(on===this.focused)return;this.updateHome(false);this.focused=on;this.float.classList.toggle('focused',on);this.float.classList.remove('preview');
-    this.float.setAttribute('aria-pressed',String(on));
-    if(on){this.place(math.focusRect(window.innerWidth,window.innerHeight,this.home?.width||160));this.float.focus({preventScroll:true});}
-    else if(this.home)this.place(this.home);
+  setFocus(on){if(on===this.focused)return;this.updateHome(false);this.focused=on;
+   this.float.classList.toggle('focused',on);this.float.classList.remove('preview');this.float.setAttribute('aria-pressed',String(on));
+   if(on){this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));this.float.focus({preventScroll:true});}
+   else this.place(this.home);
   }
   returnHome(){this.setFocus(false);}
   handleCommand(text){if(math.returnIntent(text)){this.returnHome();return true;}return false;}
   setState(state){this.state=state;this.float.dataset.state=state;}
-  resizeCanvas(){const w=this.canvas.clientWidth,h=this.canvas.clientHeight;if(!w||!h)return;const ratio=Math.min(window.devicePixelRatio||1,2);const width=Math.max(1,Math.round(w*ratio)),height=Math.max(1,Math.round(h*ratio));if(this.canvas.width!==width||this.canvas.height!==height){this.canvas.width=width;this.canvas.height=height;}}
-  draw(){if(this.video.readyState<2)return;this.resizeCanvas();const c=this.canvas;
-    if(this.gl){const gl=this.gl;gl.viewport(0,0,c.width,c.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.bindTexture(gl.TEXTURE_2D,this.tex);try{gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,this.video);}catch(_){return;}gl.uniform1f(this.energy,this.state==='speaking'?1:0);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);}
-    else if(this.context){const ctx=this.context;ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(this.video,0,0,c.width,c.height);const frame=ctx.getImageData(0,0,c.width,c.height);const d=frame.data;for(let i=0;i<d.length;i+=4){const peak=Math.max(d[i],d[i+1],d[i+2]);d[i+3]=Math.round(Math.max(0,Math.min(1,(peak-10)/45))*255);}ctx.putImageData(frame,0,0);}
+  dimensions(){const w=this.canvas.clientWidth,h=this.canvas.clientHeight,dpr=clamp(devicePixelRatio||1,1,2),nw=Math.max(1,Math.round(w*dpr)),nh=Math.max(1,Math.round(h*dpr));
+   if(this.canvas.width!==nw||this.canvas.height!==nh){this.canvas.width=nw;this.canvas.height=nh;}return [nw,nh];
   }
-  frame(){if(!this.running)return;const desired=math.targetSpeed(this.state,this.reduced);this.speed+=Math.max(-0.04,Math.min(0.04,(desired-this.speed)*.09));
-    if(Math.abs(this.video.playbackRate-this.speed)>.025)this.video.playbackRate=Math.max(.2,this.speed);
-    if(!this.paused)this.draw();this.raf=requestAnimationFrame(()=>this.frame());
+  draw(){const ctx=this.ctx;if(!ctx)return;const [width,height]=this.dimensions();if(width<2||height<2)return;
+   ctx.clearRect(0,0,width,height);const radius=Math.min(width,height)*.443,centerX=width*.5,centerY=height*.5;
+   const a=this.time*.38,ca=Math.cos(a),sa=Math.sin(a),tilt=.12*Math.sin(this.time*.44),ct=Math.cos(tilt),st=Math.sin(tilt);
+   const speaking=this.state==='speaking'?1:this.state==='listening'?.32:0;
+   this.energy+=(speaking-this.energy)*.065;
+   // Fibonacci sphere, breathing surface ripples and slight toroidal concavity.
+   for(let i=0;i<this.points.length;i++){
+     const [ox,oy,oz]=this.points[i],f=i+.5;
+     const swirl=ox*ca-oz*sa,depth=ox*sa+oz*ca;
+     const z=depth*ct+oy*st,y=oy*ct-depth*st;
+     const wave=Math.sin(ox*8.2+this.time*1.18+oy*3.7)*Math.cos(oy*7.2-this.time*.71+oz*2.5);
+     const warp=1+.135*wave+.042*Math.sin(this.time*.7+ox*5)+this.energy*.065*Math.sin(this.time*2.6+oy*9);
+     const contour=1-.12*Math.pow(Math.max(0,y),2);
+     const x=swirl*warp*contour,y2=y*warp;
+     const perspective=1+.15*z,px=centerX+x*radius*perspective,py=centerY+y2*radius*perspective;
+     if(px<0||py<0||px>=width||py>=height)continue;
+     const light=clamp(.48+.27*z+.31*(x*.55-y2*.65),.12,1.0),silver=Math.round(135+110*light);
+     const alpha=clamp(.28+.5*light+.11*z,.27,.96);
+     const size=clamp((width/190)*(.42+.52*light+.08*Math.sin(f*1.3)),.42,2.8);
+     ctx.fillStyle=`rgba(${silver},${Math.min(255,silver+5)},${Math.min(255,silver+13)},${alpha})`;
+     ctx.fillRect(px,py,size,size);
+   }
   }
-  stop(){this.running=false;cancelAnimationFrame(this.raf);this.video.pause();this.float.remove();}
+  frame(timestamp){if(!this.running)return;const dt=this.lastTime?clamp((timestamp-this.lastTime)/1000,0,.12):0;this.lastTime=timestamp;
+   const desired=math.targetSpeed(this.state,this.reduced);this.speed+=(desired-this.speed)*clamp(dt*4,0,1);
+   if(!this.paused){this.time+=dt*this.speed;this.draw();}
+   this.frameRequest=requestAnimationFrame(t=>this.frame(t));
+  }
+  stop(){this.running=false;cancelAnimationFrame(this.frameRequest);clearTimeout(this.tapTimer);this.observer?.disconnect();this.float.remove();}
  }
- const init=()=>{const anchor=el('sonicMotionAnchor');if(anchor){window.sonicMotion=new SonicMotionCore(anchor);}};
+ const init=()=>{const anchor=el('sonicMotionAnchor');if(anchor)window.sonicMotion=new SonicMotionCore(anchor);};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
  window.SonicMotionCore=SonicMotionCore;
 })();

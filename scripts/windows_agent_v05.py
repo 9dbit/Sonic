@@ -144,7 +144,65 @@ def unicode_type(value):
                 raise OSError('INPUT_NOT_ACCEPTED')
 
 
+def list_workspace(path):
+    target=Path(path).resolve(strict=True)
+    if target != ALLOWED_ROOT and ALLOWED_ROOT not in target.parents:
+        raise PermissionError('WORKSPACE_ONLY')
+    if not target.is_dir(): raise PermissionError('DIRECTORY_REQUIRED')
+    from itertools import islice
+    sampled=sorted(islice(target.iterdir(),61),key=lambda p:p.name.casefold())
+    files=[]
+    for entry in sampled[:60]:
+        if any(fragment in entry.name.casefold() for fragment in ('secret','password','.env','token','credential')):
+            continue
+        if entry.is_symlink():continue
+        try:
+            files.append({'name':entry.name[:100],'kind':'directory' if entry.is_dir() else 'file',
+                          'bytes':min(entry.stat().st_size,2**46) if entry.is_file() else None})
+        except (PermissionError,OSError):continue
+    return {'directory':str(target),'items':files,'truncated':len(sampled)>60}
+
+
+def list_processes():
+    import csv,io
+    # No command line, executable path, environment, security tokens or elevation.
+    out=subprocess.run(['tasklist.exe','/FO','CSV','/NH'],capture_output=True,text=True,errors='replace',
+                       encoding='utf-8-sig',timeout=6,shell=False)
+    if out.returncode:raise RuntimeError('TASKLIST_FAILED')
+    items=[]
+    for row in csv.reader(io.StringIO(out.stdout)):
+        if len(row)>=2 and row[1].isdigit():items.append({'process':row[0][:85],'pid':int(row[1])})
+        if len(items)>=70:break
+    return {'processes':items,'truncated':len(items)>=70}
+
+
+def list_windows():
+    from ctypes import wintypes
+    user=ctypes.windll.user32
+    user.IsWindowVisible.argtypes=[wintypes.HWND];user.IsWindowVisible.restype=wintypes.BOOL
+    user.GetWindowTextLengthW.argtypes=[wintypes.HWND];user.GetWindowTextLengthW.restype=ctypes.c_int
+    user.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int];user.GetWindowTextW.restype=ctypes.c_int
+    result=[];callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
+    def callback(hwnd,_):
+        if len(result)>=40:return False
+        if not user.IsWindowVisible(hwnd):return True
+        length=user.GetWindowTextLengthW(hwnd)
+        if not 1<=length<=512:return True
+        buf=ctypes.create_unicode_buffer(length+1)
+        if user.GetWindowTextW(hwnd,buf,length+1):
+            name=buf.value.strip()
+            if name:result.append({'window':str(hwnd),'title':name[:130]})
+        return True
+    user.EnumWindows.argtypes=[callback_type,wintypes.LPARAM]
+    user.EnumWindows.restype=wintypes.BOOL
+    user.EnumWindows(callback_type(callback),0)
+    return {'windows':result,'truncated':len(result)>=40}
+
+
 def execute(action,params):
+    if action=='file.list':return list_workspace(params.get('path',''))
+    if action=='process.list':return list_processes()
+    if action=='window.list':return list_windows()
     if action=='shell.run':
         recipe=params.get('recipe')
         if recipe not in RECIPES:raise PermissionError('SHELL_RECIPE_NOT_ALLOWED')
@@ -202,7 +260,7 @@ def run_once():
     m=stats()
     api('/api/device/heartbeat',{'device_id':DEVICE,'hostname':platform.node()[:120],
         'platform':platform.platform()[:200],'agent_version':'0.5.0',
-        'capabilities':['system.status','system.metrics','shell.run','file.read','mouse.click','keyboard.type','keyboard.key'],
+        'capabilities':['system.status','system.metrics','shell.run','file.read','file.list','process.list','window.list','mouse.click','keyboard.type','keyboard.key'],
         'metrics':m,'gui_targets':[]})
     job=api('/api/device/next',{}).get('job')
     if job:

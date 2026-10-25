@@ -29,6 +29,8 @@ class Speech(Strict):
     text:str=Field(min_length=1,max_length=1600)
     consent:Literal[True]
     preview_voice_id:str|None = Field(default=None, max_length=24)
+    preview_style:Literal['professional','tegas','casual','friendly','family','romantic','humor','poetic','robot','glitch']|None = None
+    preview_intensity:Literal['short','balanced','expressive']|None = None
 class Reference(Strict):
     mime_type:Literal['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/mp4','audio/webm']
     audio_base64:str=Field(min_length=24,max_length=13981016)
@@ -57,6 +59,10 @@ async def speak(p:Speech,owner:dict=Depends(auth.require_owner_write), db:Sessio
     choice = profile(db)
     if p.preview_voice_id:
         choice = {**choice, 'voice_id':p.preview_voice_id}
+    if p.preview_style is not None:
+        choice = {**choice, 'style':p.preview_style}
+    if p.preview_intensity is not None:
+        choice = {**choice, 'intensity':p.preview_intensity}
     voice = provider_voice(choice)
     payload={'model':setting('SONIC_SPEECH_MODEL','gpt-4o-mini-tts'),'voice':voice,'input':text,'response_format':'mp3',
              'instructions':'Natural Indonesian when content is Indonesian; composed English otherwise. Standard synthetic voice. Do not imitate a real person or film character. Read provided words accurately. ' + persona_instruction(choice)}
@@ -67,7 +73,7 @@ async def speak(p:Speech,owner:dict=Depends(auth.require_owner_write), db:Sessio
                     headers={'Authorization':'Bearer '+key},json=payload)
         if r.status_code!=200:raise HTTPException(502,'Speech provider rejected the request')
         if len(r.content)>8*1024*1024:raise HTTPException(502,'Audio response too large')
-        return Response(r.content,media_type='audio/mpeg',headers={'Cache-Control':'no-store','X-Sonic-Voice':voice})
+        return Response(r.content,media_type='audio/mpeg',headers={'Cache-Control':'no-store','X-Sonic-Voice':voice, 'X-Sonic-Style':choice['style'], 'X-Sonic-Intensity':choice['intensity']})
     except httpx.RequestError:
         raise HTTPException(502,'Speech provider is unavailable') from None
 

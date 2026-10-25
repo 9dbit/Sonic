@@ -82,3 +82,24 @@ def test_reference_transcript_requires_auth(client):
     assert client.post('/api/voice/reference/transcribe',json={}).status_code==401
     h=login(client)
     assert client.post('/api/voice/reference/transcribe',json={'mime_type':'audio/mpeg','audio_base64':'AAAA'*10,'consent':True},headers=h).status_code==422
+
+
+def test_broad_status_operators_require_owner_approval_and_refuse_power_commands(client):
+    headers=login(client)
+    h=client.post('/api/device/heartbeat',json={
+        'device_id':'TRADEVICEPC','hostname':'TRADEVICEPC','platform':'Windows',
+        'agent_version':'0.6.1','capabilities':['system.status','system.metrics','file.list','process.list','window.list'],
+        'metrics':{'ram_total_bytes':16*2**30,'ram_available_bytes':4*2**30},'gui_targets':[]
+    },headers={'Authorization':'Bearer device-test-token'})
+    assert h.status_code==200
+    for action,payload in [('process.list',{}),('window.list',{}),('file.list',{'path':'D:\\Sonic\\work'})]:
+        request=client.post('/api/operator/requests',json={'action':action,'payload':payload},headers=headers)
+        assert request.status_code==200,request.text
+        job=request.json()
+        assert job['state']=='pending'
+        assert client.post('/api/device/operator/next',json={},headers={'Authorization':'Bearer device-test-token'}).json()['job'] is None
+        assert client.delete('/api/operator/requests/'+job['id'],headers=headers).status_code==200
+    for action,payload in [('shell.run',{'recipe':'shutdown'}),('shell.run',{'recipe':'restart'}),
+                           ('process.list',{'command':'shutdown /s'}),('window.list',{'target':'restart'}),
+                           ('file.list',{'path':'\\\\server\\share'})]:
+        assert client.post('/api/operator/requests',json={'action':action,'payload':payload},headers=headers).status_code==422
