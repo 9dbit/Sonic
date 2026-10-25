@@ -56,3 +56,6 @@
  .pc-audit-row time{grid-column:1/-1}
  #pcTrend{height:125px}
 }
+
+/* Neural particle sphere belongs to Neural Brain, not the PC Command Center. */
+body:has(#brainPanel.hidden) .sonic-motion-float{display:none!important}
