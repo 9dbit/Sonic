@@ -14,8 +14,17 @@ OUT = Path("artifacts/motion-v071")
 OUT.mkdir(parents=True, exist_ok=True)
 
 with local_server() as (url, token), sync_playwright() as p:
+    chrome = shutil.which("chromium") or shutil.which("chrome")
+    if not chrome:
+        for candidate in (
+            Path("C:/Program Files/Google/Chrome/Application/chrome.exe"),
+            Path("C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"),
+        ):
+            if candidate.is_file():
+                chrome = str(candidate)
+                break
     browser = p.chromium.launch(
-        executable_path=shutil.which("chromium") or None,
+        executable_path=chrome or None,
         headless=True, args=["--no-sandbox", "--enable-unsafe-swiftshader"]
     )
     results = []
