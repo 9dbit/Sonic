@@ -42,7 +42,7 @@
         this.tick=setInterval(()=>{const seconds=Math.max(0,Math.ceil((this.expires-Date.now())/1000));this.options.onTick?.(seconds);if(seconds===0)this.stop('duration_limit');},1000);
         this.connectTimer=setTimeout(()=>{if(this.state==='connecting'){this.options.onError?.('Koneksi audio tidak terbentuk. Mikrofon dihentikan.');this.stop('connect_timeout');}},15000);
       }catch(error){
-        if(generation===this.generation){await this.stop('start_failed');this.options.onError?.(error.name==='NotAllowedError'?'Izin mikrofon ditolak. Tidak ada sesi suara aktif.':error.message);}
+        if(generation===this.generation){if(error.status===429||error.status===422||error.status===503)this.requestStarted=false;await this.stop('start_failed');this.options.onError?.(error.name==='NotAllowedError'?'Izin mikrofon ditolak. Tidak ada sesi suara aktif.':error.message);}
       }
     }
     event(event,generation){
