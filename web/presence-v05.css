@@ -62,3 +62,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 /* Keep node details clear of both composer and realtime voice controls. */
 .sonic-popup{top:200px;bottom:auto;max-height:40vh;overflow:auto}
 @media(max-width:650px){.sonic-popup{top:145px;bottom:auto;max-height:35vh}}
+
+/* Popup is informational: canvas drag/scroll passes through text, buttons stay clickable. */
+.sonic-popup,.sonic-popup .popup-actions{pointer-events:none}
+.sonic-popup .popup-actions button{pointer-events:auto}

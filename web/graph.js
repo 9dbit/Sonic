@@ -196,7 +196,7 @@
       const stage=this.stage,coord=e=>{const r=stage.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
       stage.addEventListener('contextmenu',e=>e.preventDefault());
       stage.addEventListener('wheel',e=>{e.preventDefault();this.orbitPauseUntil=performance.now()+8000;this.cameraTween=null;this.distance=clamp(this.distance*Math.exp(e.deltaY*.0012),120,6000);this.invalidate();},{passive:false});
-      stage.addEventListener('pointerdown',e=>{if(e.target!==this.canvas)return;this.orbitPauseUntil=performance.now()+8000;this.cameraTween=null;stage.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,coord(e));this.down=coord(e);this.moved=false;stage.classList.add('dragging');this.tooltip.classList.add('hidden');});
+      stage.addEventListener('pointerdown',e=>{if(e.target!==this.canvas&&e.target!==this.stage&&e.target!==this.labels)return;this.orbitPauseUntil=performance.now()+8000;this.cameraTween=null;stage.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,coord(e));this.down=coord(e);this.moved=false;stage.classList.add('dragging');this.tooltip.classList.add('hidden');});
       stage.addEventListener('pointermove',e=>{
         const pos=coord(e),old=this.pointers.get(e.pointerId);
         if(old){const dx=pos[0]-old[0],dy=pos[1]-old[1];if(Math.hypot(pos[0]-this.down[0],pos[1]-this.down[1])>5)this.moved=true;
