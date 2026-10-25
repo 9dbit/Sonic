@@ -20,12 +20,12 @@
 .pc-console textarea{display:block;width:100%;min-height:105px;margin-top:14px;border:0!important;border-radius:11px;background:#090909!important;color:#fff!important;font:12px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;padding:14px;resize:vertical;box-shadow:none!important}
 .pc-console textarea:focus-visible{outline:2px solid #4da3ff!important}
 .pc-presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.pc-presets button{background:#171717!important;color:#4da3ff!important;font-size:10px!important;padding:7px 11px!important;border-radius:999px!important;border:0!important;box-shadow:none!important}
+.pc-presets button{background:#156bff!important;color:#ffffff!important;font-size:10px!important;padding:7px 11px!important;border-radius:999px!important;border:0!important;box-shadow:none!important}
 .pc-console-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0}
 .pc-console-actions label{font-size:10px;color:#4da3ff!important;display:flex;gap:8px;align-items:center}
 .pc-console-actions select{border:0!important;border-radius:8px;background:#171717!important;color:#fff!important;padding:10px}
 .pc-console-actions button{padding:10px 16px!important;border-radius:999px!important}
-.pc-console-actions #pcStop{background:#ff9f2f!important;color:#000!important}
+.pc-console-actions #pcStop{background:#156bff!important;color:#fff!important}
 .pc-console-actions #pcStop:disabled{background:#343434!important;color:#fff!important}
 .pc-terminal-output{background:#050505!important;color:#fff!important;min-height:172px;max-height:410px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.6 ui-monospace,Consolas,monospace;padding:15px;border-radius:10px;border:0!important;scrollbar-width:thin}
 #pcExecState[data-state=failed],#pcExecState[data-state=cancelled],#pcExecState[data-state=expired]{color:#ff9f2f!important}
