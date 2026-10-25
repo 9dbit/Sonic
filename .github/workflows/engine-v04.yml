@@ -1,0 +1,35 @@
+name: SONIC Engine V04
+on:
+  push:
+    branches: ['feature/sonic-engine-v04-20261025']
+  pull_request:
+    paths: ['sonic/**', 'web/**', 'tests/**', 'scripts/**', '.github/workflows/engine-v04.yml']
+permissions:
+  contents: read
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reproducible source archive (tracked files only)
+        run: git archive --format=tar.gz --output=sonic-engine-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonic-engine-source
+          path: sonic-engine-source.tar.gz
+          retention-days: 7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test engine
+        run: |
+          pip install -r requirements.txt
+          python -m pytest -q
+          node --check web/app.js
+          node --check web/graph.js
