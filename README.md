@@ -49,3 +49,7 @@ This companion runs only a read-only system.status capability and can be stopped
 See [deployment setup](docs/DEPLOY.md) and [system architecture](docs/ARCHITECTURE.md).
 
 Development branch: feature/sonic-foundation-20261024. Keep source code, Postgres, provider keys and computer access separate from other projects.
+
+## SONIC V0.5 candidate
+
+See [Presence, PC operator and Voice](docs/SONIC_V05.md). Operator actions require explicit per-request owner approval and a compatible local companion.

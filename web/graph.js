@@ -23,7 +23,7 @@
     constructor(stage, callbacks={}){
       this.stage=stage;this.callbacks=callbacks;this.nodes=[];this.edges=[];this.lookup=new Map();this.positions=new Map();
       this.filters=new Set(Object.keys(PALETTE));this.selected=null;this.path=[];this.depth=1;this.visible=false;
-      this.yaw=-0.15;this.pitch=0.08;this.distance=700;this.target=[0,0,0];this.pan=[0,0];this.is3D=true;this.autoRotate=false;
+      this.yaw=-0.15;this.pitch=0.08;this.distance=700;this.target=[0,0,0];this.pan=[0,0];this.is3D=true;this.autoRotate=true;this.orbitPauseUntil=0;this.cameraTween=null;
       this.reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;this.pointers=new Map();this.lastFrame=0;
       this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');
       this.labels=document.createElement('canvas');this.labels.className='graph-labels';this.labels.setAttribute('aria-hidden','true');
@@ -108,7 +108,11 @@
       if(id&&!this.lookup.has(id))return;
       if(trace&&this.selected&&id){this.path=shortestPath(this.selected,id,this.edges,new Set(this.nodes.filter(n=>this.filters.has(n.category)).map(n=>n.id)));}
       else{this.path=[];this.selected=id;}
-      if(focus&&id){this.target=[...this.positions.get(id)];this.distance=Math.max(240,this.distance*.72);this.pan=[0,0];}
+      if(focus&&id){
+        this.cameraTween={fromTarget:[...this.target],toTarget:[...this.positions.get(id)],
+          fromDistance:this.distance,toDistance:Math.max(190,this.distance*.72),started:performance.now(),duration:950};
+        this.orbitPauseUntil=performance.now()+8000;this.pan=[0,0];
+      }
       this.stage.dataset.selected=this.selected||'';this.updateHighlight();this.invalidate();this.callbacks.onSelect?.(this.lookup.get(this.selected)||null,this.path);
     }
     clear(){this.select(null);this.fit();}
@@ -128,9 +132,16 @@
     setDimension(is3D){this.is3D=is3D;this.invalidate();}
     invalidate(){this.dirty=true;if(this.visible&&!document.hidden&&!this.frame)this.frame=requestAnimationFrame(t=>this.tick(t));}
     tick(time){this.frame=null;if(!this.visible||document.hidden)return;
-      if(time-this.lastFrame>=32){if(this.autoRotate&&this.is3D&&!this.reduced&&!this.pointers.size){this.yaw+=.002;this.dirty=true;}
+      if(time-this.lastFrame>=32){
+        if(this.cameraTween){
+          const tw=this.cameraTween,progress=clamp((time-tw.started)/tw.duration,0,1),e=1-Math.pow(1-progress,3);
+          this.target=tw.fromTarget.map((v,i)=>v+(tw.toTarget[i]-v)*e);
+          this.distance=tw.fromDistance+(tw.toDistance-tw.fromDistance)*e;
+          this.dirty=true;if(progress>=1)this.cameraTween=null;
+        }
+        if(this.autoRotate&&this.is3D&&!this.reduced&&!this.pointers.size&&!this.cameraTween&&time>this.orbitPauseUntil){this.yaw+=.002;this.dirty=true;}
         if(this.dirty){this.render();this.dirty=false;}this.lastFrame=time;}
-      if(this.dirty||(this.autoRotate&&!this.reduced))this.frame=requestAnimationFrame(t=>this.tick(t));
+      if(this.dirty||this.cameraTween||(this.autoRotate&&!this.reduced))this.frame=requestAnimationFrame(t=>this.tick(t));
     }
     project(p){
       let [x,y,z]=p.map((v,a)=>v-this.target[a]);
@@ -184,8 +195,8 @@
     attachInput(){
       const stage=this.stage,coord=e=>{const r=stage.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
       stage.addEventListener('contextmenu',e=>e.preventDefault());
-      stage.addEventListener('wheel',e=>{e.preventDefault();this.distance=clamp(this.distance*Math.exp(e.deltaY*.0012),120,6000);this.invalidate();},{passive:false});
-      stage.addEventListener('pointerdown',e=>{if(e.target!==this.canvas)return;stage.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,coord(e));this.down=coord(e);this.moved=false;stage.classList.add('dragging');this.tooltip.classList.add('hidden');});
+      stage.addEventListener('wheel',e=>{e.preventDefault();this.orbitPauseUntil=performance.now()+8000;this.cameraTween=null;this.distance=clamp(this.distance*Math.exp(e.deltaY*.0012),120,6000);this.invalidate();},{passive:false});
+      stage.addEventListener('pointerdown',e=>{if(e.target!==this.canvas&&e.target!==this.stage&&e.target!==this.labels)return;this.orbitPauseUntil=performance.now()+8000;this.cameraTween=null;stage.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,coord(e));this.down=coord(e);this.moved=false;stage.classList.add('dragging');this.tooltip.classList.add('hidden');});
       stage.addEventListener('pointermove',e=>{
         const pos=coord(e),old=this.pointers.get(e.pointerId);
         if(old){const dx=pos[0]-old[0],dy=pos[1]-old[1];if(Math.hypot(pos[0]-this.down[0],pos[1]-this.down[1])>5)this.moved=true;
@@ -200,7 +211,7 @@
       stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',e=>{this.pointers.delete(e.pointerId);stage.classList.remove('dragging');});
       stage.addEventListener('pointerleave',()=>this.tooltip.classList.add('hidden'));
       stage.addEventListener('dblclick',e=>{const n=this.pick(...coord(e));if(n)this.select(n.id,{focus:true});});
-      stage.addEventListener('keydown',e=>{if(e.target!==stage)return;let handled=true;switch(e.key){case 'ArrowLeft':this.yaw-=.12;break;case 'ArrowRight':this.yaw+=.12;break;case 'ArrowUp':this.pitch-=.12;break;case 'ArrowDown':this.pitch+=.12;break;case '+':case '=':this.distance*=.88;break;case '-':this.distance*=1.12;break;case 'Escape':this.clear();break;default:handled=false;}if(handled){e.preventDefault();this.invalidate();}});
+      stage.addEventListener('keydown',e=>{if(e.target!==stage)return;this.orbitPauseUntil=performance.now()+8000;let handled=true;switch(e.key){case 'ArrowLeft':this.yaw-=.12;break;case 'ArrowRight':this.yaw+=.12;break;case 'ArrowUp':this.pitch-=.12;break;case 'ArrowDown':this.pitch+=.12;break;case '+':case '=':this.distance*=.88;break;case '-':this.distance*=1.12;break;case 'Escape':this.clear();break;default:handled=false;}if(handled){e.preventDefault();this.invalidate();}});
     }
   }
   SonicGraph.palette=PALETTE;SonicGraph.shortestPath=shortestPath;window.SonicGraph=SonicGraph;

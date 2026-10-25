@@ -69,7 +69,7 @@ def graph_snapshot(db: Session) -> dict:
     if device:
         age = max(0, int((utcnow() - device.last_seen).total_seconds()))
         did = 'device:' + device.id
-        node(did, device.hostname or device.id, 'device', 'Registered read-only companion. Only system.status is allowed.',
+        node(did, device.hostname or device.id, 'device', 'Authenticated SONIC companion; PC actions require separate owner approval.',
              source='devices', state='online' if age < 120 else 'offline', last_seen_seconds_ago=age)
         edge('system:sonic', did, 'structural', 'registered companion', 'devices:' + device.id)
     degree = Counter()

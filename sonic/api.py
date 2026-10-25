@@ -20,7 +20,7 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.4.0'
+VERSION = '0.5.0'
 
 
 @asynccontextmanager
@@ -60,6 +60,10 @@ class DeviceHeartbeat(BaseModel):
     device_id: str = Field(min_length=1, max_length=80)
     hostname: str = Field(max_length=120)
     platform: str = Field(max_length=200)
+    agent_version: str = Field(default='', max_length=30)
+    capabilities: list[str] = Field(default_factory=list, max_length=12)
+    metrics: dict = Field(default_factory=dict)
+    gui_targets: list[dict] = Field(default_factory=list, max_length=5)
 
 
 class DeviceResult(BaseModel):
@@ -212,6 +216,8 @@ def device_heartbeat(data: DeviceHeartbeat, request: Request, db: Session = Depe
         d = Device(id=data.device_id)
         db.add(d)
     d.hostname, d.platform, d.last_seen = data.hostname, data.platform, utcnow()
+    from .operator import store_telemetry
+    store_telemetry(db, data)
     db.commit()
     return {"ok": True, "permitted_actions": ["system.status"]}
 
@@ -266,12 +272,16 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
 
 from .activation import router as activation_router
 from .knowledge import router as knowledge_router
+from .operator import router as operator_router
+from .speech import router as speech_router
 app.include_router(activation_router)
 from .engine import router as engine_router
 app.include_router(engine_router)
 from .voice import router as voice_router
 app.include_router(voice_router)
 app.include_router(knowledge_router)
+app.include_router(operator_router)
+app.include_router(speech_router)
 
 
 @app.middleware("http")

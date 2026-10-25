@@ -66,7 +66,7 @@ def test_fixed_provider_session_contract(client,provider):
     assert config['model']=='gpt-realtime'
     assert config['audio']['input']['turn_detection']['interrupt_response'] is True
     names={t['name'] for t in config['tools']}
-    assert names=={'graph_search','graph_focus','graph_neighbors','graph_reset','memory_search','memory_prepare'}
+    assert names=={'graph_search','graph_focus','graph_neighbors','graph_reset','memory_search','memory_prepare','device_metrics'}
     assert 'memory_save' not in names
     assert client.get('/api/voice/status').json()['active_session']['id']==sid
     status=client.post(f'/api/voice/sessions/{sid}/stop',json={},headers=h).json()
@@ -176,3 +176,24 @@ def test_logout_hangup_and_tool_revocation(client,provider):
     assert client.post('/api/logout',headers=h).status_code==200
     assert call(client,h,sid,'graph_reset',{}).status_code==401
     assert provider[-1][0].endswith('/hangup')
+
+
+def test_voice_can_read_real_pc_metrics_but_not_execute(client,provider):
+    h=login(client);sid=start(client,h)
+    missing=call(client,h,sid,'device_metrics',{},'metric_before')
+    assert missing.status_code==200
+    assert missing.json()['output']['metrics_available'] is False
+    assert missing.json()['ui_actions'][0]['type']=='device.metrics'
+    ok=client.post('/api/device/heartbeat',json={
+        'device_id':'TRADEVICEPC','hostname':'TRADEVICEPC','platform':'Windows',
+        'agent_version':'0.5.0','capabilities':['system.metrics'],
+        'metrics':{'ram_total_bytes':16*2**30,'ram_available_bytes':7*2**30,'ram_used_percent':56},
+        'gui_targets':[]},headers={'Authorization':'Bearer device-test-token'})
+    assert ok.status_code==200
+    observed=call(client,h,sid,'device_metrics',{},'metric_live')
+    assert observed.status_code==200
+    assert observed.json()['output']['metrics_available'] is True
+    assert observed.json()['output']['metrics']['ram_available_bytes']==7*2**30
+    assert observed.json()['ui_actions'][0]['type']=='device.metrics'
+    assert call(client,h,sid,'device_metrics',{'script':'taskkill'},'metric_bad').json()['output']=={'error':'INVALID_TOOL_ARGUMENTS'}
+    assert call(client,h,sid,'shell.run',{'recipe':'clock'},'shell_forbidden').status_code==403

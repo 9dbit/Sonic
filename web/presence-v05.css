@@ -1,0 +1,68 @@
+/* SONIC 0.5, deep blue command surface. Clean surfaces, generous pill geometry. */
+:root{--sonic-blue:#4c9eff;--sonic-blue2:#80c5ff;--sonic-ink:#050a13;--sonic-surface:#0d1728;--sonic-glow:#2f89ff45;color-scheme:dark}
+html,body,.app{background:#050912!important}
+.topbar,.sidebar{background:#070e1c!important;border:0!important;box-shadow:none!important}
+.sidebar,.panel,.brain-side,.filter-panel,.info-panel,.voice-dialog,.voice-session-bar,.setup-help,.composer,.device-card,.memory-item,.device-output,.core-orbit,.brain-answer,.login-card,.node-tooltip,.pill,.graph-toolbar,.glass,.search-results,.graph-search,.core-inner,.filter-panel,.voice-proposal,.login-orb{border:0!important}
+.brain-panel,.graph-stage{background:radial-gradient(ellipse at 48% 46%,#0c1b37 0%,#060c17 45%,#040812 100%)!important}
+.sidebar .brand{color:#c2e4ff!important;background:radial-gradient(circle at 30% 20%,#438cff70,#061225 68%);box-shadow:0 0 30px #3477f528;border-radius:18px}
+.brand::first-letter{color:#87ccff}
+.topbar{box-shadow:0 8px 48px #03071499!important}
+.nav{border:0!important;border-radius:999px!important;transition:background .2s,transform .2s,color .2s}
+.nav.active{background:linear-gradient(145deg,#154e88,#0e2647)!important;color:#cae6ff!important;box-shadow:inset 0 1px #8cc6ff32,0 9px 28px #1f65ec1a}
+.nav svg,.topbar svg{stroke-width:1.7}
+button:not(.nav):not(.plain),.pill,.reference-chip,.receipt,.input-button{border:0!important;border-radius:999px!important;transition:transform .16s ease,background .18s ease,box-shadow .18s ease;box-shadow:inset 0 1px 0 #9bbfff15}
+button:not(.nav):not(.plain):not(:disabled):hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 #bfe2ff45,0 8px 22px #005de922}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #60b1ff!important;outline-offset:3px}
+.talk-button,.start-voice,.send-button,.device-controls button,.memory-form button,.login-card button,.small-button{background:linear-gradient(125deg,#1e72d7,#1953a1)!important;color:#e6f7ff!important}
+.talk-button.active{background:#134270!important;box-shadow:0 0 25px #147fff4d!important}
+.glass,.memory-item,.device-card,.brain-answer,.info-panel .card-list,.node-tooltip{background:#0c1625e9!important;box-shadow:0 14px 55px #030b1870,inset 0 1px 0 #e4f3ff10!important;border-radius:20px!important}
+.brain-side,.filter-panel{background:#0a1422eb!important;backdrop-filter:blur(22px);border-radius:24px!important}
+.graph-toolbar{background:#0c1e34d9!important;border-radius:999px!important;box-shadow:0 13px 45px #0008}
+.graph-toolbar button.active,.graph-toolbar button[aria-pressed=true]{background:#1a4e80!important;color:#e6f6ff!important}
+.graph-search,.memory-form input,.login-card input,.composer,.link-form input,.link-form select{background:#101f33!important;border-radius:22px!important;box-shadow:inset 0 1px 2px #0007}
+.composer{border-radius:26px!important}
+.eyebrow,.side-heading h2,.node-kind,.core-state,.graph-engine{color:#7db9ff!important}
+.core-inner strong{color:#cae8ff!important;text-shadow:0 0 24px #3c98ff88}
+.core-arc,.core-ticks{filter:hue-rotate(45deg) saturate(1.2)}
+.assistant-core[data-state=listening] .core-orbit,.assistant-core[data-state=speaking] .core-orbit{box-shadow:0 0 65px #206ed03a!important}
+.node-tooltip{color:#d6edff!important}
+.node-inspector .source-line,.graph-hint{color:#7b9ec0!important}
+.memory-item .metadata,.setup-help p,.small-note{color:#8ca7c2!important}
+.device-telemetry{margin-top:18px;background:linear-gradient(115deg,#0d2441,#0d172b);border-radius:24px;padding:20px;display:grid;gap:11px}
+.telemetry-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#b1c6df}
+.telemetry-row b{color:#d8ebff;font-size:15px;font-variant-numeric:tabular-nums}
+.telemetry-bar{background:#132742;height:9px;border-radius:999px;overflow:hidden}
+.telemetry-bar span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#347bff,#74cdff);border-radius:999px;transition:width .55s ease}
+.operator-panel{background:#0a1526;border-radius:24px;padding:20px;margin:18px 0;display:grid;gap:10px}
+.operator-panel h3{margin:0;color:#d1e8ff;font-size:15px}
+.operator-panel label{font-size:12px;color:#9bb4d1;display:grid;gap:7px}
+.operator-panel input,.operator-panel select{background:#111f35;border:0;color:#e1f1ff;border-radius:15px;padding:11px 15px;min-width:0}
+.operator-panel button{padding:10px 18px}
+.operator-review,.sonic-popup{background:linear-gradient(130deg,#102c51,#0b1527);border:0;border-radius:25px;padding:22px;color:#e0f1ff;box-shadow:0 25px 95px #000b;max-width:min(450px,90vw)}
+.operator-review::backdrop{background:#020714a8;backdrop-filter:blur(8px)}
+.operator-review pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;line-height:1.6;color:#abcaef}
+.operator-review .button-row,.popup-actions{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap}
+.sonic-popup{position:fixed;z-index:32;right:22px;bottom:104px;width:min(385px,calc(100vw - 32px));max-height:60vh;overflow:auto}
+.sonic-popup h3{margin:0 0 9px;font-size:19px}
+.sonic-popup p{font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.sonic-popup small{display:block;color:#8babce;margin-top:9px}
+.voice-session-bar{background:#102847f2!important;box-shadow:0 15px 65px #020814aa!important;border-radius:24px!important}
+.voice-session-bar.compact{min-height:0;max-width:225px;right:14px;left:auto;padding:12px 14px;border-radius:999px!important}
+.voice-session-bar.compact .voice-bar-controls,.voice-session-bar.compact small,.voice-session-bar.compact time{display:none!important}
+.wake-pill{background:#102b4d!important;color:#bfe3ff!important;padding:9px 13px!important}
+.wake-pill[aria-pressed=true]{box-shadow:inset 0 0 0 1px #3478e760,0 0 20px #347bff20!important;color:#7cd5ff!important}
+.wake-indicator{position:fixed;z-index:27;top:75px;right:23px;background:#0f2f50e9;border-radius:999px;color:#8fd1ff;padding:7px 13px;font-size:11px;box-shadow:0 0 18px #236ae833}
+@media(max-width:650px){.wake-indicator{top:73px;right:15px}.sonic-popup{right:12px;bottom:calc(85px + env(safe-area-inset-bottom));width:calc(100vw - 24px)}.operator-panel{padding:15px}.voice-session-bar.compact{top:80px;bottom:auto;right:10px}.top-right{gap:7px}.wake-pill{font-size:10px!important;padding:8px 10px!important}.talk-button span{display:none}.brain-side,.filter-panel{box-shadow:0 15px 60px #000c}}
+@media(prefers-reduced-motion:reduce){.telemetry-bar span{transition:none!important}}
+
+/* Voice controls must stay accessible above neural detail popups. */
+.voice-session-bar{z-index:44!important}
+.voice-proposals{z-index:45!important}
+/* Keep node details clear of both composer and realtime voice controls. */
+.sonic-popup{top:200px;bottom:auto;max-height:40vh;overflow:auto}
+@media(max-width:650px){.sonic-popup{top:145px;bottom:auto;max-height:35vh}}
+
+/* Popup is informational: canvas drag/scroll passes through text, buttons stay clickable. */
+.sonic-popup,.sonic-popup .popup-actions{pointer-events:none}
+.sonic-popup .popup-actions button{pointer-events:auto}

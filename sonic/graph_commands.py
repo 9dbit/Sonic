@@ -103,6 +103,9 @@ def direct_graph_command(text: str, selected_node_id: str | None = None) -> tupl
     match = re.fullmatch(r'(?:buka|open|fokus(?:kan)?(?: pada)?|focus(?: on)?)\s+(?:memory|memori|catatan|note)\s*#?\s*(\d+)', text, re.I)
     if match:
         return 'graph_focus', {'node_id': 'memory:' + str(int(match.group(1)))}
+    match = re.fullmatch(r'^(?:lihat|tampilkan|buka|fokus(?:kan)?|show|open|focus)\s+(?:(?:detail|informasi|integrasi|koneksi)\s+){0,3}node\s+(.{2,120})$', text, re.I)
+    if match:
+        return 'graph_search', {'query': match.group(1).strip(' "“”')}
     match = re.fullmatch(r'(?:tampilkan|cari|show|find)\s+(?:memory|memori|catatan|node|topik|notes?|memories|knowledge)\s+(?:tentang|mengenai|about|for)\s+(.{1,150})', text, re.I)
     if match:
         return 'graph_search', {'query': match.group(1).strip()}

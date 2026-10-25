@@ -12,7 +12,7 @@
         else if(action.type==='graph.search'){
           const ids=Array.isArray(action.node_ids)?action.node_ids.filter(id=>graph.lookup.has(id)):[];
           context.show();context.search(String(action.query||'').slice(0,150));
-          context.enableAll();graph.select(null);graph.highlight=new Set(ids);graph.invalidate();context.showSearch();
+          context.enableAll();if(ids.length===1){context.select(ids[0],true);}else{graph.select(null);graph.highlight=new Set(ids);graph.invalidate();context.showSearch();}
         }else if(['graph.focus','graph.neighbors'].includes(action.type)){
           if(!graph.lookup.has(action.node_id))throw Error('Node tidak tersedia lagi. Refresh dan cari kembali.');
           context.show();context.enableAll();

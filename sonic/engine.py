@@ -18,11 +18,19 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None) -> 
     start = time.monotonic()
     run_id = str(uuid4())
     db.info.update(ui_actions=[], memory_events=[], memory_references=[], engine_steps=[], selected_node_id=selected_node_id)
-    command = direct_graph_command(text, selected_node_id)
-    route = 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
+    from .operator import direct_device_command, device_metrics, metrics_reply
+    pc_request = direct_device_command(text)
+    command = None if pc_request else direct_graph_command(text, selected_node_id)
+    route = 'device_metrics' if pc_request else 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
     status = 'completed'
     try:
-        if command:
+        if pc_request:
+            _record_user(db, text)
+            data = device_metrics(db)
+            db.info['ui_actions'].append({'type':'device.metrics','device_id':data['device_id']})
+            db.info['engine_steps'].append({'tool':'system.metrics','status':'read' if data['metrics_available'] else 'unavailable'})
+            answer = _record_answer(db, metrics_reply(data))
+        elif command:
             _record_user(db, text)
             result = run_graph_tool(db, command[0], command[1])
             db.info['engine_steps'].append({'tool': command[0], 'status': 'rejected' if result.get('error') else 'prepared'})

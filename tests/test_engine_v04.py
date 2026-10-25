@@ -81,6 +81,6 @@ def test_failed_run_no_fake_success(client):
 
 
 def test_version_and_lifespan(client):
-    assert client.get('/api/health').json()['version']=='0.4.0'
+    assert client.get('/api/health').json()['version']=='0.5.0'
     login(client)
-    assert client.get('/api/setup/status').json()['version']=='0.4.0'
+    assert client.get('/api/setup/status').json()['version']=='0.5.0'
