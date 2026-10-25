@@ -34,7 +34,7 @@ def device_metrics(db:Session) -> dict:
             'capabilities':json.loads(row.capabilities_json) if fresh and row else [],
             'gui_targets':json.loads(row.targets_json) if fresh and row else [],
             'source':'authenticated_companion_heartbeat','read_at':utcnow().isoformat()+'Z',
-            'notice':('Live RAM readings from the companion' if available else 'No fresh RAM data; no value is estimated.')}
+            'notice':('Fresh authenticated Windows Task Manager telemetry' if available else 'No fresh Windows telemetry; no values are estimated.')}
 
 
 def metrics_reply(data:dict) -> str:
@@ -106,7 +106,7 @@ def receipt(row):
 
 @router.get('/api/operator/capabilities')
 def capabilities(_:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
-    return {**device_metrics(db),'shell_recipes':RECIPES,
+    return {**device_metrics(db),'shell_recipes':RECIPES, 'shell_inspection_examples':['Get-Process','Get-Service','Get-NetAdapter','Get-CimInstance Win32_Processor'],
             'policy':'Explicit approval per action. Local roots and Notepad-only GUI. No arbitrary shell, trading, or production changes.'}
 
 
