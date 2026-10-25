@@ -14,7 +14,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from . import auth
 from .config import setting
-from .db import Device, DeviceTelemetry, OperatorRequest, OwnerSession, get_db, utcnow
+from .db import Device, DeviceTelemetry, OperatorRequest, OperatorOutput, OwnerSession, get_db, utcnow
 from .device_contract import ACTIONS, RECIPES, clean_metrics, clean_request
 
 router=APIRouter()
@@ -85,6 +85,10 @@ class Lease(Strict):
 class Result(Lease):
     success:bool
     result:dict
+class OutputEvent(Lease):
+    sequence:int=Field(ge=1,le=48)
+    channel:Literal['stdout','stderr','system']
+    text:str=Field(min_length=1,max_length=1024)
 
 
 def owner_row(db,request_id,owner):
@@ -94,8 +98,10 @@ def owner_row(db,request_id,owner):
 
 
 def ensure_capability(db,action):
+    if action=='powershell.exec' and setting('SONIC_ENABLE_POWERSHELL_EXEC','false').lower() not in ('1','true','yes'):
+        raise HTTPException(403,'PowerShell command broker is disabled in this environment')
     if action not in device_metrics(db)['capabilities']:
-        raise HTTPException(409,'Companion V0.5 and local permission required. No action queued.')
+        raise HTTPException(409,'Updated Windows companion and local opt-in required. No action queued.')
 
 
 def receipt(row):
@@ -107,7 +113,8 @@ def receipt(row):
 @router.get('/api/operator/capabilities')
 def capabilities(_:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
     return {**device_metrics(db),'shell_recipes':RECIPES, 'shell_inspection_examples':['Get-Process','Get-Service','Get-NetAdapter','Get-CimInstance Win32_Processor'],
-            'policy':'Explicit approval per action. Local roots and Notepad-only GUI. No arbitrary shell, trading, or production changes.'}
+            'powershell_enabled':setting('SONIC_ENABLE_POWERSHELL_EXEC','false').lower() in ('1','true','yes'),
+            'policy':'Each command requires exact preview and owner approval. PowerShell is unrestricted inside the Limited Windows user account, not an OS sandbox. Avoid secrets; no elevation or inbound ports.'}
 
 
 @router.post('/api/operator/requests')
@@ -132,7 +139,8 @@ def confirm(request_id:str,p:Approval,owner:dict=Depends(auth.require_owner_writ
     if not hmac.compare_digest(p.digest,row.digest):raise HTTPException(409,'Action changed; review before confirming')
     if row.state!='pending' or row.expires_at<=utcnow():raise HTTPException(409,'Approval expired or no longer pending')
     ensure_capability(db,row.action)
-    db.execute(update(OperatorRequest).where(OperatorRequest.id==row.id,OperatorRequest.state=='pending').values(state='queued'))
+    lease_deadline=utcnow()+timedelta(seconds=180 if row.action=='powershell.exec' else 90)
+    db.execute(update(OperatorRequest).where(OperatorRequest.id==row.id,OperatorRequest.state=='pending').values(state='queued',expires_at=lease_deadline))
     db.commit();db.refresh(row);return receipt(row)
 
 
@@ -142,6 +150,25 @@ def status(request_id:str,owner:dict=Depends(auth.require_owner),db:Session=Depe
     if row.state in ('pending','queued','leased') and row.expires_at<=utcnow():
         row.state='expired';db.commit()
     return receipt(row)
+
+
+@router.get('/api/operator/history')
+def history(limit:int=20,_:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
+    # SONIC has exactly one authenticated owner. Previous session receipts
+    # remain visible, but never to unauthenticated or device-token clients.
+    cap=max(1,min(limit,40))
+    rows=db.scalars(select(OperatorRequest).order_by(OperatorRequest.created_at.desc()).limit(cap)).all()
+    return {'requests':[receipt(row) for row in rows]}
+
+
+@router.get('/api/operator/requests/{request_id}/stream')
+def stream(request_id:str,after:int=0,owner:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
+    owner_row(db,request_id,owner)
+    if not 0 <= after <= 48:raise HTTPException(422,'Invalid stream offset')
+    rows=db.scalars(select(OperatorOutput).where(OperatorOutput.request_id==request_id,OperatorOutput.sequence>after)
+                    .order_by(OperatorOutput.sequence.asc()).limit(48)).all()
+    return {'events':[{'sequence':r.sequence,'channel':r.channel,'text':r.content,'created_at':r.created_at.isoformat()+'Z'} for r in rows],
+            'next_sequence':rows[-1].sequence if rows else after}
 
 
 @router.delete('/api/operator/requests/{request_id}')
@@ -179,6 +206,25 @@ def check(p:Lease,request:Request,db:Session=Depends(get_db)):
     auth.require_device(request);row=valid_lease(db,p)
     session=db.get(OwnerSession,row.owner_sid)
     return {'execute':bool(row.state=='leased' and row.expires_at>utcnow() and session and session.expires_at>utcnow())}
+
+
+@router.post('/api/device/operator/stream')
+def device_stream(event:OutputEvent,request:Request,db:Session=Depends(get_db)):
+    auth.require_device(request)
+    row=valid_lease(db,event)
+    if row.action!='powershell.exec' or row.state!='leased' or row.expires_at<=utcnow():
+        raise HTTPException(409,'Command stream no longer active')
+    if any(ord(ch)<32 and ch not in '\\n\\r\\t' for ch in event.text):
+        raise HTTPException(422,'Invalid output control characters')
+    existing=db.scalar(select(OperatorOutput).where(OperatorOutput.request_id==row.id,OperatorOutput.sequence==event.sequence))
+    if existing:
+        if existing.channel==event.channel and existing.content==event.text:return {'accepted':True,'duplicate':True}
+        raise HTTPException(409,'Stream sequence conflict')
+    last=db.scalar(select(func.max(OperatorOutput.sequence)).where(OperatorOutput.request_id==row.id)) or 0
+    if event.sequence!=last+1:raise HTTPException(409,'Stream sequence gap')
+    db.add(OperatorOutput(request_id=row.id,sequence=event.sequence,channel=event.channel,content=event.text))
+    db.commit()
+    return {'accepted':True,'sequence':event.sequence}
 
 
 @router.post('/api/device/operator/result')
