@@ -21,12 +21,12 @@ def setup_status(_: dict = Depends(auth.require_owner), db: Session = Depends(ge
     key_present = bool(setting("OPENAI_API_KEY"))
     online = bool(device and (utcnow() - device.last_seen).total_seconds() < 120)
     return {
-        "version": "0.3.0", "owner_configured": owner_ready(),
+        "version": "0.4.0", "owner_configured": owner_ready(),
         "database_connected": True, "provider_key_configured": key_present,
         "provider_verified": False, "provider_verification": "Use Test OpenAI for a live check",
         "model": model_name(), "device_credential_configured": device_ready(),
         "device_online": online, "device_id": setting("SONIC_DEVICE_ID", "TRADEVICEPC"),
-        "voice_mode": "browser_speech", "computer_control_enabled": False,
+        "voice_mode": "realtime_opt_in" if setting("SONIC_REALTIME_ENABLED", "false").lower() == "true" else "browser_speech", "computer_control_enabled": False,
         "ready_for_chat_request": key_present,
         "remaining": [] if key_present else ["OPENAI_API_KEY"]
     }

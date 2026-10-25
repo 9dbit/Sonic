@@ -1,5 +1,7 @@
 """SONIC owner control plane. Owner writes require a valid session and CSRF."""
 from __future__ import annotations
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 import json
 from uuid import uuid4
@@ -18,8 +20,22 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.3.0'
-app = FastAPI(title="SONIC", version=VERSION, docs_url=None, redoc_url=None, openapi_url=None)
+VERSION = '0.4.0'
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from .voice import voice_housekeeping
+    housekeeping = asyncio.create_task(voice_housekeeping())
+    try:
+        yield
+    finally:
+        housekeeping.cancel()
+        with suppress(asyncio.CancelledError):
+            await housekeeping
+
+
+app = FastAPI(lifespan=lifespan, title="SONIC", version=VERSION, docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/assets", StaticFiles(directory=ROOT / "web"), name="assets")
 
 
@@ -29,6 +45,7 @@ class LoginForm(BaseModel):
 
 class ChatForm(BaseModel):
     message: str = Field(min_length=1, max_length=3500)
+    selected_node_id: str | None = Field(default=None, max_length=120)
 
 
 class MemoryForm(BaseModel):
@@ -101,7 +118,9 @@ def login(payload: LoginForm, request: Request, response: Response):
 
 
 @app.post("/api/logout")
-def logout(response: Response, _: dict = Depends(auth.require_owner_write)):
+async def logout(response: Response, _: dict = Depends(auth.require_owner_write)):
+    from .voice import close_owner_sessions
+    await close_owner_sessions(_)
     auth.revoke_session(_)
     response.delete_cookie(auth.COOKIE, path="/")
     return {"logged_out": True}
@@ -120,8 +139,9 @@ async def chat(payload: ChatForm, _: dict = Depends(auth.require_owner_write), d
     text = payload.message.strip()
     if not text:
         raise HTTPException(422, "Message required")
-    answer = await reply(db, text)
-    return {"reply": answer, "memory_events": db.info.pop('memory_events', [])}
+    from .engine import execute_chat
+    return await execute_chat(db, text, payload.selected_node_id)
+
 
 
 @app.get("/api/memories")
@@ -247,6 +267,10 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
 from .activation import router as activation_router
 from .knowledge import router as knowledge_router
 app.include_router(activation_router)
+from .engine import router as engine_router
+app.include_router(engine_router)
+from .voice import router as voice_router
+app.include_router(voice_router)
 app.include_router(knowledge_router)
 
 

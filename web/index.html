@@ -7,9 +7,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Neural Brain</title>
-  <link rel="stylesheet" href="/assets/style.css?v=0.3.0">
-  <script src="/assets/graph.js?v=0.3.0" defer></script>
-  <script src="/assets/app.js?v=0.3.0" defer></script>
+  <link rel="stylesheet" href="/assets/style.css?v=0.4.0">
+  <link rel="stylesheet" href="/assets/engine-style.css?v=0.4.0">
+  <script src="/assets/graph.js?v=0.4.0" defer></script>
+  <script src="/assets/engine-ui.js?v=0.4.0" defer></script>
+  <script src="/assets/voice.js?v=0.4.0" defer></script>
+  <script src="/assets/app.js?v=0.4.0" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -43,8 +46,8 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.3</b></span><h1 id="pageTitle">Neural Brain</h1></div>
-        <div class="top-right"><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.4</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-right"><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
         <div id="graphStage" class="graph-stage" tabindex="0" aria-label="Graph 3D. Drag untuk memutar, scroll atau pinch untuk zoom. Gunakan Search untuk memilih node dengan keyboard."></div>
@@ -98,12 +101,28 @@
       <section class="panel info-panel hidden" id="setupPanel">
         <div class="section-head"><div><span class="eyebrow">ACTIVATION CHECKLIST</span><h2>SONIC Setup</h2><p>Kesiapan sistem, tanpa menampilkan kredensial.</p></div></div><div id="setupList" class="card-list"></div>
         <div class="device-controls"><button id="refreshSetup">Refresh readiness</button><button id="testProvider">Test OpenAI</button><button id="setupLogout">Sign out</button></div><p id="setupMessage" class="small-note" aria-live="polite"></p>
-        <div class="setup-help"><strong>OpenAI brain</strong><p>Konfigurasikan <code>OPENAI_API_KEY</code> langsung di Railway SONIC / staging / sonic-web. Jangan menaruh key di chat atau memory.</p><p>Memory eksplisit dan graph dapat digunakan tanpa panggilan model. Voice saat ini menggunakan fitur browser, bukan realtime AI.</p></div>
+        <div class="engine-readiness"><h3>Voice engine</h3><p id="voiceReadiness">Checking configuration...</p><h3>Execution receipts</h3><p class="small-note">Ringkasan eksekusi, bukan pikiran internal model.</p><button id="refreshRuns" type="button" class="outline-button">Refresh activity</button><div id="engineRuns" class="engine-runs"></div></div><div class="setup-help"><strong>OpenAI brain</strong><p>Konfigurasikan <code>OPENAI_API_KEY</code> langsung di Railway SONIC / staging / sonic-web. Jangan menaruh key di chat atau memory.</p><p>Memory eksplisit dan graph dapat digunakan tanpa panggilan model. Browser dictation dan playback tetap tersedia. Talk to SONIC menggunakan sesi OpenAI Realtime setelah persetujuan. Akses model dan mikrofon tetap perlu diuji pada perangkat.</p></div>
       </section>
+      <div id="voiceSessionBar" class="voice-session-bar hidden" role="region" aria-label="Active voice session">
+        <div class="voice-live"><i></i><strong id="voiceStateText">Connecting</strong><time id="voiceCountdown">05:00</time></div>
+        <div class="voice-bar-controls"><button id="voiceMute" type="button" aria-pressed="false">Mute</button><button id="voiceResume" type="button" class="hidden">Enable audio</button><button id="voiceStop" type="button" class="stop-voice">Stop</button></div>
+        <small>AI voice / OpenAI. Stop mematikan mikrofon.</small>
+      </div>
+      <div id="voiceProposalHost" class="voice-proposals"></div>
       <div id="notice" class="notice hidden" role="status"></div>
     </main>
   </div>
+  <dialog id="voiceConsent" class="voice-dialog">
+    <form id="voiceConsentForm">
+      <div class="dialog-heading"><span class="eyebrow">SONIC / REALTIME VOICE</span><button id="cancelVoice" type="button" class="plain" aria-label="Close voice setup"><svg><use href="#i-close"/></svg></button></div>
+      <h2>Talk. Explore. Remember.</h2><p>Suara AI dua arah dengan akses ke memory tersimpan dan Neural Brain.</p>
+      <div class="voice-disclosure"><p>Audio mikrofon dikirim ke OpenAI selama sesi. SONIC tidak menyimpan rekaman audio. Transkrip sesi tampil di layar dan dapat salah dengar.</p><p>Memory suara tidak tersimpan otomatis. Tinjau teksnya, lalu tekan Confirm memory.</p><p id="voiceLimits">Sesi dibatasi 5 menit. Pemakaian API dapat dikenakan biaya.</p></div>
+      <p id="voiceDialogStatus" role="status"></p>
+      <label class="voice-consent-check"><input id="voiceAgree" type="checkbox" required> Saya setuju memulai mikrofon dan pemrosesan audio oleh OpenAI.</label>
+      <button id="startVoice" class="start-voice" type="submit">Start voice</button>
+    </form>
+  </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.3</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.4</small></form></div>
 </body>
 </html>

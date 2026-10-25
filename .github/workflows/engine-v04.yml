@@ -27,9 +27,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Test engine
+      - name: Install test dependencies
         run: |
           pip install -r requirements.txt
+          pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Test engine and media lifecycle
+        run: |
           python -m pytest -q
+          python -m compileall -q sonic scripts
           node --check web/app.js
           node --check web/graph.js
+          node --check web/engine-ui.js
+          node --check web/voice.js
+          node --test tests/js/*.test.cjs
+      - name: Desktop and mobile HTTP browser workflow (synthetic provider)
+        run: python scripts/e2e_engine.py
+      - name: QA evidence (disposable test data only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-engine-v04-qa
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14

@@ -132,3 +132,53 @@ def chat_history(db, limit: int = 16):
 
 def recent_messages(db, limit: int = 60):
     return list(reversed(db.scalars(select(ChatMessage).order_by(ChatMessage.id.desc()).limit(limit)).all()))
+
+
+# Additive V0.4 engine tables. Existing chat/memory/session tables remain intact.
+class EngineRun(Base):
+    __tablename__ = 'engine_runs'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    channel: Mapped[str] = mapped_column(String(24), nullable=False)
+    route: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    steps_json: Mapped[str] = mapped_column(Text, default='[]', nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
+
+
+class VoiceGate(Base):
+    __tablename__ = 'voice_gate'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
+class VoiceSession(Base):
+    __tablename__ = 'voice_sessions'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_sid: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    call_id: Mapped[str] = mapped_column(String(180), default='', nullable=False)
+    state: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
+    close_reason: Mapped[str] = mapped_column(String(40), default='', nullable=False)
+    close_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class VoiceToolCall(Base):
+    __tablename__ = 'voice_tool_calls'
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, default='{}', nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class VoiceProposal(Base):
+    __tablename__ = 'voice_proposals'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(String(500), nullable=False)
+    state: Mapped[str] = mapped_column(String(24), default='pending', nullable=False)
+    memory_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
