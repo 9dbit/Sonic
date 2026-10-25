@@ -14,6 +14,8 @@ $taskName = 'SONIC Read-only Companion'
 foreach ($path in @($root,$workspace,$python,$tokenFile,$agentSource,$brokerSource)) {
     if (-not (Test-Path -LiteralPath $path)) { throw "Missing requirement: $path" }
 }
+& $python -c 'import psutil' | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'SONIC V0.8 needs psutil in D:\Sonic\.venv' }
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
 if ($task.Principal.RunLevel -eq 'Highest') { throw 'Refusing elevated task. SONIC must run with Limited privileges.' }
 $enableValue = if($EnablePowerShell) { '1' } else { '0' }
