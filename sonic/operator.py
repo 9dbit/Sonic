@@ -107,7 +107,7 @@ def ensure_capability(db,action):
 
 def receipt(row):
     return {'id':row.id,'action':row.action,'payload':json.loads(row.payload_json),'digest':row.digest,
-            'state':row.state,'expires_at':row.expires_at.isoformat()+'Z',
+            'state':row.state,'created_at':row.created_at.isoformat()+'Z','expires_at':row.expires_at.isoformat()+'Z',
             'result':json.loads(row.result_json) if row.result_json else None}
 
 
