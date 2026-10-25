@@ -53,6 +53,17 @@ def main():
         assert clean['exit_code']==0,clean
         assert 'synthetic-never-emit-me' not in ''.join(x['text'] for x in events)
         assert not any('SONIC_DEVICE_TOKEN' in x['text'] for x in events)
+        # End Task is tested only against our own disposable loopback ping.
+        import subprocess
+        child=subprocess.Popen(['ping.exe','-t','127.0.0.1'],
+                               stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        try:
+            time.sleep(.25)
+            ended=terminate_process(child.pid,'PING.EXE')
+            assert ended['terminated'] is True and ended['pid']==child.pid
+            child.wait(timeout=4)
+        finally:
+            if child.poll() is None:child.kill();child.wait()
         print({'live_readonly_command':'pass','stream_chunks':len(events),
                'cancel_tree':'pass','timeout_tree':'pass',
                'bearer_child_env_clean':'pass'})
