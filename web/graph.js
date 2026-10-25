@@ -170,7 +170,7 @@
       if(this.gl&&lines.length)this.drawGL(lines,false);
       const dots=[],ordered=[...projected.values()].sort((a,b)=>a.z-b.z);
       for(const p of ordered){const n=p.node,on=active(n.id),c=hex(n.color),alpha=on?.96:.13;
-        if(n.id===this.selected){ctx.strokeStyle='#a5f3e3';ctx.lineWidth=1;ctx.beginPath();ctx.arc(p.x,p.y,p.r+5,0,Math.PI*2);ctx.stroke();}
+        if(n.id===this.selected){ctx.strokeStyle='#156bff';ctx.lineWidth=1;ctx.beginPath();ctx.arc(p.x,p.y,p.r+5,0,Math.PI*2);ctx.stroke();}
         if(this.gl)vertex(dots,p,c,alpha,Math.min(this.maxPoint,p.r*2*this.dpr));
         else{const grad=ctx.createRadialGradient(p.x-p.r*.3,p.y-p.r*.3,p.r*.05,p.x,p.y,p.r);grad.addColorStop(0,on?'#d5ebed':n.color);grad.addColorStop(.3,n.color);grad.addColorStop(1,'#13252d');ctx.globalAlpha=alpha;ctx.fillStyle=grad;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
       }
@@ -178,14 +178,14 @@
       const labels=ordered.filter(p=>active(p.node.id)).sort((a,b)=>(b.node.id===this.selected?9999:b.node.degree)-(a.node.id===this.selected?9999:a.node.degree)).slice(0,visible.length<45?45:24);
       const occupied=[];
       for(const p of labels){const n=p.node;if(p.x<15||p.x>w-15||p.y<10||p.y>h-15)continue;
-        ctx.font=(n.id===this.selected?'600 12px':'10px')+' -apple-system,Segoe UI,sans-serif';ctx.textAlign='center';ctx.fillStyle=n.id===this.selected?'#d5eee8':'#89a9b6';
+        ctx.font=(n.id===this.selected?'600 12px':'10px')+' -apple-system,Segoe UI,sans-serif';ctx.textAlign='center';ctx.fillStyle=n.id===this.selected?'#ffffff':'#4da3ff';
         const label=n.label.length>31?n.label.slice(0,29)+'...':n.label,tw=ctx.measureText(label).width;
         let place=null;for(const y of [p.y+p.r+15,p.y-p.r-7]){const rect={l:p.x-tw/2-4,r:p.x+tw/2+4,t:y-11,b:y+4};
           if(rect.l<4||rect.r>w-4)continue;
           if(!occupied.some(o=>rect.l<o.r&&rect.r>o.l&&rect.t<o.b&&rect.b>o.t)){place={rect,y};break;}}
         if(!place&&n.id!==this.selected)continue;
         place=place||{rect:{l:p.x-tw/2,r:p.x+tw/2,t:p.y+p.r+4,b:p.y+p.r+19},y:p.y+p.r+15};occupied.push(place.rect);
-        ctx.shadowColor='#000';ctx.shadowBlur=4;ctx.fillText(label,p.x,place.y);ctx.shadowBlur=0;
+        ctx.fillText(label,p.x,place.y);
       }
       this.projected=projected;this.stage.dataset.renderedNodes=String(visible.length);this.stage.dataset.engine=this.engine;
       this.callbacks.onRender?.({engine:this.engine,nodes:visible.length});
