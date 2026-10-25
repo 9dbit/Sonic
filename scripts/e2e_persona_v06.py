@@ -1,5 +1,6 @@
 """Real HTTP / Chromium desktop+mobile checks with isolated synthetic owner/DB."""
 import json
+import re
 import shutil
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
@@ -18,7 +19,7 @@ with local_server() as (url,token),sync_playwright() as p:
         page.goto(url,wait_until='networkidle')
         page.locator('#ownerToken').fill(token)
         page.locator('#loginForm button[type=submit]').click()
-        expect(page.locator('#loginOverlay')).to_have_class(r'.*hidden.*')
+        expect(page.locator('#loginOverlay')).to_have_class(re.compile('.*hidden.*'))
         page.locator('.nav[data-tab="setup"]').click()
         expect(page.locator('#personaStudio h3')).to_have_text('Persona Studio')
         expect(page.locator('input[name="sonicVoice"]')).to_have_count(10)
@@ -37,10 +38,10 @@ with local_server() as (url,token),sync_playwright() as p:
         expect(page.locator('#sonicMotionFloat')).to_be_visible()
         motion=page.locator('#sonicMotionFloat')
         motion.click(force=True)
-        expect(motion).to_have_class(r'.*preview.*')
+        expect(motion).to_have_class(re.compile('.*preview.*'))
         page.wait_for_timeout(50)
         motion.click(force=True)
-        expect(motion).to_have_class(r'.*focused.*')
+        expect(motion).to_have_class(re.compile('.*focused.*'))
         assert page.evaluate('window.sonicMotion.focused') is True
         # Voice return command should restore without issuing an unsafe API request.
         page.evaluate('window.sonicMotion.handleCommand("SONIC, kembali ke tempat semula")')

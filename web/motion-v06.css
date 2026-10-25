@@ -14,3 +14,11 @@
 @media(max-width:650px){#sonicMotionAnchor{width:90px;height:90px}.sonic-motion-float.focused{z-index:32}}
 @media(max-height:640px) and (max-width:650px){#sonicMotionAnchor{width:70px;height:70px}}
 @media(prefers-reduced-motion:reduce){.sonic-motion-float,.sonic-motion-float canvas{transition-duration:0ms!important}}
+/* Inspector and filters always win the gesture hit test on mobile. */
+@media(max-width:650px){
+ .brain-side.open,.filter-panel.open{z-index:35!important}
+ body:has(#graphInspector.open) .sonic-motion-float:not(.focused),
+ body:has(#graphFilters.open) .sonic-motion-float:not(.focused){pointer-events:none;opacity:.15}
+}
+
+.sonic-motion-float.under-panel:not(.focused){pointer-events:none!important;opacity:.15}

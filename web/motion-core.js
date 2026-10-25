@@ -46,6 +46,10 @@
    window.addEventListener('resize',()=>this.updateHome(!this.focused));
    window.addEventListener('scroll',()=>this.updateHome(!this.focused),{passive:true});
    document.addEventListener('visibilitychange',()=>{this.paused=document.hidden;if(!document.hidden)this.video.play().catch(()=>{});else this.video.pause();});
+   const inspector=document.getElementById('graphInspector'),filters=document.getElementById('graphFilters');
+   const prioritizePanels=()=>{const open=inspector?.classList.contains('open')||filters?.classList.contains('open');this.float.classList.toggle('under-panel',!!open);};
+   for(const panel of [inspector,filters])if(panel)new MutationObserver(prioritizePanels).observe(panel,{attributes:true,attributeFilter:['class']});
+   prioritizePanels();
    this.float.addEventListener('mouseenter',()=>{if(!this.focused)this.float.classList.add('hover');});
    this.float.addEventListener('mouseleave',()=>this.float.classList.remove('hover'));
   }
