@@ -255,7 +255,7 @@
         }
         for(const record of result.requests){
           const row=node('div','pc-audit-row');
-          const stamp=node('time','',record.expires_at?.slice(0,19)||'');
+          const stamp=node('time','',record.created_at?.slice(0,19)||'');
           const sample=record.action==='powershell.exec'?
             (record.payload?.command||'').replace(/\s+/g,' ').slice(0,150):
             record.action+' '+JSON.stringify(record.payload||{}).slice(0,100);
