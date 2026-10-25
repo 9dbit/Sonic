@@ -64,48 +64,83 @@ def stats():
                 usage=shutil.disk_usage(root)
                 disks.append({'drive':letter+':','total_bytes':usage.total,'free_bytes':usage.free})
             except OSError:pass
+    kernel32=ctypes.windll.kernel32
+    kernel32.GetTickCount64.restype=ctypes.c_ulonglong
     return {'ram_total_bytes':int(s.ullTotalPhys),'ram_available_bytes':int(s.ullAvailPhys),
-            'ram_used_percent':int(s.dwMemoryLoad),'uptime_seconds':int(ctypes.windll.kernel32.GetTickCount64()/1000),
+            'ram_used_percent':int(s.dwMemoryLoad),'uptime_seconds':int(kernel32.GetTickCount64()/1000),
             'logical_cpu_count':os.cpu_count() or 1,'disks':disks}
 
 
 def notepad_foreground(hwnd_text):
-    """Fail closed unless the target HWND is the foreground window of Notepad."""
-    if not isinstance(hwnd_text,str) or not hwnd_text.isdecimal():raise ValueError('WINDOW_INVALID')
+    """Require the current foreground HWND to belong to real Notepad.
+
+    Win32 function signatures are explicitly pointer-width-safe on 64-bit Windows.
+    """
+    from ctypes import wintypes
+    if not isinstance(hwnd_text,str) or not hwnd_text.isdecimal():
+        raise ValueError('WINDOW_INVALID')
     user32=ctypes.windll.user32
+    kernel32=ctypes.windll.kernel32
+    user32.IsWindow.argtypes=[wintypes.HWND];user32.IsWindow.restype=wintypes.BOOL
+    user32.GetForegroundWindow.argtypes=[];user32.GetForegroundWindow.restype=wintypes.HWND
+    user32.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowThreadProcessId.restype=wintypes.DWORD
+    kernel32.OpenProcess.argtypes=[wintypes.DWORD,wintypes.BOOL,wintypes.DWORD]
+    kernel32.OpenProcess.restype=wintypes.HANDLE
+    kernel32.CloseHandle.argtypes=[wintypes.HANDLE];kernel32.CloseHandle.restype=wintypes.BOOL
+    kernel32.QueryFullProcessImageNameW.argtypes=[wintypes.HANDLE,wintypes.DWORD,wintypes.LPWSTR,ctypes.POINTER(wintypes.DWORD)]
+    kernel32.QueryFullProcessImageNameW.restype=wintypes.BOOL
     hwnd=int(hwnd_text)
-    if hwnd<=0 or not user32.IsWindow(hwnd) or user32.GetForegroundWindow()!=hwnd:
+    if not 0<hwnd<2**(8*ctypes.sizeof(ctypes.c_void_p)) or not user32.IsWindow(hwnd) or user32.GetForegroundWindow()!=hwnd:
         raise PermissionError('NOTEPAD_NOT_FOREGROUND')
-    pid=ctypes.c_ulong()
-    user32.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
-    access=0x1000  # PROCESS_QUERY_LIMITED_INFORMATION
-    process=ctypes.windll.kernel32.OpenProcess(access,False,pid.value)
+    pid=wintypes.DWORD()
+    if not user32.GetWindowThreadProcessId(hwnd,ctypes.byref(pid)) or not pid.value:
+        raise PermissionError('TARGET_PROCESS_UNAVAILABLE')
+    process=kernel32.OpenProcess(0x1000,False,pid.value)
     if not process:raise PermissionError('TARGET_PROCESS_DENIED')
     try:
-        length=ctypes.c_ulong(32768)
+        length=wintypes.DWORD(32768)
         path=ctypes.create_unicode_buffer(32768)
-        ok=ctypes.windll.kernel32.QueryFullProcessImageNameW(process,0,path,ctypes.byref(length))
-        if not ok or Path(path.value).name.lower()!='notepad.exe':raise PermissionError('NOTEPAD_ONLY')
-    finally:ctypes.windll.kernel32.CloseHandle(process)
+        if not kernel32.QueryFullProcessImageNameW(process,0,path,ctypes.byref(length)) or Path(path.value).name.casefold()!='notepad.exe':
+            raise PermissionError('NOTEPAD_ONLY')
+    finally:kernel32.CloseHandle(process)
+    if user32.GetForegroundWindow()!=hwnd:raise PermissionError('TARGET_CHANGED')
     return hwnd
 
 
 def keypress(vk):
+    from ctypes import wintypes
     user32=ctypes.windll.user32
+    user32.keybd_event.argtypes=[wintypes.BYTE,wintypes.BYTE,wintypes.DWORD,ctypes.c_size_t]
+    user32.keybd_event.restype=None
     user32.keybd_event(vk,0,0,0);time.sleep(.012);user32.keybd_event(vk,0,2,0)
 
 
-def unicode_type(s):
-    """SendInput Unicode without paste/clipboard, shortcuts or command separators."""
+def unicode_type(value):
+    """Send UTF-16 Unicode to Notepad without using clipboard, paste, or shell."""
+    from ctypes import wintypes
+    ulong_ptr=ctypes.c_uint64 if ctypes.sizeof(ctypes.c_void_p)==8 else ctypes.c_uint32
+    class MOUSEINPUT(ctypes.Structure):
+        _fields_=[('dx',wintypes.LONG),('dy',wintypes.LONG),('mouseData',wintypes.DWORD),
+                  ('dwFlags',wintypes.DWORD),('time',wintypes.DWORD),('dwExtraInfo',ulong_ptr)]
     class KEYBDINPUT(ctypes.Structure):
-        _fields_=[('wVk',ctypes.c_ushort),('wScan',ctypes.c_ushort),('dwFlags',ctypes.c_ulong),
-                  ('time',ctypes.c_ulong),('dwExtraInfo',ctypes.POINTER(ctypes.c_ulong))]
-    class INPUT_UNION(ctypes.Union):_fields_=[('ki',KEYBDINPUT)]
-    class INPUT(ctypes.Structure):_fields_=[('type',ctypes.c_ulong),('u',INPUT_UNION)]
-    for ch in s:
-        for flag in (0x0004,0x0004|0x0002):
-            item=INPUT(type=1,u=INPUT_UNION(ki=KEYBDINPUT(0,ord(ch),flag,0,None)))
-            if ctypes.windll.user32.SendInput(1,ctypes.byref(item),ctypes.sizeof(INPUT))!=1:
+        _fields_=[('wVk',wintypes.WORD),('wScan',wintypes.WORD),('dwFlags',wintypes.DWORD),
+                  ('time',wintypes.DWORD),('dwExtraInfo',ulong_ptr)]
+    class HARDWAREINPUT(ctypes.Structure):
+        _fields_=[('uMsg',wintypes.DWORD),('wParamL',wintypes.WORD),('wParamH',wintypes.WORD)]
+    class INPUT_UNION(ctypes.Union):
+        _fields_=[('mi',MOUSEINPUT),('ki',KEYBDINPUT),('hi',HARDWAREINPUT)]
+    class INPUT(ctypes.Structure):
+        _fields_=[('type',wintypes.DWORD),('u',INPUT_UNION)]
+    user32=ctypes.windll.user32
+    user32.SendInput.argtypes=[wintypes.UINT,ctypes.POINTER(INPUT),ctypes.c_int]
+    user32.SendInput.restype=wintypes.UINT
+    data=value.encode('utf-16-le')
+    for offset in range(0,len(data),2):
+        code=int.from_bytes(data[offset:offset+2],'little')
+        for flags in (0x0004,0x0004|0x0002):
+            item=INPUT(type=1,u=INPUT_UNION(ki=KEYBDINPUT(0,code,flags,0,0)))
+            if user32.SendInput(1,ctypes.byref(item),ctypes.sizeof(INPUT))!=1:
                 raise OSError('INPUT_NOT_ACCEPTED')
 
 
@@ -132,9 +167,15 @@ def execute(action,params):
         x,y=params.get('x'),params.get('y')
         if type(x) is not int or type(y) is not int or not 0<=x<=16000 or not 0<=y<=16000:
             raise ValueError('INVALID_COORDINATES')
-        rect=(ctypes.c_long*4)();ctypes.windll.user32.GetWindowRect(hwnd,rect)
-        if not rect[0]<=x<rect[2] or not rect[1]<=y<rect[3]:raise PermissionError('OUTSIDE_NOTEPAD_WINDOW')
-        ctypes.windll.user32.SetCursorPos(x,y)
+        from ctypes import wintypes
+        user32=ctypes.windll.user32
+        user32.GetWindowRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)]
+        user32.GetWindowRect.restype=wintypes.BOOL
+        rect=wintypes.RECT()
+        if not user32.GetWindowRect(hwnd,ctypes.byref(rect)):raise PermissionError('WINDOW_RECT_UNAVAILABLE')
+        if not rect.left<=x<rect.right or not rect.top<=y<rect.bottom:raise PermissionError('OUTSIDE_NOTEPAD_WINDOW')
+        notepad_foreground(params.get('window'))
+        user32.SetCursorPos(x,y)
         ctypes.windll.user32.mouse_event(0x0002,0,0,0,0)
         ctypes.windll.user32.mouse_event(0x0004,0,0,0,0)
         return {'clicked':True,'target':'notepad.exe'}
