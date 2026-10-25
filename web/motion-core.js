@@ -1,9 +1,8 @@
-/* SONIC Motion Core: transparent procedural silver particles inspired by the
-   owner's looping reference. No codec, GPU or autoplay dependency is required.
-   Motion responds to actual application voice states, never simulated speech. */
+/* SONIC V0.7.2 Motion Core: 5880 sharp cyan-blue points on transparent Canvas2D.
+   No glow, additive blending, gradients per dot, video, or WebGL dependency.
+   Speed and breathing remain tied to actual application and voice states. */
 (()=>{'use strict';
  const el=id=>document.getElementById(id),math=window.SonicMotionMath;
- const TAU=Math.PI*2;
  const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
  class SonicMotionCore {
   constructor(anchor){
@@ -15,7 +14,10 @@
    this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
    this.focused=false;this.lastTap=-Infinity;this.home=null;this.running=true;this.paused=false;this.lastTime=0;this.time=0;
    this.visual=math.PARTICLE_VISUAL;
-   this.sprite=this.makeGlowSprite();
+   this.palette=Array.from({length:this.visual.paletteSteps},(_,i)=>{
+     const rgb=math.cyanBlueRGB(i/(this.visual.paletteSteps-1));
+     return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+   });
    const particleCount=this.visual.count;
    this.points=Array.from({length:particleCount},(_,i)=>{
      const f=i+.5,y=1-2*f/particleCount,r=Math.sqrt(Math.max(0,1-y*y)),theta=i*2.39996322972865;
@@ -60,30 +62,20 @@
   dimensions(){const w=this.canvas.clientWidth,h=this.canvas.clientHeight,dpr=clamp(devicePixelRatio||1,1,2),nw=Math.max(1,Math.round(w*dpr)),nh=Math.max(1,Math.round(h*dpr));
    if(this.canvas.width!==nw||this.canvas.height!==nh){this.canvas.width=nw;this.canvas.height=nh;}return [nw,nh];
   }
-  makeGlowSprite(){
-   // Pre-bake the cyan bloom once. 2940 drawImage calls remain inexpensive
-   // compared with creating thousands of gradients or per-dot shadowBlur.
-   const size=this.visual.spritePixels,sprite=document.createElement('canvas');
-   sprite.width=sprite.height=size;
-   const sc=sprite.getContext('2d',{alpha:true});
-   if(!sc)return sprite;
-   const center=size/2,gradient=sc.createRadialGradient(center,center,0,center,center,center);
-   for(const [stop,color] of this.visual.stops)gradient.addColorStop(stop,color);
-   sc.fillStyle=gradient;sc.fillRect(0,0,size,size);
-   return sprite;
-  }
-  draw(){const ctx=this.ctx;if(!ctx)return;const [width,height]=this.dimensions();if(width<2||height<2)return;
+  draw(){
+   const ctx=this.ctx;if(!ctx)return;
+   const [width,height]=this.dimensions();if(width<2||height<2)return;
    ctx.clearRect(0,0,width,height);
-   ctx.save();
-   // Additive blending makes cyan bloom emissive without replacing the
-   // transparent background with a dark or colored canvas.
-   ctx.globalCompositeOperation='lighter';
+   // Default source-over compositing, no shadows or filters: the canvas stays
+   // transparent and individual tiny dots remain sharply defined.
+   ctx.globalCompositeOperation='source-over';
    const radius=Math.min(width,height)*.443,centerX=width*.5,centerY=height*.5;
-   const a=this.time*.38,ca=Math.cos(a),sa=Math.sin(a),tilt=.12*Math.sin(this.time*.44),ct=Math.cos(tilt),st=Math.sin(tilt);
+   const a=this.time*.38,ca=Math.cos(a),sa=Math.sin(a);
+   const tilt=.12*Math.sin(this.time*.44),ct=Math.cos(tilt),st=Math.sin(tilt);
    const speaking=this.state==='speaking'?1:this.state==='listening'?.32:0;
    this.energy+=(speaking-this.energy)*.065;
-   // Preserve the existing Fibonacci sphere, breathing ripples and concavity.
-   // Density is exactly 2940 points versus 980 in SONIC V0.7.
+   const palette=this.palette,lastColor=palette.length-1;
+   // Fibonacci sphere, existing orbit, breathing waveform and concavity.
    for(let i=0;i<this.points.length;i++){
      const [ox,oy,oz]=this.points[i];
      const swirl=ox*ca-oz*sa,depth=ox*sa+oz*ca;
@@ -95,15 +87,16 @@
      const perspective=1+.15*z,px=centerX+x*radius*perspective,py=centerY+y2*radius*perspective;
      if(px<0||py<0||px>=width||py>=height)continue;
      const light=clamp(.48+.27*z+.31*(x*.55-y2*.65),.12,1);
-     // Bright, granular cyan cores with a soft shared sprite halo. Scale with
-     // DPR and focused view, but cap large glow surfaces for mobile GPUs.
-     const core=clamp((width/190)*(.72+.66*light)*this.visual.coreSizeMultiplier,.95,9.5);
-     const halo=clamp(core*this.visual.haloSizeMultiplier*(1+this.energy*.13),3,48);
-     const alpha=clamp(.20+.42*light+.07*z+this.energy*.08,.22,.78);
-     ctx.globalAlpha=alpha;
-     ctx.drawImage(this.sprite,px-halo*.5,py-halo*.5,halo,halo);
+     // Gradient follows 3D depth and vertical position. Each point itself is
+     // a single opaque-hue square, not a radial glow or blurred sprite.
+     const hueT=clamp(.5-.38*z-.12*y2,0,1);
+     const colorIndex=Math.min(lastColor,Math.max(0,Math.round(hueT*lastColor)));
+     const size=math.particleDiameter(width,light);
+     ctx.fillStyle=palette[colorIndex];
+     ctx.globalAlpha=clamp(.37+.51*light+.04*z+.03*this.energy,.38,.92);
+     ctx.fillRect(Math.round(px),Math.round(py),size,size);
    }
-   ctx.restore();
+   ctx.globalAlpha=1;
   }
   frame(timestamp){if(!this.running)return;const dt=this.lastTime?clamp((timestamp-this.lastTime)/1000,0,.12):0;this.lastTime=timestamp;
    const desired=math.targetSpeed(this.state,this.reduced);this.speed+=(desired-this.speed)*clamp(dt*4,0,1);
