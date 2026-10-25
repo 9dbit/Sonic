@@ -61,7 +61,7 @@ class DeviceHeartbeat(BaseModel):
     hostname: str = Field(max_length=120)
     platform: str = Field(max_length=200)
     agent_version: str = Field(default='', max_length=30)
-    capabilities: list[str] = Field(default_factory=list, max_length=12)
+    capabilities: list[str] = Field(default_factory=list, max_length=24)
     metrics: dict = Field(default_factory=dict)
     gui_targets: list[dict] = Field(default_factory=list, max_length=5)
 
