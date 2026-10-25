@@ -26,3 +26,8 @@
 .persona-studio .persona-save:hover{background:#388aff}
 .persona-note{margin:18px 0 6px}.persona-feedback{font-size:11px;color:#8ab9f2;min-height:16px}
 @media(max-width:700px){.persona-studio{padding:18px 14px;border-radius:20px}.persona-top h3{font-size:23px}.persona-voice-groups,.persona-config{grid-template-columns:1fr;gap:10px}.persona-voice-column{padding:10px 13px}.persona-voice-row{min-height:45px}.persona-studio button{padding:8px 12px}}
+.persona-selection{margin:12px 0 0!important;color:#a5d5ff!important;line-height:1.5;font-size:11px!important}
+.style-play-row{display:flex;align-items:center;gap:8px;margin-top:12px}
+.persona-studio .style-play-row button{background:#205a96;color:white;min-height:38px}
+.persona-apply-actions{display:flex;gap:9px;flex-wrap:wrap}
+.persona-feedback{font-size:12px;line-height:1.6}

@@ -10,16 +10,16 @@
   <link rel="stylesheet" href="/assets/style.css?v=0.5.0">
   <link rel="stylesheet" href="/assets/engine-style.css?v=0.5.0">
   <link rel="stylesheet" href="/assets/presence-v05.css?v=0.5.0">
-  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.6.0">
-  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.6.0">
+  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.6.1">
+  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.6.1">
   <script src="/assets/graph.js?v=0.5.0" defer></script>
   <script src="/assets/engine-ui.js?v=0.5.0" defer></script>
   <script src="/assets/voice.js?v=0.5.0" defer></script>
   <script src="/assets/wake-v05.js?v=0.5.0" defer></script>
-  <script src="/assets/motion-math.js?v=0.6.0" defer></script>
-  <script src="/assets/motion-core.js?v=0.6.0" defer></script>
-  <script src="/assets/persona-studio.js?v=0.6.0" defer></script>
-  <script src="/assets/app.js?v=0.6.0" defer></script>
+  <script src="/assets/motion-math.js?v=0.6.1" defer></script>
+  <script src="/assets/motion-core.js?v=0.6.1" defer></script>
+  <script src="/assets/persona-studio.js?v=0.6.1" defer></script>
+  <script src="/assets/app.js?v=0.6.1" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -53,7 +53,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.6</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.6.1</b></span><h1 id="pageTitle">Neural Brain</h1></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
@@ -104,8 +104,8 @@
         <div class="section-head"><div><span class="eyebrow">AUTHORIZED CONNECTIONS</span><h2>Devices</h2><p>Status nyata dari companion yang terdaftar.</p></div></div>
         <div class="device-card"><svg class="device-icon"><use href="#i-device"/></svg><div><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Allowed action: read-only system.status</small></div><span id="deviceBadge" class="pill offline">Offline</span></div>
         <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button><button id="deviceRAM">Check live RAM</button></div>
-        <div id="deviceTelemetry" class="device-telemetry" aria-live="polite"><div class="telemetry-row"><span>TRADEVICEPC RAM</span><b id="telemetryValue">Not available</b></div><div class="telemetry-bar"><span id="telemetryFill"></span></div><small id="telemetrySource">Waiting for fresh companion telemetry.</small></div>
-        <div class="operator-panel" id="operatorPanel"><h3>PC Operator / owner approval</h3><p class="small-note">Perintah dibatasi, tidak ada shell arbitrer. Aksi baru berjalan setelah kamu meninjau dan menyetujui.</p><label>Operation<select id="operatorAction"><option value="shell.run">Shell: approved recipe</option><option value="file.read">Read workspace text file</option><option value="mouse.click">Mouse click / Notepad</option><option value="keyboard.type">Type text / Notepad</option><option value="keyboard.key">Keypress / Notepad</option></select></label><label id="operatorRecipeWrap">Approved shell recipe<select id="operatorRecipe"><option value="memory">Memory status</option><option value="clock">Clock</option><option value="system">System overview</option></select></label><label id="operatorPathWrap" class="hidden">File path under D:\Sonic\work<input id="operatorPath" maxlength="500" placeholder="D:\Sonic\work\notes.txt"></label><label id="operatorWindowWrap" class="hidden">Foreground Notepad window ID<input id="operatorWindow" maxlength="20" placeholder="Notepad HWND"></label><label id="operatorTextWrap" class="hidden">Text<input id="operatorText" maxlength="300" placeholder="Text for Notepad"></label><label id="operatorKeyWrap" class="hidden">Key<select id="operatorKey"><option>ENTER</option><option>TAB</option><option>BACKSPACE</option><option>ESCAPE</option><option>LEFT</option><option>RIGHT</option></select></label><div id="operatorCoordWrap" class="hidden"><label>Screen X<input id="operatorX" type="number" min="0" max="16000" value="100"></label><label>Screen Y<input id="operatorY" type="number" min="0" max="16000" value="100"></label></div><div class="device-controls"><button id="proposeOperator" type="button">Review PC action</button></div><p id="operatorState" class="small-note" aria-live="polite"></p></div><pre id="deviceResult" class="device-output">No device response yet.</pre><p class="small-note">PC actions require explicit approval and remain limited to safe workspace/Notepad. Trading and architecture remain disabled.</p>
+        <p id="companionUpgradeHint" class="small-note hidden">PC online, RAM telemetry belum aktif. Jalankan installer companion dari <a href="https://github.com/9dbit/Sonic/blob/feature/sonic-motion-persona-fixes-v061-20261026/scripts/Install-Sonic-Companion.ps1" target="_blank" rel="noopener noreferrer">GitHub SONIC</a> secara lokal setelah review source. Jangan kirim token perangkat ke browser atau chat.</p><div id="deviceTelemetry" class="device-telemetry" aria-live="polite"><div class="telemetry-row"><span>TRADEVICEPC RAM</span><b id="telemetryValue">Not available</b></div><div class="telemetry-bar"><span id="telemetryFill"></span></div><small id="telemetrySource">Waiting for fresh companion telemetry.</small></div>
+        <div class="operator-panel" id="operatorPanel"><h3>PC Operator / owner approval</h3><p class="small-note">Perintah dibatasi untuk mencegah shutdown/restart melalui shell arbitrer. Aksi baru berjalan setelah kamu meninjau dan menyetujui.</p><label>Operation<select id="operatorAction"><option value="shell.run">Shell: approved recipe</option><option value="file.read">Read workspace text file</option><option value="file.list">Browse workspace folder</option><option value="process.list">List processes</option><option value="window.list">List desktop windows</option><option value="mouse.click">Mouse click / Notepad</option><option value="keyboard.type">Type text / Notepad</option><option value="keyboard.key">Keypress / Notepad</option></select></label><label id="operatorRecipeWrap">Approved shell recipe<select id="operatorRecipe"><option value="memory">Memory status</option><option value="clock">Clock</option><option value="system">System overview</option></select></label><label id="operatorPathWrap" class="hidden">File path under D:\Sonic\work<input id="operatorPath" maxlength="500" placeholder="D:\Sonic\work\notes.txt"></label><label id="operatorWindowWrap" class="hidden">Foreground Notepad window ID<input id="operatorWindow" maxlength="20" placeholder="Notepad HWND"></label><label id="operatorTextWrap" class="hidden">Text<input id="operatorText" maxlength="300" placeholder="Text for Notepad"></label><label id="operatorKeyWrap" class="hidden">Key<select id="operatorKey"><option>ENTER</option><option>TAB</option><option>BACKSPACE</option><option>ESCAPE</option><option>LEFT</option><option>RIGHT</option></select></label><div id="operatorCoordWrap" class="hidden"><label>Screen X<input id="operatorX" type="number" min="0" max="16000" value="100"></label><label>Screen Y<input id="operatorY" type="number" min="0" max="16000" value="100"></label></div><div class="device-controls"><button id="proposeOperator" type="button">Review PC action</button></div><p id="operatorState" class="small-note" aria-live="polite"></p></div><pre id="deviceResult" class="device-output">No device response yet.</pre><p class="small-note">PC actions require explicit approval. No remote shutdown, restart, arbitrary shell, or secret-file access. Additional capabilities require the updated Windows companion. Trading and architecture remain disabled.</p>
       </section>
       <section class="panel info-panel hidden" id="setupPanel">
         <div class="section-head"><div><span class="eyebrow">ACTIVATION CHECKLIST</span><h2>SONIC Setup</h2><p>Kesiapan sistem, tanpa menampilkan kredensial.</p></div></div><div id="setupList" class="card-list"></div>
@@ -136,6 +136,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.6</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.6.1</small></form></div>
 </body>
 </html>

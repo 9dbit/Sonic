@@ -128,8 +128,19 @@
         item.append(copy,actions);list.append(item);}
     }catch(error){list.replaceChildren(el('p','empty-list',error.message));}
   }
-  async function loadDevice(){try{const d=await API('/api/device/status');$('deviceName').textContent=d.hostname||d.device_id||'TRADEVICEPC';$('deviceDetail').textContent=d.connected?'Last seen '+d.last_seen_seconds_ago+' seconds ago':'Waiting for companion pairing or heartbeat';
-      $('deviceBadge').textContent=d.connected?'Online':'Offline';$('devicePill').textContent=d.connected?'PC online':'PC offline';for(const id of ['deviceBadge','devicePill']){$(id).classList.toggle('online',d.connected);$(id).classList.toggle('offline',!d.connected);}$('snapshotDevice').disabled=!d.connected;
+  async function loadDevice(){try{
+      const [d,telemetry]=await Promise.all([API('/api/device/status'),API('/api/device/metrics')]);
+      $('deviceName').textContent=d.hostname||d.device_id||'TRADEVICEPC';
+      $('deviceDetail').textContent=d.connected?('Last seen '+d.last_seen_seconds_ago+' seconds ago · '+(telemetry.agent_version?'Agent '+telemetry.agent_version:'Legacy companion')):'Waiting for companion pairing or heartbeat';
+      $('deviceBadge').textContent=d.connected?'Online':'Offline';$('devicePill').textContent=d.connected?'PC online':'PC offline';
+      for(const id of ['deviceBadge','devicePill']){$(id).classList.toggle('online',d.connected);$(id).classList.toggle('offline',!d.connected);}
+      $('snapshotDevice').disabled=!d.connected;
+      const m=telemetry.metrics||{},ready=telemetry.metrics_available&&Number.isFinite(m.ram_available_bytes)&&Number.isFinite(m.ram_total_bytes);
+      $('telemetryValue').textContent=ready?(m.ram_available_bytes/2**30).toFixed(2)+' / '+(m.ram_total_bytes/2**30).toFixed(2)+' GiB':'Waiting for updated companion';
+      $('telemetryFill').style.width=ready?Math.max(0,Math.min(100,100-(100*m.ram_available_bytes/m.ram_total_bytes)))+'%':'0%';
+      $('telemetrySource').textContent=ready?('Authenticated Windows telemetry · '+telemetry.metrics_age_seconds+' sec ago'):
+        (d.connected?'PC is connected, but legacy companion does not transmit RAM. Upgrade companion from a trusted local Windows session.':telemetry.notice);
+      const hint=$('companionUpgradeHint');if(hint){hint.classList.toggle('hidden',ready||!d.connected);}
     }catch(error){$('deviceDetail').textContent=error.message;$('devicePill').textContent='PC unavailable';$('devicePill').className='pill offline';}}
   async function snapshot(){$('snapshotDevice').disabled=true;try{const job=await API('/api/device/jobs',{method:'POST',body:JSON.stringify({action:'system.status'})});$('deviceResult').textContent='Waiting for Windows companion...';
       for(let i=0;i<40;i++){await new Promise(r=>setTimeout(r,1500));const latest=await API('/api/device/jobs/'+job.id);if(['done','failed'].includes(latest.state)){$('deviceResult').textContent=JSON.stringify(latest.result,null,2);return;}}
@@ -159,10 +170,9 @@
       audio.onerror=()=>{URL.revokeObjectURL(url);speechAudio=null;activityState('idle');wake?.resume();};
       await audio.play();
     }catch(error){
-      if(!window.speechSynthesis){activityState('idle');wake?.resume();notify(error.message);return;}
-      const utterance=new SpeechSynthesisUtterance(words);utterance.lang='id-ID';utterance.rate=.98;
-      utterance.onend=()=>{activityState('idle');wake?.resume();};utterance.onerror=utterance.onend;
-      window.speechSynthesis.speak(utterance);
+      // Do not silently switch to a different system voice. That would make
+      // the applied SONIC persona sound inconsistent across the application.
+      activityState('idle');wake?.resume();notify('Suara persona tidak tersedia: '+error.message);
     }
   }
   function toggleVoice(){voiceOn=!voiceOn;document.querySelectorAll('.voice-control').forEach(b=>{b.classList.toggle('on',voiceOn);b.setAttribute('aria-pressed',String(voiceOn));b.querySelector('span').textContent=voiceOn?'Voice on':'Voice off';});if(!voiceOn){window.speechSynthesis?.cancel();activityState(waiting?'thinking':'idle');}}
@@ -240,7 +250,7 @@
   function updateOperatorForm(){
     const a=$('operatorAction').value;
     $('operatorRecipeWrap').classList.toggle('hidden',a!=='shell.run');
-    $('operatorPathWrap').classList.toggle('hidden',a!=='file.read');
+    $('operatorPathWrap').classList.toggle('hidden',a!=='file.read'&&a!=='file.list');
     $('operatorWindowWrap').classList.toggle('hidden',!a.startsWith('mouse.')&&!a.startsWith('keyboard.'));
     $('operatorTextWrap').classList.toggle('hidden',a!=='keyboard.type');
     $('operatorKeyWrap').classList.toggle('hidden',a!=='keyboard.key');
@@ -250,7 +260,7 @@
   async function proposePCAction(){
     const action=$('operatorAction').value,payload={};
     if(action==='shell.run')payload.recipe=$('operatorRecipe').value;
-    if(action==='file.read')payload.path=$('operatorPath').value.trim();
+    if(action==='file.read'||action==='file.list')payload.path=$('operatorPath').value.trim();
     if(action.includes('keyboard')||action.includes('mouse'))payload.window=$('operatorWindow').value.trim();
     if(action==='keyboard.type')payload.text=$('operatorText').value;
     if(action==='keyboard.key')payload.key=$('operatorKey').value;
@@ -303,7 +313,7 @@
     const reject=button('Discard',async()=>{try{await API('/api/voice/sessions/'+sessionId+'/memories/'+proposal.proposal_id+'/reject',{method:'POST',body:'{}'});card.remove();}catch(e){notify(e.message);}},'plain');controls.append(save,reject);card.append(controls);host.append(card);
   }
   liveVoice=new window.SonicVoice({api:API,onActions:applyGraphActions,onProposal:showVoiceProposal,onError:notify,
-    onState:state=>{$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
+    onState:state=>{window.sonicRealtimeActive=state!=='idle';$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
     onConnected:info=>{$('voiceStateText').textContent='Connecting audio';$('coreModel').textContent=info.model+' / realtime';},
     onTranscript:(role,text)=>{if(!text.trim())return;if(role==='user'&&handleVoiceSessionCommand(text))return;const item=line(role,text);item.append(el('small','execution-note','Voice transcript / not automatically saved'));if(role==='assistant')brainAnswer(text);},
     onReferences:refs=>renderReferences($('brainReceipt'),refs),
@@ -311,6 +321,20 @@
     onPlaybackBlocked:()=>{$('voiceResume').classList.remove('hidden');notify('Tekan Enable audio untuk mengizinkan suara pada browser ini.');},
     onPlaybackResumed:()=>$('voiceResume').classList.add('hidden'),
     onStopped:()=>{$('voiceProposalHost').replaceChildren();$('voiceResume').classList.add('hidden');if(csrf)loadSetup();if(wake?.enabled&&!document.hidden)wake.resume();}
+  });
+  window.addEventListener('sonic:persona-applied',async event=>{
+    // Future TTS and text chats already use the saved server persona.
+    // Realtime voice output cannot be switched in the middle of a session.
+    speechAudio?.pause();speechAudio=null;window.speechSynthesis?.cancel();
+    const changed=event.detail?.active,previous=event.detail?.previous;
+    if(liveVoice?.active){
+      notify('Persona disimpan. Mengakhiri Talk lama agar voice dan style berikutnya sinkron.');
+      await liveVoice.stop('persona_changed');
+      // Explicit microphone consent remains required. Never silently restart it.
+      if(csrf){await openVoiceDialog();$('voiceDialogStatus').textContent='Persona baru aktif. Tekan Start voice untuk memakai pilihan suara dan gaya bahasa baru.';}
+    }else if(changed){
+      notify('SONIC Persona aktif: '+changed.voice_id+' / '+changed.style+' / '+changed.intensity+'.');
+    }
   });
   $('talkSonic').addEventListener('click',openVoiceDialog);$('cancelVoice').addEventListener('click',()=>$('voiceConsent').close());
   $('voiceConsentForm').addEventListener('submit',async e=>{e.preventDefault();if(!$('voiceAgree').checked)return;$('voiceConsent').close();wake?.pause();speech?.stop();window.speechSynthesis?.cancel();try{await liveVoice.start();}catch(error){notify(error.message);}});

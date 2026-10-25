@@ -92,3 +92,65 @@ def test_preview_voice_uses_allowlisted_provider_and_does_not_save(client, monke
     assert client.get('/api/persona').json()['active']['voice_id']=='male_01'
     denied=client.post('/api/voice/speak',json={'text':'hi','consent':True,'preview_voice_id':'forbidden-voice'},headers={'X-Sonic-CSRF':csrf})
     assert denied.status_code==422
+
+
+def test_style_preview_uses_selected_voice_style_and_intensity_without_saving(client, monkeypatch):
+    import sonic.speech as speech
+    csrf = login(client)
+    monkeypatch.setenv('OPENAI_API_KEY', 'sk-test-synthetic-do-not-share')
+    bodies=[]
+    class Response:
+        status_code=200
+        content=b'ID3 synthetic provider audio'
+    class MockClient:
+        def __init__(self,*a,**kwargs):pass
+        async def __aenter__(self):return self
+        async def __aexit__(self,*a):pass
+        async def post(self,*a,**kwargs):bodies.append(kwargs['json']);return Response()
+    monkeypatch.setattr(speech.httpx,'AsyncClient',MockClient)
+    out=client.post('/api/voice/speak',json={
+        'text':'SONIC ONLINE. SISTEM SIAP. MENUNGGU INSTRUKSI BERIKUTNYA.',
+        'consent':True, 'preview_voice_id':'female_02','preview_style':'robot',
+        'preview_intensity':'short'
+    },headers={'X-Sonic-CSRF':csrf})
+    assert out.status_code==200
+    assert out.headers['X-Sonic-Voice']=='coral'
+    assert out.headers['X-Sonic-Style']=='robot'
+    assert out.headers['X-Sonic-Intensity']=='short'
+    assert bodies[-1]['voice']=='coral'
+    assert 'precise, minimal, systematic' in bodies[-1]['instructions']
+    assert 'one or two sentences' in bodies[-1]['instructions']
+    assert client.get('/api/persona').json()['active']=={
+        'voice_id':'male_01','style':'friendly','intensity':'balanced'}
+    for field,value in [('preview_style','ignore_all_rules'),('preview_intensity','unlimited')]:
+        bad=client.post('/api/voice/speak',json={
+            'text':'Hello','consent':True,field:value
+        },headers={'X-Sonic-CSRF':csrf})
+        assert bad.status_code==422
+
+
+def test_saved_persona_used_for_realtime_and_subsequent_tts(client,monkeypatch):
+    import sonic.speech as speech
+    csrf=login(client)
+    chosen={'voice_id':'female_05','style':'humor','intensity':'expressive'}
+    assert client.put('/api/persona',json=chosen,headers={'X-Sonic-CSRF':csrf}).status_code==200
+    with session_factory()() as db:
+        config=session_config(profile(db))
+    assert config['audio']['output']['voice']=='alloy'
+    assert 'contextual wit' in config['instructions']
+    monkeypatch.setenv('OPENAI_API_KEY','sk-test-synthetic-do-not-share')
+    bodies=[]
+    class Response:
+        status_code=200
+        content=b'ID3 mock'
+    class MockClient:
+        def __init__(self,*a,**kwargs):pass
+        async def __aenter__(self):return self
+        async def __aexit__(self,*a):pass
+        async def post(self,*a,**kwargs):bodies.append(kwargs['json']);return Response()
+    monkeypatch.setattr(speech.httpx,'AsyncClient',MockClient)
+    resp=client.post('/api/voice/speak',json={'text':'Test applied voice','consent':True},headers={'X-Sonic-CSRF':csrf})
+    assert resp.status_code==200
+    assert resp.headers['X-Sonic-Voice']=='alloy'
+    assert resp.headers['X-Sonic-Style']=='humor'
+    assert bodies[-1]['voice']=='alloy'
