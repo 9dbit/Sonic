@@ -81,7 +81,7 @@
       $('pcBrokerStatus').classList.toggle('online',broker);
       $('pcBrokerStatus').classList.toggle('offline',!broker);
       $('pcReview').disabled=!broker||this.busy;
-      if(!this.busy)this.status(broker?'Ready for owner review':'PowerShell disabled until local and Railway opt-in');
+      if(!this.busy&&!READY.has($('pcExecState').dataset.state))this.status(broker?'Ready for owner review':'PowerShell disabled until local and Railway opt-in');
       const metrics=online?(telemetry.metrics||{}):{};
       $('pcSampleTime').textContent=online?('Authenticated sample · '+telemetry.metrics_age_seconds+'s ago'):'Telemetry unavailable';
       $('pcCPU').textContent=format(metrics.cpu_usage_percent,'%');
