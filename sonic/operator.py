@@ -29,6 +29,7 @@ def device_metrics(db:Session) -> dict:
     available=bool(fresh and row and metric_age<120)
     return {'device_id':did,'node_id':'device:'+did,'connected':fresh,'heartbeat_age_seconds':age,
             'metrics_available':available,'metrics_age_seconds':metric_age,
+            'sampled_at':row.updated_at.isoformat()+'Z' if row else None,
             'metrics':json.loads(row.metrics_json) if available else {},
             'agent_version':row.agent_version if row else '',
             'capabilities':json.loads(row.capabilities_json) if fresh and row else [],
@@ -214,7 +215,7 @@ def device_stream(event:OutputEvent,request:Request,db:Session=Depends(get_db)):
     row=valid_lease(db,event)
     if row.action!='powershell.exec' or row.state!='leased' or row.expires_at<=utcnow():
         raise HTTPException(409,'Command stream no longer active')
-    if any(ord(ch)<32 and ch not in '\\n\\r\\t' for ch in event.text):
+    if any(ord(ch)<32 and ch not in '\n\r\t' for ch in event.text):
         raise HTTPException(422,'Invalid output control characters')
     existing=db.scalar(select(OperatorOutput).where(OperatorOutput.request_id==row.id,OperatorOutput.sequence==event.sequence))
     if existing:
