@@ -49,8 +49,8 @@ def bounded_setting(key: str, default: int, low: int, high: int) -> int:
 
 
 def limits() -> dict:
-    return {'max_session_seconds': bounded_setting('SONIC_VOICE_MAX_SECONDS', 300, 60, 600),
-            'daily_session_limit': bounded_setting('SONIC_VOICE_DAILY_SESSIONS', 12, 1, 50),
+    return {'max_session_seconds': bounded_setting('SONIC_VOICE_MAX_SECONDS', 1200, 60, 3600),
+            'daily_session_limit': bounded_setting('SONIC_VOICE_DAILY_SESSIONS', 0, 0, 1000),
             'max_tool_calls': TOOL_LIMIT}
 
 
@@ -172,7 +172,7 @@ def reserve_session(db: Session, session_id: str, owner: dict) -> VoiceSession:
         db.rollback()
         raise HTTPException(409, 'Another voice session is active or still closing')
     count = db.scalar(select(func.count()).select_from(VoiceSession).where(VoiceSession.created_at >= now.replace(hour=0, minute=0, second=0, microsecond=0))) or 0
-    if count >= limits()['daily_session_limit']:
+    if limits()['daily_session_limit'] > 0 and count >= limits()['daily_session_limit']:
         db.rollback()
         raise HTTPException(429, 'Daily voice session limit reached (UTC day)')
     row = VoiceSession(id=session_id, owner_sid=auth.sha256(owner['sid']), state='starting',
