@@ -10,3 +10,11 @@
 .notice{pointer-events:none}
 /* Keep inspector sections in normal document flow on compact viewports. */
 .brain-side>*{flex-shrink:0}.search-results button,.hub-list button{flex-shrink:0}
+
+/* SONIC V0.7 Task Manager */
+.task-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:12px 0 18px}
+.task-stat{background:rgba(15,26,41,.76);border:1px solid rgba(100,143,180,.17);border-radius:13px;padding:14px;min-height:72px;display:flex;flex-direction:column;justify-content:space-between;gap:9px}
+.task-stat span{color:#91a8c0;font-size:11px;letter-spacing:.03em}.task-stat strong{font-size:18px;font-weight:650;overflow-wrap:anywhere}
+.task-section{border-top:1px solid rgba(130,158,183,.18);padding:11px 0;color:#e8eff8}
+.task-section summary{cursor:pointer;font-weight:600;font-size:12px}
+.task-section pre{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto;color:#b5c8da;line-height:1.65;margin:10px 0 2px}
