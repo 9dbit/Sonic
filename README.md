@@ -53,3 +53,9 @@ Development branch: feature/sonic-foundation-20261024. Keep source code, Postgre
 ## SONIC V0.5 candidate
 
 See [Presence, PC operator and Voice](docs/SONIC_V05.md). Operator actions require explicit per-request owner approval and a compatible local companion.
+
+## SONIC V0.6 Motion Core & Persona Studio
+
+Owner-requested silver particle motion based on supplied video, rendered in a transparent canvas. Hover/single tap scales 10%; double tap within one second focuses at screen center; say "kembali ke tempat semula" to return. States follow idle/listening/thinking/speaking.
+
+The Setup page now has Persona Studio: ten curated voice choices, ten communication styles, short/balanced/expressive output and three presets. The selections persist in SONIC's existing database. Preview is an explicit paid TTS request; a new Realtime session is needed when changing voice. See [docs/SONIC_V06.md](docs/SONIC_V06.md).

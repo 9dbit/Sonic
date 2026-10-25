@@ -20,7 +20,7 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.5.0'
+VERSION = '0.6.0'
 
 
 @asynccontextmanager
@@ -274,6 +274,7 @@ from .activation import router as activation_router
 from .knowledge import router as knowledge_router
 from .operator import router as operator_router
 from .speech import router as speech_router
+from .persona import router as persona_router
 app.include_router(activation_router)
 from .engine import router as engine_router
 app.include_router(engine_router)
@@ -282,6 +283,7 @@ app.include_router(voice_router)
 app.include_router(knowledge_router)
 app.include_router(operator_router)
 app.include_router(speech_router)
+app.include_router(persona_router)
 
 
 @app.middleware("http")

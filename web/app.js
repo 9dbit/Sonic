@@ -18,7 +18,7 @@
   function button(label,fn,className='small-button'){const b=el('button',className,label);b.type='button';b.addEventListener('click',fn);return b;}
   function dot(category){const d=el('i','node-dot');d.style.setProperty('--dot',window.SonicGraph.palette[category]||'#8293a5');return d;}
   function notify(message){clearTimeout(toastTimer);$('notice').textContent=String(message);$('notice').classList.remove('hidden');toastTimer=setTimeout(()=>$('notice').classList.add('hidden'),7000);}
-  function activityState(next){activity=next;$('assistantCore').dataset.state=next;$('activityLabel').textContent=({idle:'READY',thinking:'THINKING',saving:'SAVED',listening:'LISTENING',speaking:'SPEAKING',error:'UNAVAILABLE'})[next]||'READY';}
+  function activityState(next){activity=next;window.sonicMotion?.setState(next);$('assistantCore').dataset.state=next;$('activityLabel').textContent=({idle:'READY',thinking:'THINKING',saving:'SAVED',listening:'LISTENING',speaking:'SPEAKING',error:'UNAVAILABLE'})[next]||'READY';}
   function clearPrivateUI(){
     wake?.stop();liveVoice?.stop('session_expired');speechAudio?.pause();$('voiceProposalHost').replaceChildren();
     graph.setVisible(false);graph.nodes=[];graph.edges=[];graph.lookup.clear();graph.positions.clear();graph.projected?.clear();graph.selected=null;graph.path=[];graph.highlight=null;graph.initialized=false;
@@ -107,6 +107,7 @@
   function brainAnswer(text,error=false,events=[]){$('brainAnswer').classList.remove('hidden');$('brainAnswer').classList.toggle('error',error);$('brainAnswerText').textContent=text;$('brainReceipt').replaceChildren();events.forEach(e=>appendReceipt($('brainReceipt'),e));}
   function setWaiting(value){waiting=value;$('send').disabled=value;$('brainSend').disabled=value;}
   async function send(source,options={}){if(liveVoice?.active){notify('Stop sesi suara sebelum mengirim chat teks.');return;}const input=$(source==='brain'?'brainMessage':'message'),text=input.value.trim();if(!text||waiting)return;
+    if(window.sonicMotion?.handleCommand(text)){input.value='';notify('SONIC Motion Core kembali ke posisi semula.');return;}
     setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
     try{const r=await API('/api/chat',{method:'POST',body:JSON.stringify({message:text,selected_node_id:graph.selected||null})});pending.querySelector('.body').textContent=r.reply;const events=r.memory_events||[];
       events.forEach(e=>appendReceipt(pending,e));brainAnswer(r.reply,false,events);activityState('idle');
@@ -140,7 +141,7 @@
       $('setupList').replaceChildren();for(const [label,ready] of states){const row=el('div','memory-item');row.append(el('span','',label),el('strong','',ready?'Ready':'Pending'));$('setupList').append(row);}
     }catch(error){$('setupMessage').textContent=error.message;}}
   async function initialize(){const r=await API('/api/session');$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
-    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph()]);setTab(brainConfigured?'brain':'setup');
+    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(brainConfigured?'brain':'setup');
   }
   async function signOut(){await liveVoice?.stop('logout');try{await API('/api/logout',{method:'POST'});}catch(error){notify('Sign out gagal: '+error.message);return;}
     csrf=null;speech?.stop();window.speechSynthesis?.cancel();clearPrivateUI();location.reload();}
@@ -229,7 +230,7 @@
     return d;
   }
   function handleVoiceSessionCommand(text){
-    const s=text.toLocaleLowerCase().trim();if(!/\bsonic\b/.test(s))return false;
+    const s=text.toLocaleLowerCase().trim();if(window.sonicMotion?.handleCommand(s)){notify('Motion Core kembali ke tempat semula.');return true;}if(!/\bsonic\b/.test(s))return false;
     if(/(?:stop all|berhenti semuanya|matikan semua mikrofon)/.test(s)){wake?.stop();liveVoice.stop('voice_stop_all');notify('All SONIC microphones stopped.');return true;}
     if(/(?:selesai|stop|akhiri sesi|end session)/.test(s)){liveVoice.stop('voice_command');return true;}
     if(/(?:tutup panel|hide panel|minimize|sembunyikan panel)/.test(s)){$('voiceSessionBar').classList.add('compact');notify('Panel diminimalkan. Sesi suara tetap aktif.');return true;}

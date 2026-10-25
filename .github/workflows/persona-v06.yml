@@ -1,0 +1,59 @@
+name: SONIC Motion and Persona V06
+on:
+  push:
+    branches:
+      - 'feature/sonic-motion-persona-v06-20261026'
+  pull_request:
+    paths:
+      - 'sonic/**'
+      - 'web/**'
+      - 'tests/**'
+      - 'scripts/e2e_persona_v06.py'
+      - '.github/workflows/persona-v06.yml'
+permissions:
+  contents: read
+jobs:
+  persona-motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies and browser
+        run: |
+          pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Python security, session and persistence regression
+        run: |
+          python -m compileall -q sonic scripts
+          python -m pytest -q
+      - name: Motion interactions and script syntax
+        run: |
+          node --test tests/js/*.test.cjs
+          node --check web/persona-studio.js
+          node --check web/motion-core.js
+          node --check web/app.js
+          node --check web/voice.js
+      - name: Verify media asset
+        run: |
+          test -s web/assets/sonic-particles.mp4
+          file web/assets/sonic-particles.mp4
+          python - <<'PY'
+          from pathlib import Path
+          assert Path('web/assets/sonic-particles.mp4').stat().st_size < 2 * 1024 * 1024
+          PY
+      - name: Desktop and mobile, owner persistence and motion gestures
+        run: python scripts/e2e_persona_v06.py
+      - name: Store test evidence only (no credentials)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-v06-motion-persona-qa
+          path: artifacts/v06/
+          if-no-files-found: warn
+          retention-days: 7

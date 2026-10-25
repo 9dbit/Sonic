@@ -21,7 +21,7 @@ def setup_status(_: dict = Depends(auth.require_owner), db: Session = Depends(ge
     key_present = bool(setting("OPENAI_API_KEY"))
     online = bool(device and (utcnow() - device.last_seen).total_seconds() < 120)
     return {
-        "version": "0.5.0", "owner_configured": owner_ready(),
+        "version": "0.6.0", "owner_configured": owner_ready(),
         "database_connected": True, "provider_key_configured": key_present,
         "provider_verified": False, "provider_verification": "Use Test OpenAI for a live check",
         "model": model_name(), "device_credential_configured": device_ready(),

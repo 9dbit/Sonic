@@ -1,0 +1,16 @@
+/* Motion Core is rendered in a transparent GPU canvas, not a dark backdrop. */
+#sonicMotionAnchor{width:178px;height:178px;position:relative;pointer-events:none;display:block;margin:auto;opacity:0}
+.sonic-motion-float{position:fixed;z-index:16;background:transparent!important;border:0!important;border-radius:50%;overflow:visible;cursor:pointer;outline:0;touch-action:manipulation;transition:left 820ms cubic-bezier(.2,.75,.2,1),top 820ms cubic-bezier(.2,.75,.2,1),width 820ms cubic-bezier(.2,.75,.2,1),height 820ms cubic-bezier(.2,.75,.2,1);will-change:left,top,width,height}
+.sonic-motion-float canvas{display:block;width:100%;height:100%;background:transparent;transform:scale(1);transition:transform 460ms cubic-bezier(.18,.78,.3,1),filter 600ms ease;filter:drop-shadow(0 0 12px rgba(84,142,255,.13))}
+.sonic-motion-float:hover canvas,.sonic-motion-float.hover canvas,.sonic-motion-float.preview canvas{transform:scale(1.10)}
+.sonic-motion-float.focused{z-index:39}
+.sonic-motion-float.focused canvas{filter:drop-shadow(0 0 28px rgba(79,138,243,.2))}
+.sonic-motion-float[data-state=speaking] canvas{filter:drop-shadow(0 0 26px rgba(91,156,255,.36))}
+.sonic-motion-float[data-state=listening] canvas{filter:drop-shadow(0 0 20px rgba(57,121,225,.24))}
+.sonic-motion-float:focus-visible{outline:2px solid #5f9fff;outline-offset:6px}
+.assistant-core .core-orbit{display:none!important}
+.assistant-core{background:transparent!important;box-shadow:none!important;border:0!important}
+@media(max-width:1150px){#sonicMotionAnchor{width:138px;height:138px}}
+@media(max-width:650px){#sonicMotionAnchor{width:90px;height:90px}.sonic-motion-float.focused{z-index:32}}
+@media(max-height:640px) and (max-width:650px){#sonicMotionAnchor{width:70px;height:70px}}
+@media(prefers-reduced-motion:reduce){.sonic-motion-float,.sonic-motion-float canvas{transition-duration:0ms!important}}

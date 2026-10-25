@@ -16,6 +16,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from . import auth
 from .config import setting
 from .memory import SECRET_PATTERN
+from .db import get_db
+from sqlalchemy.orm import Session
+from .persona import profile, provider_voice, persona_instruction, VOICE_BY_ID
 
 router=APIRouter()
 _requests=defaultdict(list)
@@ -25,6 +28,7 @@ class Strict(BaseModel):model_config=ConfigDict(extra='forbid',strict=True)
 class Speech(Strict):
     text:str=Field(min_length=1,max_length=1600)
     consent:Literal[True]
+    preview_voice_id:str|None = Field(default=None, max_length=24)
 class Reference(Strict):
     mime_type:Literal['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/mp4','audio/webm']
     audio_base64:str=Field(min_length=24,max_length=13981016)
@@ -43,16 +47,19 @@ def admit(owner,kind):
 
 
 @router.post('/api/voice/speak')
-async def speak(p:Speech,owner:dict=Depends(auth.require_owner_write)):
+async def speak(p:Speech,owner:dict=Depends(auth.require_owner_write), db:Session=Depends(get_db)):
     text=p.text.strip()
     if not text or SECRET_PATTERN.search(text):
         raise HTTPException(422,'Empty or credential-like text is not sent to speech')
     key=admit(owner,'speak')
-    voice=setting('SONIC_VOICE','cedar')
-    if voice not in {'cedar','marin','onyx','alloy','ash','ballad','coral','echo','sage','shimmer','verse'}:
-        voice='cedar'
+    if p.preview_voice_id is not None and p.preview_voice_id not in VOICE_BY_ID:
+        raise HTTPException(422,'Unknown preview voice')
+    choice = profile(db)
+    if p.preview_voice_id:
+        choice = {**choice, 'voice_id':p.preview_voice_id}
+    voice = provider_voice(choice)
     payload={'model':setting('SONIC_SPEECH_MODEL','gpt-4o-mini-tts'),'voice':voice,'input':text,'response_format':'mp3',
-             'instructions':'Calm, clear, professional synthetic AI assistant voice. Natural Indonesian when content is Indonesian, measured English otherwise. Do not mimic a film character or a real speaker. Read the text without inventing details.'}
+             'instructions':'Natural Indonesian when content is Indonesian; composed English otherwise. Standard synthetic voice. Do not imitate a real person or film character. Read provided words accurately. ' + persona_instruction(choice)}
     try:
         async with _semaphore:
             async with httpx.AsyncClient(timeout=35) as client:

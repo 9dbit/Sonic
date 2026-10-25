@@ -3,18 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#06090d">
+  <meta name="theme-color" content="#07111f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Neural Brain</title>
   <link rel="stylesheet" href="/assets/style.css?v=0.5.0">
   <link rel="stylesheet" href="/assets/engine-style.css?v=0.5.0">
   <link rel="stylesheet" href="/assets/presence-v05.css?v=0.5.0">
+  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.6.0">
+  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.6.0">
   <script src="/assets/graph.js?v=0.5.0" defer></script>
   <script src="/assets/engine-ui.js?v=0.5.0" defer></script>
   <script src="/assets/voice.js?v=0.5.0" defer></script>
   <script src="/assets/wake-v05.js?v=0.5.0" defer></script>
-  <script src="/assets/app.js?v=0.5.0" defer></script>
+  <script src="/assets/motion-math.js?v=0.6.0" defer></script>
+  <script src="/assets/motion-core.js?v=0.6.0" defer></script>
+  <script src="/assets/persona-studio.js?v=0.6.0" defer></script>
+  <script src="/assets/app.js?v=0.6.0" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -48,7 +53,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.4</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.6</b></span><h1 id="pageTitle">Neural Brain</h1></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
@@ -74,7 +79,7 @@
         <aside class="brain-right">
           <div id="graphFilters" class="filter-panel glass"><div class="side-heading"><h2>FILTER</h2><button id="closeFilters" class="mobile-control plain" aria-label="Close filters"><svg><use href="#i-close"/></svg></button></div><div id="filterList"></div><p id="graphLimit" class="small-note"></p></div>
           <div class="assistant-core" id="assistantCore" data-state="idle">
-            <div class="core-orbit"><div class="core-ticks"></div><div class="core-arc"></div><div class="core-inner"><strong>S.O.N.I.C.</strong><span>PERSONAL AI</span></div></div>
+            <div id="sonicMotionAnchor" aria-hidden="true"></div>
             <div class="core-state"><i></i><span id="activityLabel">READY</span></div><span id="coreModel" class="model-label">Model checking</span>
           </div>
         </aside>
@@ -105,6 +110,7 @@
       <section class="panel info-panel hidden" id="setupPanel">
         <div class="section-head"><div><span class="eyebrow">ACTIVATION CHECKLIST</span><h2>SONIC Setup</h2><p>Kesiapan sistem, tanpa menampilkan kredensial.</p></div></div><div id="setupList" class="card-list"></div>
         <div class="device-controls"><button id="refreshSetup">Refresh readiness</button><button id="testProvider">Test OpenAI</button><button id="setupLogout">Sign out</button></div><p id="setupMessage" class="small-note" aria-live="polite"></p>
+        <section id="personaStudio" class="persona-studio" aria-label="SONIC Persona Studio"></section>
         <div class="engine-readiness"><h3>SONIC Voice Studio</h3><p class="small-note">Default voice: standard synthetic Cedar. Audio referensi dapat ditranskripsi untuk teks, bukan voice cloning; musik tidak dipisahkan sepenuhnya.</p><div class="device-controls"><button id="testSonicSpeech" type="button">Play “Welcome back, sir”</button><label class="small-note">Reference MP3 <input id="referenceAudioFile" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/mp4,audio/webm"></label><button id="transcribeReference" type="button">Transcribe spoken words</button></div><pre id="referenceTranscript" class="device-output">No reference transcript yet.</pre><h3>Voice engine</h3><p id="voiceReadiness">Checking configuration...</p><h3>Execution receipts</h3><p class="small-note">Ringkasan eksekusi, bukan pikiran internal model.</p><button id="refreshRuns" type="button" class="outline-button">Refresh activity</button><div id="engineRuns" class="engine-runs"></div></div><div class="setup-help"><strong>OpenAI brain</strong><p>Konfigurasikan <code>OPENAI_API_KEY</code> langsung di Railway SONIC / staging / sonic-web. Jangan menaruh key di chat atau memory.</p><p>Memory eksplisit dan graph dapat digunakan tanpa panggilan model. Browser dictation dan playback tetap tersedia. Talk to SONIC menggunakan sesi OpenAI Realtime setelah persetujuan. Akses model dan mikrofon tetap perlu diuji pada perangkat.</p></div>
       </section>
       <div id="voiceSessionBar" class="voice-session-bar hidden" role="region" aria-label="Active voice session">
@@ -130,6 +136,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.5</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.6</small></form></div>
 </body>
 </html>

@@ -206,3 +206,13 @@ class OperatorRequest(Base):
     lease_hash: Mapped[str] = mapped_column(String(64), default='', nullable=False)
     result_json: Mapped[str] = mapped_column(Text, default='', nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class PersonaPreference(Base):
+    """One-owner settings; separate from saved facts and conversation history."""
+    __tablename__ = 'persona_preferences'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    voice_id: Mapped[str] = mapped_column(String(24), default='male_01', nullable=False)
+    style: Mapped[str] = mapped_column(String(24), default='friendly', nullable=False)
+    intensity: Mapped[str] = mapped_column(String(24), default='balanced', nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
