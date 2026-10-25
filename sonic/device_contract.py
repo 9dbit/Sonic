@@ -3,7 +3,7 @@ import math
 import re
 from typing import Any
 
-ACTIONS = frozenset({'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect'})
+ACTIONS = frozenset({'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect', 'powershell.exec', 'process.terminate'})
 RECIPES = {
     'clock': 'Get-Date -Format o',
     'memory': 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress',
@@ -42,18 +42,45 @@ def parse_inspection(command: str) -> list[str]:
     raise ValueError('INSPECTION_ONLY')
 
 
+def validate_powershell_command(command: str, timeout_seconds: int) -> str:
+    """Bounded raw PowerShell, allowed only after the separate owner approval gate.
+
+    This is NOT a PowerShell security sandbox. The companion runs as a limited
+    Windows user and the owner must approve the exact script before execution.
+    """
+    if not isinstance(command, str) or not 1 <= len(command.strip()) <= 1200:
+        raise ValueError('POWERSHELL_COMMAND_LENGTH')
+    if type(timeout_seconds) is not int or not 1 <= timeout_seconds <= 60:
+        raise ValueError('POWERSHELL_TIMEOUT_RANGE')
+    if command.count('\n') > 12 or any(ord(ch) < 32 and ch not in '\r\n\t' for ch in command):
+        raise ValueError('POWERSHELL_CONTROL_CHARACTERS')
+    if re.search(r'(?i)(SONIC_DEVICE_TOKEN|device-token\\.dpapi|SONIC_OWNER_TOKEN|SONIC_SESSION_SECRET|OPENAI_API_KEY|DATABASE_URL)', command):
+        raise ValueError('POWERSHELL_SECRET_ACCESS_REFUSED')
+    if re.search(r'(?i)(-EncodedCommand|Set-ExecutionPolicy|Start-Process\s+[^\n]*-Verb\s+RunAs)', command):
+        raise ValueError('POWERSHELL_ELEVATION_REFUSED')
+    return command.strip()
+
+
 def clean_request(action: str, payload: dict) -> dict:
     if action not in ACTIONS or not isinstance(payload, dict):
         raise ValueError('ACTION_NOT_ALLOWED')
     fields = {'shell.run': {'recipe'}, 'file.read': {'path'}, 'mouse.click': {'window', 'x', 'y'},
               'keyboard.type': {'window', 'text'}, 'keyboard.key': {'window', 'key'},
-              'file.list': {'path'}, 'process.list': set(), 'window.list': set(), 'shell.inspect': {'command'}}[action]
+              'file.list': {'path'}, 'process.list': set(), 'window.list': set(), 'shell.inspect': {'command'},
+              'powershell.exec': {'command','timeout_seconds'}, 'process.terminate': {'pid','expected_name'}}[action]
     if set(payload) != fields:
         raise ValueError('INVALID_ARGUMENTS')
     if action == 'shell.run' and (not isinstance(payload['recipe'], str) or payload['recipe'] not in RECIPES):
         raise ValueError('SHELL_RECIPE_NOT_ALLOWED')
     if action == 'shell.inspect':
         parse_inspection(payload['command'])
+    if action == 'powershell.exec':
+        result_command = validate_powershell_command(payload['command'],payload['timeout_seconds'])
+        payload = {**payload, 'command': result_command}
+    if action == 'process.terminate':
+        pid, name = payload['pid'], payload['expected_name']
+        if type(pid) is not int or not 4 < pid < 2**31 or not isinstance(name,str) or not re.fullmatch(r'[a-zA-Z0-9_. -]{1,100}',name):
+            raise ValueError('INVALID_PROCESS_TARGET')
     if action in ('file.read','file.list'):
         path = payload['path']
         if not isinstance(path, str) or not 1 <= len(path) <= 500 or '\0' in path or path.startswith(('\\\\', '//')):
