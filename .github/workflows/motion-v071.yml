@@ -1,0 +1,55 @@
+name: SONIC V0.7.1 Emissive Cyan Motion
+
+on:
+  push:
+    branches:
+      - feature/sonic-cyan-motion-v071-20261026
+  pull_request:
+    paths:
+      - web/motion-*
+      - web/index.html
+      - sonic/**
+      - tests/**
+      - scripts/e2e_motion_v071.py
+      - scripts/qa_server.py
+      - .github/workflows/motion-v071.yml
+
+permissions:
+  contents: read
+
+jobs:
+  motion-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Python packages and Chromium
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Backend regression
+        run: |
+          python -m compileall -q sonic scripts
+          python -m pytest -q
+      - name: Frontend syntax and interaction tests
+        run: |
+          node --check web/motion-core.js
+          node --check web/motion-math.js
+          node --check web/app.js
+          node --test tests/js/*.test.cjs
+      - name: Validate cyan pixels and gestures on desktop and mobile
+        run: python scripts/e2e_motion_v071.py
+      - name: Upload safe screenshots and metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-v071-cyan-motion-evidence
+          path: artifacts/motion-v071/
+          if-no-files-found: warn
+          retention-days: 7
