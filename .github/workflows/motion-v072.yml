@@ -1,0 +1,55 @@
+name: SONIC V0.7.2 Sharp Motion and Solid UI
+
+on:
+  push:
+    branches:
+      - feature/sonic-sharp-blue-theme-v072-20261026
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'sonic/**'
+      - 'tests/**'
+      - 'scripts/e2e_motion_v072.py'
+      - 'scripts/qa_server.py'
+      - '.github/workflows/motion-v072.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  motion-theme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test requirements and Chromium
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Python regression
+        run: |
+          python -m compileall -q sonic scripts
+          python -m pytest -q
+      - name: Validate JavaScript syntax and functionality
+        run: |
+          node --check web/motion-math.js
+          node --check web/motion-core.js
+          node --check web/graph.js
+          node --check web/app.js
+          node --test tests/js/*.test.cjs
+      - name: Desktop/mobile real Canvas and CSS assertions
+        run: python scripts/e2e_motion_v072.py
+      - name: Preserve QA evidence, not credentials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-v072-black-sharp-motion-qa
+          path: artifacts/motion-v072/
+          if-no-files-found: warn
+          retention-days: 7
