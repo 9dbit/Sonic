@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   window.applySonicGraphActions=async function(actions,context){
-    if(!Array.isArray(actions))return [];
+    if(!Array.isArray(actions)||!actions.length)return [];
     const outcomes=[];await context.refresh();
     for(const action of actions.slice(0,6)){
       if(!action||typeof action!=='object')continue;

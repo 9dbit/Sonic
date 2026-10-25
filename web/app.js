@@ -50,7 +50,7 @@
       $('graphCounts').textContent=data.counts.memories+' memories / '+data.counts.nodes+' nodes / '+data.counts.edges+' links';
       $('graphEmpty').classList.toggle('hidden',data.counts.memories!==0);
       $('graphLimit').textContent=data.truncated?'Tampilan dibatasi '+data.counts.displayed_memories+' catatan / '+data.limits.topics+' topik.':'';
-      renderFilters();renderHubs();renderSearch();renderInspector(graph.lookup.get(graph.selected)||null,graph.path);
+      renderFilters();renderHubs();renderSearch();renderInspector(graph.lookup.get(graph.selected)||null,graph.path,{preserveDraft:true});
     }catch(error){notify('Graph belum dapat dimuat: '+error.message);}
   }
   function renderFilters(){const host=$('filterList');host.replaceChildren();
@@ -67,7 +67,14 @@
     if(!matches.length){host.append(el('p','search-empty','Tidak ada node yang cocok.'));return;}
     host.append(...matches.slice(0,12).map(nodeButton));if(matches.length>12)host.append(el('p','search-empty','Menampilkan 12 dari '+matches.length+' hasil.'));
   }
-  function renderInspector(node,path=[]){const host=$('nodeInspector');host.replaceChildren();
+  function renderInspector(node,path=[],{preserveDraft=false}={}){const host=$('nodeInspector');
+    const draft=host.querySelector('.link-form');
+    if(preserveDraft&&draft&&node&&host.dataset.nodeId===node.id){
+      const target='memory:'+draft.querySelector('select').value;
+      if(graph.lookup.has(target))return;
+      notify('Catatan tujuan sudah tidak tersedia. Hubungan belum disimpan.');
+    }
+    host.dataset.nodeId=node?.id||'';host.replaceChildren();
     if(!node){host.append(el('p','','Pilih sebuah node untuk melihat isi, sumber, dan koneksinya.'));return;}
     host.append(el('span','node-kind',categoryNames[node.category]+' / '+node.degree+' connections'),el('h3','',node.label),el('p','',node.detail));
     let source='Source: '+node.source;if(node.source_message_id)source+=' / chat #'+node.source_message_id;if(node.created_at)source+=' / '+new Date(node.created_at).toLocaleString('id-ID');
@@ -90,7 +97,7 @@
     const labelInput=el('input');labelInput.type='text';labelInput.maxLength=80;labelInput.value='related to';labelInput.required=true;labelInput.setAttribute('aria-label','Relation label');
     const consent=el('label'),check=el('input');check.type='checkbox';check.required=true;consent.append(check,document.createTextNode(' Saya konfirmasi hubungan ini.'));
     const submit=el('button','small-button','Save relation');submit.type='submit';form.append(select,labelInput,consent,submit);
-    form.addEventListener('submit',async e=>{e.preventDefault();submit.disabled=true;try{const result=await API('/api/knowledge/links',{method:'POST',body:JSON.stringify({source_id:node.memory_id,target_id:Number(select.value),label:labelInput.value})});notify(result.created?'Hubungan tersimpan.':'Hubungan ini sudah tersimpan.');await refreshGraph();}catch(error){notify(error.message);}finally{submit.disabled=false;}});host.append(form);
+    form.addEventListener('submit',async e=>{e.preventDefault();submit.disabled=true;try{const result=await API('/api/knowledge/links',{method:'POST',body:JSON.stringify({source_id:node.memory_id,target_id:Number(select.value),label:labelInput.value})});notify(result.created?'Hubungan tersimpan.':'Hubungan ini sudah tersimpan.');form.remove();await refreshGraph();}catch(error){notify(error.message);}finally{submit.disabled=false;}});host.append(form);
   }
   function line(role,content,error=false){$('hero')?.remove();const wrapper=el('div','message '+role+(error?' error':''));wrapper.append(el('span','speaker',role==='user'?'YOU':'SONIC'),el('div','body',content));$('chatFeed').append(wrapper);$('chatFeed').scrollTop=$('chatFeed').scrollHeight;return wrapper;}
   function appendReceipt(host,event){if(!event?.saved||!Number.isInteger(event.memory_id))return;

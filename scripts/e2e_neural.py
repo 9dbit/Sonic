@@ -97,6 +97,12 @@ def run():
                     form = page.locator('.link-form')
                     form.locator('input[type=text]').fill('contoh hubungan terkonfirmasi')
                     form.locator('input[type=checkbox]').check()
+                    # A delayed/manual graph refresh must not discard a consented draft.
+                    with page.expect_response(lambda r: '/api/knowledge/graph' in r.url and r.request.method == 'GET'):
+                        page.locator('#refreshGraph').click()
+                    page.wait_for_timeout(250)
+                    expect(form.locator('input[type=text]')).to_have_value('contoh hubungan terkonfirmasi')
+                    expect(form.locator('input[type=checkbox]')).to_be_checked()
                     form.get_by_role('button', name='Save relation').click()
                     expect(page.locator('#nodeInspector .saved-link').first).to_be_visible()
                     page.locator('[data-depth="2"]').click()
