@@ -148,3 +148,16 @@ def test_approved_process_guard_and_unknown_args():
         with pytest.raises(ValueError):
             clean_request('process.terminate',payload)
     assert validate_powershell_command('Get-Date;Get-Process',30)=='Get-Date;Get-Process'
+
+
+def test_full_v08_heartbeat_capabilities_accepted(client):
+    full=['system.status','system.metrics','shell.run','file.read','file.list',
+          'process.list','window.list','mouse.click','keyboard.type',
+          'keyboard.key','shell.inspect','process.terminate','powershell.exec']
+    r=heartbeat(client,full)
+    assert r.status_code==200,r.text
+    h=login(client)
+    cap=client.get('/api/operator/capabilities').json()
+    assert set(full).issubset(set(cap['capabilities']))
+    denied=heartbeat(client,full+['unrecognized.action']*12)
+    assert denied.status_code==422
