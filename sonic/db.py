@@ -208,6 +208,19 @@ class OperatorRequest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
+# V0.8 append-only console stream; no changes to existing device or owner tables.
+class OperatorOutput(Base):
+    __tablename__ = 'operator_output_v08'
+    __table_args__ = (UniqueConstraint('request_id','sequence',name='uq_operator_output_sequence'),)
+    id: Mapped[int] = mapped_column(Integer,primary_key=True,autoincrement=True)
+    request_id: Mapped[str] = mapped_column(String(36),nullable=False,index=True)
+    sequence: Mapped[int] = mapped_column(Integer,nullable=False)
+    channel: Mapped[str] = mapped_column(String(12),nullable=False)
+    content: Mapped[str] = mapped_column(Text,nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime,default=utcnow,nullable=False)
+
+
+
 class PersonaPreference(Base):
     """One-owner settings; separate from saved facts and conversation history."""
     __tablename__ = 'persona_preferences'
