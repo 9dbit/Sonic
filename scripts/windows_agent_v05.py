@@ -385,7 +385,7 @@ def system_status():
             'sonic_agent_version':'0.8.0','capabilities':['system.status','system.metrics']}
 
 
-def run_once():
+def run_once(only_heartbeat=False):
     m=extended_stats()
     shell_enabled=os.environ.get('SONIC_ENABLE_POWERSHELL_EXEC','').lower() in ('1','true','yes')
     capabilities=['system.status','system.metrics','shell.run','file.read','file.list',
@@ -396,6 +396,7 @@ def run_once():
         'platform':platform.platform()[:200],'agent_version':'0.8.0',
         'capabilities':capabilities,
         'metrics':m,'gui_targets':[]})
+    if only_heartbeat:return
     job=api('/api/device/next',{}).get('job')
     if job:
         if job.get('action')=='system.status':
@@ -422,14 +423,14 @@ def run_once():
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--once',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--once',action='store_true');parser.add_argument('--preflight',action='store_true');args=parser.parse_args()
     ensure_config()
     while True:
-        try:run_once()
+        try:run_once(only_heartbeat=args.preflight)
         except (HTTPError,URLError,TimeoutError,ValueError,RuntimeError) as error:
             print('SONIC companion unavailable:',type(error).__name__,flush=True)
-            if args.once:raise
-        if args.once:break
+            if args.once or args.preflight:raise
+        if args.once or args.preflight:break
         time.sleep(8)
 
 
