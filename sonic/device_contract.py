@@ -54,7 +54,7 @@ def validate_powershell_command(command: str, timeout_seconds: int) -> str:
         raise ValueError('POWERSHELL_TIMEOUT_RANGE')
     if command.count('\n') > 12 or any(ord(ch) < 32 and ch not in '\r\n\t' for ch in command):
         raise ValueError('POWERSHELL_CONTROL_CHARACTERS')
-    if re.search(r'(?i)(SONIC_DEVICE_TOKEN|device-token\\.dpapi|SONIC_OWNER_TOKEN|SONIC_SESSION_SECRET|OPENAI_API_KEY|DATABASE_URL)', command):
+    if re.search(r'(?i)(SONIC_DEVICE_TOKEN|device-token\.dpapi|SONIC_OWNER_TOKEN|SONIC_SESSION_SECRET|OPENAI_API_KEY|DATABASE_URL)', command):
         raise ValueError('POWERSHELL_SECRET_ACCESS_REFUSED')
     if re.search(r'(?i)(-EncodedCommand|Set-ExecutionPolicy|Start-Process\s+[^\n]*-Verb\s+RunAs)', command):
         raise ValueError('POWERSHELL_ELEVATION_REFUSED')
