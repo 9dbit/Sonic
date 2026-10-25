@@ -14,6 +14,7 @@ import platform
 import subprocess
 import sys
 import time
+import re
 from datetime import datetime, timezone
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
@@ -69,6 +70,107 @@ def stats():
     return {'ram_total_bytes':int(s.ullTotalPhys),'ram_available_bytes':int(s.ullAvailPhys),
             'ram_used_percent':int(s.dwMemoryLoad),'uptime_seconds':int(kernel32.GetTickCount64()/1000),
             'logical_cpu_count':os.cpu_count() or 1,'disks':disks}
+
+
+def inspection_command(value):
+    """Second independent policy enforcement on the Windows side."""
+    words=value.strip().split() if isinstance(value,str) else []
+    allowed={'Get-Process','Get-Service','Get-NetAdapter','Get-NetIPConfiguration',
+             'Get-NetTCPConnection','Get-Volume','Get-Disk','Get-PhysicalDisk',
+             'Get-ScheduledTask','Get-HotFix','Get-Date'}
+    classes={'Win32_OperatingSystem','Win32_Processor','Win32_ComputerSystem',
+             'Win32_LogicalDisk','Win32_ComputerSystemProduct','Win32_VideoController'}
+    if len(words)==1 and words[0] in allowed:return words
+    if len(words)==2 and words[0]=='Get-CimInstance' and words[1] in classes:return words
+    if len(words)==3 and words[0] in {'Get-Process','Get-Service'} and words[1]=='-Name' and re.fullmatch(r'[A-Za-z0-9_.-]{1,56}',words[2]):return words
+    if len(words)==3 and words[0]=='Get-Process' and words[1]=='-Id' and words[2].isdecimal() and 0<int(words[2])<2**31:return words
+    if len(words)==3 and words[0]=='Get-NetTCPConnection' and words[1]=='-State' and words[2] in {'Established','Listen','TimeWait','CloseWait'}:return words
+    raise PermissionError('INSPECTION_ONLY')
+
+
+def extended_stats():
+    """Best effort Task Manager snapshot, no invasive collection or credential access."""
+    out=stats();out['unavailable']=[]
+    try:
+        import psutil
+    except ImportError:
+        out['unavailable'].append('psutil_missing')
+        return out
+    try:
+        out['cpu_usage_percent']=psutil.cpu_percent(interval=0.2)
+        out['cpu_per_core_percent']=psutil.cpu_percent(interval=0.1,percpu=True)[:64]
+        out['physical_cpu_count']=psutil.cpu_count(logical=False) or 0
+        freq=psutil.cpu_freq()
+        if freq:out['cpu_frequency_mhz']=freq.current
+    except (OSError,AttributeError,ValueError):out['unavailable'].append('cpu')
+    try:
+        sw=psutil.swap_memory()
+        out.update(swap_total_bytes=sw.total,swap_used_bytes=sw.used)
+    except (OSError,AttributeError):out['unavailable'].append('swap')
+    try:
+        counters=psutil.disk_io_counters()
+        if counters:
+            out['disk_read_bytes_per_second']=0
+            out['disk_write_bytes_per_second']=0
+            before=(counters.read_bytes,counters.write_bytes)
+            time.sleep(0.2)
+            after=psutil.disk_io_counters()
+            out['disk_read_bytes_per_second']=max(0,(after.read_bytes-before[0])*5)
+            out['disk_write_bytes_per_second']=max(0,(after.write_bytes-before[1])*5)
+    except (OSError,AttributeError,TypeError):out['unavailable'].append('disk_io')
+    try:
+        traffic=psutil.net_io_counters()
+        if traffic:
+            out['network_rx_bytes']=traffic.bytes_recv
+            out['network_tx_bytes']=traffic.bytes_sent
+        adapters=[]
+        for name,stat in list(psutil.net_if_stats().items())[:12]:
+            adapters.append({'name':name,'is_up':stat.isup,'speed_mbps':max(0,stat.speed)})
+        out['network_interfaces']=adapters
+    except (OSError,AttributeError):out['unavailable'].append('network')
+    try:
+        entries=[]
+        for p in psutil.process_iter(['pid','name','memory_info','cpu_percent','num_threads','status']):
+            try:
+                d=p.info
+                entries.append({'pid':d['pid'],'name':d.get('name') or '',
+                    'ram_bytes':d['memory_info'].rss if d.get('memory_info') else 0,
+                    'cpu_percent':max(0,d.get('cpu_percent') or 0),
+                    'threads':max(0,d.get('num_threads') or 0),'status':d.get('status') or ''})
+            except (psutil.NoSuchProcess,psutil.AccessDenied,AttributeError):continue
+        out['process_count']=len(entries)
+        out['processes']=sorted(entries,key=lambda x:x['ram_bytes'],reverse=True)[:35]
+    except (OSError,AttributeError):out['unavailable'].append('processes')
+    try:
+        services=list(psutil.win_service_iter())
+        out['service_count']=len(services)
+        out['services']=[{'name':s.name(),'status':s.status(),
+            'start_type':s.start_type()} for s in services[:35]]
+    except (OSError,AttributeError):out['unavailable'].append('services')
+    try:
+        import winreg
+        apps=[]
+        keys=[(winreg.HKEY_CURRENT_USER,'HKCU'),(winreg.HKEY_LOCAL_MACHINE,'HKLM')]
+        for hive,scope in keys:
+            try:
+                with winreg.OpenKey(hive,r'Software\\Microsoft\\Windows\\CurrentVersion\\Run') as key:
+                    for i in range(min(25,winreg.QueryInfoKey(key)[1])):
+                        name,_,_=winreg.EnumValue(key,i)
+                        apps.append({'name':name[:100],'scope':scope})
+            except OSError:continue
+        out['startup_apps']=apps[:35]
+    except ImportError:out['unavailable'].append('startup')
+    # GPU counters are optional; never fake a usage percentage.
+    try:
+        command=['powershell.exe','-NoProfile','-NonInteractive','-Command',
+                 'Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name']
+        proc=subprocess.run(command,timeout=4,capture_output=True,text=True,
+                            errors='replace',shell=False)
+        if proc.returncode==0:
+            out['gpus']=[{'name':n.strip()[:110]} for n in proc.stdout.splitlines() if n.strip()][:8]
+        else:out['unavailable'].append('gpu')
+    except (OSError,subprocess.TimeoutExpired):out['unavailable'].append('gpu')
+    return out
 
 
 def notepad_foreground(hwnd_text):
@@ -200,6 +302,13 @@ def list_windows():
 
 
 def execute(action,params):
+    if action=='shell.inspect':
+        parts=inspection_command(params.get('command',''))
+        # PowerShell -Command receives only server- and device-allowlisted literal words.
+        run=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',
+                            ' '.join(parts)+' | Select-Object -First 35 | Format-Table -AutoSize | Out-String -Width 130'],
+                            timeout=8,capture_output=True,text=True,errors='replace',shell=False)
+        return {'exit_code':run.returncode,'output':run.stdout[:9000],'stderr':run.stderr[:500]}
     if action=='file.list':return list_workspace(params.get('path',''))
     if action=='process.list':return list_processes()
     if action=='window.list':return list_windows()
@@ -257,10 +366,10 @@ def system_status():
 
 
 def run_once():
-    m=stats()
+    m=extended_stats()
     api('/api/device/heartbeat',{'device_id':DEVICE,'hostname':platform.node()[:120],
-        'platform':platform.platform()[:200],'agent_version':'0.5.0',
-        'capabilities':['system.status','system.metrics','shell.run','file.read','file.list','process.list','window.list','mouse.click','keyboard.type','keyboard.key'],
+        'platform':platform.platform()[:200],'agent_version':'0.7.0',
+        'capabilities':['system.status','system.metrics','shell.run','file.read','file.list','process.list','window.list','mouse.click','keyboard.type','keyboard.key','shell.inspect'],
         'metrics':m,'gui_targets':[]})
     job=api('/api/device/next',{}).get('job')
     if job:
