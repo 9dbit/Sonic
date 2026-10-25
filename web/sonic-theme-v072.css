@@ -1,0 +1,269 @@
+/*
+ * SONIC V0.7.2 | Black / Dark Grey / Solid Blue
+ *
+ * A late-loaded, deliberately scoped design-system override. Functional graph
+ * edges, focus outlines, selection and warnings are not decorative dividers.
+ * The motion canvas keeps its separate cyan-blue-only colors.
+ */
+:root {
+  color-scheme: dark;
+  --base: #000000;
+  --panel: #171717;
+  --line: transparent;
+  --muted: #ffffff;
+  --text: #ffffff;
+  --accent: #4da3ff;
+  --blue: #156bff;
+  --sonic-blue: #156bff;
+  --sonic-blue2: #4da3ff;
+  --sonic-ink: #000000;
+  --sonic-surface: #171717;
+  --sonic-glow: transparent;
+  --sonic-bg: #000000;
+  --sonic-ui: #171717;
+  --sonic-ui-raised: #222222;
+  --sonic-button: #156bff;
+  --sonic-text-blue: #4da3ff;
+  --sonic-text-white: #ffffff;
+  --sonic-text-orange: #ff9f2f;
+}
+
+/* True black surfaces: no navy tint, subtle vignette or radial gradient. */
+html, body, .app, .content,
+.panel, .brain-panel, .chat-panel, .info-panel, .graph-stage,
+.graph-empty, .login-overlay {
+  background: #000000 !important;
+  background-image: none !important;
+}
+body, .app, .content, .login-overlay { color: #ffffff !important; }
+
+/* App chrome is dark grey, while the actual workspace remains 100% black. */
+.sidebar, .topbar {
+  background: #141414 !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.sidebar .brand {
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #4da3ff !important;
+}
+.hero-mark, .login-orb {
+  color: #4da3ff !important;
+  background: #222222 !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+/* Surfaces share a neutral, non-glassy dark-grey material. */
+.glass, .brain-side, .filter-panel, .graph-toolbar, .node-inspector,
+.composer, .graph-search, .brain-answer, .card-list,
+.memory-item, .device-card, .device-telemetry, .operator-panel,
+.task-stat, .task-section, .voice-session-bar, .voice-proposal,
+.voice-dialog, .sonic-popup, .node-tooltip, .login-card, .setup-help,
+.persona-studio, .persona-voice-column, .persona-config > div,
+.persona-state, .persona-config select, .engine-readiness,
+.device-output, .operator-review, .receipt, .notice, .hero,
+.graph-search input, .memory-form input, .login-card input,
+.link-form input, .link-form select,
+.operator-panel input, .operator-panel select,
+.memory-form, .memory-list, .input-button,
+#nodeDetailPopup, #operatorApproval, #voiceConsent {
+  background: #171717 !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.graph-toolbar, .composer, .graph-search,
+.persona-voice-column, .persona-config > div, .persona-state,
+.link-form input, .link-form select,
+.persona-config select, .operator-panel input, .operator-panel select,
+.memory-form input, .login-card input {
+  background: #222222 !important;
+  background-image: none !important;
+}
+
+/* Deliberately remove decorative separators, not meaningful graph links. */
+.sidebar, .topbar, .panel, .info-panel, .glass, .filter-panel,
+.graph-toolbar, .graph-search, .node-inspector, .node-inspector .source-line,
+.device-card, .memory-item, .memory-form input, .login-card input,
+.memory-actions button, .node-actions button, .saved-link,
+.telemetry-row, .telemetry-bar, .task-stat, .task-section,
+.engine-run, .engine-readiness, .setup-help,
+.voice-dialog, .voice-session-bar, .voice-disclosure,
+.voice-proposal, .persona-studio, .persona-config,
+.persona-config > div, .persona-voice-column, .persona-voice-row,
+.persona-tools, .persona-state, .sonic-popup, .operator-review,
+.composer, .message.user .body, .message.assistant .body,
+.node-tooltip, .notice, .brain-answer, .receipt,
+.operator-panel input, .operator-panel select {
+  border: 0 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+hr, .divider, .subtle-line, .panel-line { display: none !important; }
+.voice-disclosure { border-left: 0 !important; border-radius: 12px !important; }
+.engine-run { gap: 12px; }
+.task-section { padding: 12px 0 !important; }
+
+/* Text uses exactly white, blue and orange. Preserve native canvas colors. */
+.app :is(h1,h2,h3,h4,h5,h6,p,span,small,label,strong,b,em,div,
+         button,input,textarea,select,summary,pre,time,a,legend,output),
+.login-overlay :is(h1,h2,p,span,small,label,strong,button,input),
+.voice-dialog :is(h1,h2,p,span,small,label,strong,button,input) {
+  color: #ffffff !important;
+}
+.app :is(input,textarea,select), .login-overlay input {
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  caret-color: #4da3ff !important;
+}
+.app input::placeholder, .app textarea::placeholder,
+.login-overlay input::placeholder {
+  color: #ffffff !important;
+  opacity: .64;
+}
+.app :is(a, .eyebrow, .node-kind, .metadata, .section-label, .persona-eyebrow,
+         .answer-label strong, .graph-hint, .graph-engine, .persona-feedback,
+         .persona-selection, .node-inspector .node-kind, .filter-panel h2,
+         .core-state, .side-heading h2, .section-head .eyebrow,
+         .top-title .eyebrow, .model-label, .source-line a),
+.login-overlay .eyebrow, .login-card small {
+  color: #4da3ff !important;
+}
+.app .nav.active, .app .nav.active :is(span,svg),
+.app .nav.active svg use, .app button:not(.plain):not(.nav) svg {
+  color: #ffffff !important;
+}
+.app :is(.notice, .error, .warning, .offline, .danger, #loginError,
+         .message.error .body, .persona-error, .setup-error),
+.login-overlay #loginError {
+  color: #ff9f2f !important;
+}
+.app :is(.pill.online, .pill.online *, .online-label,
+         .voice-session-bar time, .persona-state) {
+  color: #4da3ff !important;
+}
+.app :is(.pill.offline, .pill.offline *, .stop-voice:disabled) {
+  color: #ff9f2f !important;
+}
+.app .small-note, .app .disclaimer, .app .execution-note,
+.app .source-line, .app .node-inspector p,
+.app .persona-voice-info small, .app .persona-note {
+  color: #ffffff !important;
+}
+
+/* Every filled action is a flat solid blue, including icon actions. */
+.app button:not(.nav):not(.plain):not(.logout),
+.login-overlay button, .operator-review button, .voice-dialog button:not(.plain),
+.sonic-popup button:not(.plain) {
+  background: #156bff !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+.app button:not(.nav):not(.plain):not(.logout):not(:disabled):hover,
+.login-overlay button:not(:disabled):hover,
+.operator-review button:not(:disabled):hover {
+  background: #267bff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+.app button:not(.nav):not(.plain):not(.logout):active { background: #0e55cc !important; }
+.app button:disabled, .login-overlay button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.app .nav {
+  color: #ffffff !important;
+  background: #171717 !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.app .nav:hover { background: #222222 !important; }
+.app .nav.active, .app .nav.active:hover {
+  background: #156bff !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+.app .nav:not(.active) svg { color: #ffffff !important; }
+.app button.plain, .app button.logout,
+.app .hub-list button, .app .search-results button {
+  background: #222222 !important;
+  background-image: none !important;
+  border: 0 !important;
+  color: #4da3ff !important;
+  box-shadow: none !important;
+}
+.app .hub-list button:hover, .app .search-results button:hover,
+.app button.plain:hover { background: #292929 !important; }
+.app .graph-toolbar button,
+.app .graph-toolbar button[aria-pressed=true],
+.app .depth-controls button,
+.app .depth-controls button.active {
+  background: #156bff !important;
+  color: #ffffff !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.app :is(.voice-button.on, .mic-control.on, .wake-pill[aria-pressed=true],
+         .voice-control.on, .outline-button) {
+  background: #156bff !important;
+  background-image: none !important;
+  color: #ffffff !important;
+}
+.app .pill, .app .persona-state, .app .number-badge {
+  background: #222222 !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Avoid glows from state indicators, voice controls and common inputs. */
+.app .core-state i, .app .voice-live i,
+.app .pill::before, .app .core-orbit, .app .core-inner,
+.app .graph-toolbar, .app .persona-top,
+.app .sonic-motion-float canvas {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+.app .core-state i, .app .voice-live i,
+.app .pill.online::before { background: #156bff !important; }
+.app .pill.offline::before { background: #ff9f2f !important; }
+.app input[type=checkbox], .app input[type=radio],
+.login-overlay input[type=checkbox] { accent-color: #156bff !important; }
+
+/* Text legibility and keyboard focus matter more than ornamental lines. */
+.app :is(button,a,input,textarea,select,[tabindex]):focus-visible,
+.login-overlay :is(button,input):focus-visible,
+.voice-dialog :is(button,input):focus-visible {
+  outline: 2px solid #4da3ff !important;
+  outline-offset: 3px !important;
+}
+.app :is(button, .nav, .glass, .card-list, .brain-side, .filter-panel),
+.login-overlay button { text-shadow: none !important; }
+.app .composer, .app .graph-search, .app .device-card,
+.app .memory-item, .app .task-stat { outline: none; }
+.sonic-motion-float canvas {
+  background: transparent !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+@media (max-width: 650px) {
+  .sidebar, .topbar { background: #141414 !important; }
+  .brain-side, .filter-panel, .brain-answer { background: #171717 !important; }
+}
