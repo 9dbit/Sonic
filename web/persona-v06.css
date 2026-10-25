@@ -1,0 +1,28 @@
+/* Customizable SONIC persona. Compact, borderless, blue-accented pill controls. */
+.persona-studio{margin:26px 0 30px;padding:27px 24px;background:linear-gradient(135deg,#0e20346b,#0b132188);border:0;border-radius:28px;color:#ddebfa;box-shadow:0 12px 45px #0004}
+.persona-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px}
+.persona-top h3{font-size:26px;letter-spacing:-.035em;margin:7px 0;color:#eef6ff;font-weight:580}
+.persona-top p,.persona-config p,.persona-note{font-size:11px;line-height:1.7;color:#91a9c1}
+.persona-eyebrow{font-size:9px;font-weight:700;letter-spacing:.17em;color:#64aafa}
+.persona-state{font-size:10px;padding:8px 12px;background:#123151;color:#8ac4ff;border-radius:99px;white-space:nowrap}
+.persona-voice-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.persona-voice-column{background:#101d2c94;border-radius:20px;padding:13px 15px}
+.persona-voice-column h4,.persona-config h4{font-size:13px;font-weight:650;margin:5px 0 12px;color:#d9eafd}
+.persona-voice-row{display:flex;align-items:center;gap:10px;padding:10px 3px;cursor:pointer;min-width:0}
+.persona-voice-row input{accent-color:#5daeff;width:15px;height:15px;flex-shrink:0}
+.persona-voice-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.persona-voice-info strong{font-size:11px;font-weight:680;letter-spacing:.01em}.persona-voice-info small{font-size:10px;color:#89a4bd;white-space:normal}
+.persona-studio button{border:0;border-radius:99px;padding:9px 15px;background:#18354f;color:#c1e1ff;font-size:11px;font-weight:640;cursor:pointer;transition:background .22s ease,transform .22s ease}
+.persona-studio button:hover{background:#24537e;transform:translateY(-1px)}
+.persona-studio button:focus-visible,.persona-studio select:focus-visible{outline:2px solid #8dc5ff;outline-offset:3px}
+.persona-studio button:disabled{opacity:.55;cursor:not-allowed}
+.persona-config{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+.persona-config>div{border-radius:18px;background:#101d2b9c;padding:18px}
+.persona-config h4{margin:0 0 5px}.persona-config p{margin:0 0 12px}
+.persona-config select{appearance:auto;width:100%;min-height:44px;border:0;border-radius:99px;background:#132a40;color:#c8e2fa;padding:10px 14px;font-size:12px}
+.persona-tools{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-top:18px}
+.persona-presets{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.persona-presets span{font-size:10px;color:#9cbad4;margin-right:5px}
+.persona-studio .persona-save{background:#276de2;color:#fff;min-height:43px;padding:10px 25px}
+.persona-studio .persona-save:hover{background:#388aff}
+.persona-note{margin:18px 0 6px}.persona-feedback{font-size:11px;color:#8ab9f2;min-height:16px}
+@media(max-width:700px){.persona-studio{padding:18px 14px;border-radius:20px}.persona-top h3{font-size:23px}.persona-voice-groups,.persona-config{grid-template-columns:1fr;gap:10px}.persona-voice-column{padding:10px 13px}.persona-voice-row{min-height:45px}.persona-studio button{padding:8px 12px}}
