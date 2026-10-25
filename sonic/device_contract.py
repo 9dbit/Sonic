@@ -22,7 +22,27 @@ CIM_CLASSES = frozenset({
     'Win32_OperatingSystem', 'Win32_Processor', 'Win32_ComputerSystem',
     'Win32_LogicalDisk', 'Win32_ComputerSystemProduct', 'Win32_VideoController'
 })
-NAME_RE = re.compile(r'^[A-Za-z0-9_.-]{1,56}
+NAME_RE = re.compile(r'^[A-Za-z0-9_.-]{1,56}' + chr(36))
+
+
+def parse_inspection(command: str) -> list[str]:
+    if not isinstance(command, str) or not 3 <= len(command) <= 160:
+        raise ValueError('INSPECTION_COMMAND_INVALID')
+    words = command.strip().split()
+    if len(words) == 1 and words[0] in INSPECTION_ONLY:
+        return words
+    if len(words) == 2 and words[0] == 'Get-CimInstance' and words[1] in CIM_CLASSES:
+        return words
+    if len(words) == 3 and words[0] in ('Get-Process','Get-Service') and words[1] == '-Name' and NAME_RE.fullmatch(words[2]):
+        return words
+    if len(words) == 3 and words[0] == 'Get-Process' and words[1] == '-Id' and words[2].isdecimal() and 0 < int(words[2]) < 2**31:
+        return words
+    if len(words) == 3 and words[0] == 'Get-NetTCPConnection' and words[1] == '-State' and words[2] in ('Established','Listen','TimeWait','CloseWait'):
+        return words
+    raise ValueError('INSPECTION_ONLY')
+
+
+def clean_request(action: str, payload: dict) -> dict:
     if action not in ACTIONS or not isinstance(payload, dict):
         raise ValueError('ACTION_NOT_ALLOWED')
     fields = {'shell.run': {'recipe'}, 'file.read': {'path'}, 'mouse.click': {'window', 'x', 'y'},
