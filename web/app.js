@@ -209,6 +209,7 @@
     }catch(e){$('voiceDialogStatus').textContent=e.message;}
   }
   function showNodePopup(node){
+    if($('voiceProposalHost').children.length)return;
     $('nodePopupTitle').textContent=node.label;
     $('nodePopupText').textContent=node.detail||'No additional description available.';
     $('nodePopupSource').textContent='Source: '+(node.source||'unknown')+' / '+node.degree+' connections';
@@ -290,6 +291,7 @@
     }catch(e){$('referenceTranscript').textContent='Transcription failed: '+e.message;}
   }
   function showVoiceProposal(proposal,sessionId){
+    $('nodeDetailPopup').classList.add('hidden');
     const host=$('voiceProposalHost');if(host.querySelector('[data-proposal="'+proposal.proposal_id+'"]'))return;
     const card=el('div','voice-proposal glass');card.dataset.proposal=proposal.proposal_id;
     card.append(el('strong','','Review memory'),el('p','',proposal.text),el('small','','Belum tersimpan. Periksa hasil transkripsi sebelum mengonfirmasi.'));

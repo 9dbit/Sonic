@@ -55,3 +55,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .wake-indicator{position:fixed;z-index:27;top:75px;right:23px;background:#0f2f50e9;border-radius:999px;color:#8fd1ff;padding:7px 13px;font-size:11px;box-shadow:0 0 18px #236ae833}
 @media(max-width:650px){.wake-indicator{top:73px;right:15px}.sonic-popup{right:12px;bottom:calc(85px + env(safe-area-inset-bottom));width:calc(100vw - 24px)}.operator-panel{padding:15px}.voice-session-bar.compact{top:80px;bottom:auto;right:10px}.top-right{gap:7px}.wake-pill{font-size:10px!important;padding:8px 10px!important}.talk-button span{display:none}.brain-side,.filter-panel{box-shadow:0 15px 60px #000c}}
 @media(prefers-reduced-motion:reduce){.telemetry-bar span{transition:none!important}}
+
+/* Do not obscure voice confirmation controls: detail popup stays above the lower composer. */
+.sonic-popup{top:90px;bottom:auto;max-height:min(55vh,580px)}
+@media(max-width:650px){.sonic-popup{top:90px;bottom:auto;max-height:48vh}}
