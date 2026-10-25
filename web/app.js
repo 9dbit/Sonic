@@ -242,7 +242,7 @@
     const m=d.metrics||{},valid=d.metrics_available&&Number.isFinite(m.ram_available_bytes);
     const format=n=>(n/2**30).toFixed(2)+' GiB';
     $('nodePopupTitle').textContent='TRADEVICEPC / '+(d.connected?'Online':'Offline');
-    $('nodePopupText').textContent=valid?('CPU: '+(m.cpu_usage_percent??'N/A')+'%\\nDisk: '+(m.disks||[]).length+' volumes\\nProcesses: '+(m.process_count??'N/A')+'\\nRAM free: '+format(m.ram_available_bytes)+' / RAM total: '+format(m.ram_total_bytes)+'\nRAM used: '+m.ram_used_percent+'%\nTelemetry age: '+d.metrics_age_seconds+' seconds'):d.notice;
+    $('nodePopupText').textContent=valid?('CPU: '+(m.cpu_usage_percent??'N/A')+'%\nDisk: '+(m.disks||[]).length+' volumes\nProcesses: '+(m.process_count??'N/A')+'\nRAM free: '+format(m.ram_available_bytes)+' / RAM total: '+format(m.ram_total_bytes)+'\nRAM used: '+m.ram_used_percent+'%\nTelemetry age: '+d.metrics_age_seconds+' seconds'):d.notice;
     $('nodePopupSource').textContent='Source: authenticated SONIC companion heartbeat; no estimated figures.';
     $('nodeDetailPopup').classList.remove('hidden');
     $('telemetryValue').textContent=valid?(format(m.ram_available_bytes)+' available'):'No fresh reading';
