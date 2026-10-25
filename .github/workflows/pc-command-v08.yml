@@ -1,0 +1,68 @@
+name: SONIC V0.8 PC Command Center
+
+on:
+  push:
+    branches:
+      - feature/sonic-pc-command-center-v08-20261026
+  pull_request:
+    paths:
+      - 'sonic/**'
+      - 'web/**'
+      - 'scripts/windows_*'
+      - 'scripts/e2e_pc_v08.py'
+      - 'tests/**'
+      - '.github/workflows/pc-command-v08.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  server-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies and Chromium
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Compile and regression tests
+        run: |
+          python -m compileall -q sonic scripts
+          python -m pytest -q
+          node --check web/app.js
+          node --check web/pc-command-v08.js
+          node --test tests/js/*.test.cjs
+      - name: Synthetic PC owner approval and stream browser E2E
+        run: python scripts/e2e_pc_v08.py
+      - name: Neural Brain and dark theme regression
+        run: python scripts/e2e_motion_v072.py
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-pc-v08-qa
+          path: |
+            artifacts/pc-v08/
+            artifacts/motion-v072/
+          if-no-files-found: warn
+          retention-days: 7
+
+  windows-command-broker:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install process guard dependency
+        run: python -m pip install psutil
+      - name: Windows PowerShell, stream, timeout, cancellation
+        run: python scripts/qa_windows_broker_v08.py
