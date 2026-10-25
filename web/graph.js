@@ -39,7 +39,9 @@
     }
     initGL(){
       try{
-        const gl=this.canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:false,powerPreference:'low-power'});
+        // RGB is accumulated premultiplied, with a separate source-alpha factor.
+        // This avoids multiplying faint edge opacity twice during compositing.
+        const gl=this.canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:true,powerPreference:'low-power'});
         if(!gl)throw Error('WebGL unavailable');
         const vs=`attribute vec3 a_position;attribute vec4 a_color;attribute float a_size;varying vec4 v_color;void main(){gl_Position=vec4(a_position,1.);gl_PointSize=a_size;v_color=a_color;}`;
         const fs=`precision mediump float;varying vec4 v_color;uniform float u_points;void main(){if(u_points<.5){gl_FragColor=v_color;return;}vec2 p=gl_PointCoord*2.-1.;float r=dot(p,p);if(r>1.)discard;float z=sqrt(max(0.,1.-r));vec3 n=vec3(p.x,-p.y,z);float light=.30+.70*max(0.,dot(n,normalize(vec3(-.45,.6,1.))));float spec=pow(max(0.,dot(n,normalize(vec3(-.35,.45,1.)))),18.)*.3;float a=(1.-smoothstep(.78,1.,sqrt(r)))*v_color.a;gl_FragColor=vec4(v_color.rgb*light+vec3(spec),a);}`;
@@ -49,7 +51,8 @@
         gl.deleteShader(v);gl.deleteShader(f);gl.useProgram(p);this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);
         for(const [name,size,offset] of [['a_position',3,0],['a_color',4,12],['a_size',1,28]]){const loc=gl.getAttribLocation(p,name);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,32,offset);}
         this.pointUniform=gl.getUniformLocation(p,'u_points');this.program=p;this.gl=gl;this.engine='WebGL / perspective 3D';
-        this.maxPoint=gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1];gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);
+        this.maxPoint=gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1];gl.enable(gl.BLEND);
+        gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);
       }catch(_){this.gl=null;this.engine='Canvas / perspective 3D';}
     }
     resize(){
@@ -66,7 +69,8 @@
       this.stage.dataset.nodes=String(this.nodes.length);this.stage.dataset.edges=String(this.edges.length);
     }
     layout(){
-      const rng=random(141),count=Math.max(1,this.nodes.length),radius=70+Math.sqrt(count)*16;
+      const rng=random(141),count=this.nodes.length,radius=70+Math.sqrt(count)*16;
+      if(!count){this.positions.clear();return;}
       const positions=this.nodes.map((n,i)=>{
         if(this.positions.has(n.id))return [...this.positions.get(n.id)];
         const r=random(seed(n.id));let x=(r()-.5)*radius*2,y=(r()-.5)*radius*1.7,z=(r()-.5)*radius*1.5;
@@ -146,7 +150,7 @@
       const lines=[];const vertex=(arr,p,c,a,size)=>arr.push(p.x/w*2-1,1-p.y/h*2,0,...c,a,size);
       const drawSegment=(a,b,c,alpha)=>{if(this.gl){vertex(lines,a,c,alpha,1);vertex(lines,b,c,alpha,1);}else{ctx.strokeStyle=`rgba(${c.map(x=>Math.round(x*255)).join(',')},${alpha})`;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}};
       for(const e of this.edges){const a=projected.get(e.source),b=projected.get(e.target);if(!a||!b)continue;
-        const both=active(e.source)&&active(e.target),alpha=both?(this.highlight?.56:.21):.025;
+        const both=active(e.source)&&active(e.target),alpha=both?(this.highlight?.66:.30):.05;
         const c=e.kind==='owner_link'?[.92,.72,.28]:[.22,.69,.61];
         if(e.kind==='lexical'){const distance=Math.hypot(a.x-b.x,a.y-b.y),parts=Math.max(2,Math.ceil(distance/8));
           for(let i=0;i<parts;i+=2){let t=i/parts,u=Math.min(1,(i+1)/parts);drawSegment({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t},{x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u},c,alpha);}}
