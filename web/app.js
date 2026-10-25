@@ -36,7 +36,7 @@
   function setTab(tab){if(!tabs[tab])return;currentTab=tab;for(const [name,id] of Object.entries(tabs))$(id).classList.toggle('hidden',name!==tab);
     document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
     $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&!!csrf);
-    if(!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices')loadDevice();if(tab==='setup'){loadSetup();loadRuns();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
+    if(!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
   }
   function toggleInspector(open){$('graphInspector').classList.toggle('open',open);$('toggleInspector').setAttribute('aria-expanded',String(open));if(open){$('graphFilters').classList.remove('open');}}
   function toggleFilters(open){$('graphFilters').classList.toggle('open',open);$('toggleFilters').setAttribute('aria-expanded',String(open));if(open)toggleInspector(false);}
