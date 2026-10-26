@@ -81,7 +81,18 @@ def clean_workspace_folder(raw: str) -> str:
     for p in parts:
         if p in ('.','..') or p[-1] in (' ','.'):
             raise ValueError('FOLDER_TRAVERSAL_OR_TRAILING_DOT')
-        if any(ord(ch)<32 or ch in '<>:"|?*' for ch in p) or '
+        if any(ord(ch) < 32 or ch in '<>:"|?*' for ch in p):
+            raise ValueError('FOLDER_UNSAFE_CHARACTER')
+        if chr(36) in p or '%' in p:
+            raise ValueError('FOLDER_VARIABLE_EXPANSION')
+        if p.split('.')[0].upper() in WINDOWS_RESERVED:
+            raise ValueError('WINDOWS_RESERVED_NAME')
+        if p.casefold() in ('.git','.ssh','.aws','.config','.venv','secrets','credentials'):
+            raise ValueError('PROTECTED_FOLDER_NAME')
+    return '/'.join(parts)
+
+
+def clean_request(action: str, payload: dict) -> dict:
     if action not in ACTIONS or not isinstance(payload, dict):
         raise ValueError('ACTION_NOT_ALLOWED')
     fields = {'shell.run': {'recipe'}, 'file.read': {'path'}, 'mouse.click': {'window', 'x', 'y'},
