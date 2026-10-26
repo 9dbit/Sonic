@@ -186,6 +186,17 @@ class VoiceActionDispatch(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
+class VoicePendingFolder(Base):
+    """Short-lived owner-audited slot for a missing name or destination."""
+    __tablename__ = 'voice_pending_folder_v085'
+    session_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_sid: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    pending_name: Mapped[str] = mapped_column(String(70), default='', nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 class VoiceProposal(Base):
     __tablename__ = 'voice_proposals'
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
