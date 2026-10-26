@@ -3,12 +3,12 @@
   const $=id=>document.getElementById(id);
   const tabs={brain:'brainPanel',chat:'chatPanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
   const titles={brain:'Neural Brain',chat:'Command Center',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
-  const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices'};
+  const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   let csrf=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const filters=new Set(Object.keys(categoryNames));
   const graph=new window.SonicGraph($('graphStage'),{
-    onSelect:(node,path)=>{renderInspector(node,path);if(node&&innerWidth<=650)toggleInspector(true);if(node?.category==='device')showDevicePopup().catch(e=>notify(e.message));else if(node)showNodePopup(node);},
+    onSelect:(node,path)=>{renderInspector(node,path);if(node&&innerWidth<=650)toggleInspector(true);if(node?.category==='device')showDevicePopup().catch(e=>notify(e.message));else if(node&&node.category!=='integration')showNodePopup(node);},
     onRender:info=>{$('graphEngine').textContent=info.engine+' / '+info.nodes+' visible';}
   });
   // Useful for local browser QA, contains only the already-authorized graph, no tokens.
@@ -45,7 +45,7 @@
     if(!csrf)return;
     try{
       const data=await API('/api/knowledge/graph');if(!csrf)return;graphData=data;
-      const fingerprint=JSON.stringify({nodes:data.nodes.map(n=>[n.id,n.label,n.degree,n.state]),edges:data.edges.map(e=>[e.id,e.label])});
+      const fingerprint=JSON.stringify({nodes:data.nodes.map(n=>[n.id,n.label,n.degree,n.state,n.category==='integration'?n.adapters?.map(a=>[a.id,a.state,a.verification,a.recent_completed_jobs,a.last_job_state]):null]),edges:data.edges.map(e=>[e.id,e.label])});
       if(fingerprint!==graphFingerprint){graph.setData(data);graphFingerprint=fingerprint;}
       $('graphCounts').textContent=data.counts.memories+' memories / '+data.counts.nodes+' nodes / '+data.counts.edges+' links';
       $('graphEmpty').classList.toggle('hidden',data.counts.memories!==0);
@@ -61,12 +61,50 @@
     }
   }
   function nodeButton(n){const b=button('',()=>chooseNode(n.id),'hub-button');b.append(dot(n.category),el('span','',n.label),el('b','',String(n.degree)));b.title=n.label;return b;}
-  function renderHubs(){$('topHubs').replaceChildren(...[...graphData.nodes].sort((a,b)=>b.degree-a.degree||a.label.localeCompare(b.label)).slice(0,7).map(nodeButton));}
+  function renderHubs(){$('topHubs').replaceChildren(...[...graphData.nodes].sort((a,b)=>(b.category==='integration'?10000:b.degree)-(a.category==='integration'?10000:a.degree)||a.label.localeCompare(b.label)).slice(0,7).map(nodeButton));}
   function renderSearch(){const q=$('graphSearch').value.trim().toLocaleLowerCase(),host=$('searchResults');host.replaceChildren();if(!q)return;
     const matches=graphData.nodes.filter(n=>(n.label+' '+n.detail).toLocaleLowerCase().includes(q));
     if(!matches.length){host.append(el('p','search-empty','Tidak ada node yang cocok.'));return;}
     host.append(...matches.slice(0,12).map(nodeButton));if(matches.length>12)host.append(el('p','search-empty','Menampilkan 12 dari '+matches.length+' hasil.'));
   }
+  function renderIntegrations(node,host){
+    const adapters=Array.isArray(node.adapters)?node.adapters:[];
+    const counts=node.integration_counts||{};
+    const summary=el('div','integration-summary');
+    summary.append(el('span','integration-eyebrow','EXECUTOR REGISTRY'),
+      el('strong','integration-total',String(counts.connected||0)+' / '+String(counts.total||adapters.length)),
+      el('p','','Terhubung ke SONIC. Status berasal dari SONIC sendiri, bukan plugin ChatGPT.'));
+    host.append(summary);
+    const statusLabels={online:'Online',offline:'Offline',not_connected:'Belum terhubung',not_ready:'Belum siap'};
+    const list=el('div','integration-list');
+    for(const adapter of adapters){
+      const card=el('article','integration-entry');
+      card.dataset.integration=adapter.id;card.dataset.state=adapter.state;
+      const row=el('div','integration-entry-heading');
+      row.append(el('strong','',adapter.name),
+                 el('span','integration-status '+adapter.state,statusLabels[adapter.state]||'Unknown'));
+      card.append(row,el('p','integration-purpose',adapter.purpose));
+      if(adapter.connected){
+        card.append(el('p','integration-meta',(adapter.current_capabilities?.length||0)+' kemampuan Windows terverifikasi dari heartbeat agent.'));
+        if(adapter.last_job_action)card.append(el('p','integration-meta','Job terakhir: '+adapter.last_job_action+' / '+(adapter.last_job_state||'unknown')));
+        card.append(el('p','integration-meta',String(adapter.recent_completed_jobs||0)+' pekerjaan selesai dalam 40 job terbaru.'));
+      }else card.append(el('p','integration-meta',adapter.requires));
+      const info=el('details','integration-details');
+      info.append(el('summary','','Kemampuan dan verifikasi'),
+                  el('p','',adapter.description),
+                  el('p','','Capability: '+(adapter.connected?(adapter.current_capabilities||[]).slice(0,10).join(', '):'Belum diotorisasi SONIC')));
+      if(adapter.connected&&adapter.last_verified_at){
+        info.append(el('p','','Heartbeat: '+new Date(adapter.last_verified_at).toLocaleString('id-ID')));
+      }
+      card.append(info);list.append(card);
+    }
+    host.append(list,el('p','integration-disclaimer',node.notice||'Tool terdaftar tidak otomatis berizin eksekusi.'));
+    const actions=el('div','node-actions');
+    actions.append(button('Refresh status',()=>refreshGraph().catch(e=>notify(e.message)),'integration-refresh'),
+                   button('Focus particle',()=>graph.select(node.id,{focus:true}),'small-button'));
+    host.append(actions);
+  }
+
   function renderInspector(node,path=[],{preserveDraft=false}={}){const host=$('nodeInspector');
     const draft=host.querySelector('.link-form');
     if(preserveDraft&&draft&&node&&host.dataset.nodeId===node.id){
@@ -76,6 +114,10 @@
     }
     host.dataset.nodeId=node?.id||'';host.replaceChildren();
     if(!node){host.append(el('p','','Pilih sebuah node untuk melihat isi, sumber, dan koneksinya.'));return;}
+    if(node.category==='integration'){
+      host.append(el('span','node-kind','INTEGRATION / LIVE CAPABILITY MAP'),el('h3','',node.label));
+      renderIntegrations(node,host);return;
+    }
     host.append(el('span','node-kind',categoryNames[node.category]+' / '+node.degree+' connections'),el('h3','',node.label),el('p','',node.detail));
     let source='Source: '+node.source;if(node.source_message_id)source+=' / chat #'+node.source_message_id;if(node.created_at)source+=' / '+new Date(node.created_at).toLocaleString('id-ID');
     host.append(el('p','source-line',source));
@@ -466,6 +508,7 @@
   for(const id of ['camera','brainCamera'])$(id).addEventListener('click',()=>captureOnce('Camera'));for(const id of ['screen','brainScreen'])$(id).addEventListener('click',()=>captureOnce('Screen'));for(const id of ['image','brainImage'])$(id).addEventListener('click',()=>$('imageFile').click());
   $('imageFile').addEventListener('change',e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(file.size>3*1024*1024){notify('Ukuran gambar maksimal 3 MB.');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){notify('Gunakan JPG, PNG, atau WebP.');return;}const reader=new FileReader();reader.onerror=()=>notify('Gambar tidak dapat dibaca.');reader.onload=()=>sendVision(String(reader.result),'Image');reader.readAsDataURL(file);});
   if(!navigator.mediaDevices?.getDisplayMedia)document.querySelectorAll('.screen-control').forEach(b=>{b.disabled=true;b.title='Screen capture tidak tersedia. Upload screenshot melalui Image.';});
+  $('focusIntegration').addEventListener('click',async()=>{setTab('brain');await refreshGraph();chooseNode('integration:hub',true);if(innerWidth<=650)toggleInspector(true);});
   $('graphSearch').addEventListener('input',renderSearch);$('fitGraph').addEventListener('click',()=>graph.fit());$('clearFocus').addEventListener('click',()=>graph.clear());$('refreshGraph').addEventListener('click',refreshGraph);
   $('dimensionGraph').addEventListener('click',()=>{graph.setDimension(!graph.is3D);$('dimensionGraph').textContent=graph.is3D?'3D':'2D';$('dimensionGraph').setAttribute('aria-pressed',String(graph.is3D));});
   $('rotateGraph').addEventListener('click',()=>{if(graph.reduced){notify('Orbit otomatis dimatikan karena pengaturan reduced motion.');return;}graph.autoRotate=!graph.autoRotate;$('rotateGraph').textContent=graph.autoRotate?'Orbit on':'Orbit off';$('rotateGraph').setAttribute('aria-pressed',String(graph.autoRotate));graph.invalidate();});
