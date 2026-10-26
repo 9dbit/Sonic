@@ -112,7 +112,7 @@ def parse_voice_intent(transcript: str) -> VoiceIntent:
     if typed and typed.action=='file.mkdir' and workspace and not desktop:
         return VoiceIntent('action',typed)
     if typed and typed.action=='file.mkdir' and not desktop and not workspace:
-        return VoiceIntent('need_location',detail='folder')
+        return VoiceIntent('need_location',detail=typed.payload.get('path',''))
     if desktop and workspace and re.search(r'\b(?:workspace|folder\s+kerja)\b',s,re.I):
         return VoiceIntent('ambiguous')
     if not desktop and not workspace:
