@@ -184,6 +184,14 @@
     }
     if(!result.handled)return result;
     const reply=line('assistant',result.reply||'SONIC PC command processing...');
+    const jobAction=result.operator_jobs?.[0]?.action;
+    const statusTag=(jobAction?'Voice → '+jobAction+' / queued for Windows verification'
+      :result.operator_proposals?.length?'Voice → awaiting owner approval in chat'
+      :result.route==='voice_folder_slot'?'Voice → awaiting folder name or destination'
+      :result.route==='voice_pc_clarification'?'Voice → not executed / clarification required'
+      :result.route==='voice_pc_status'?'Voice → verified job status'
+      :'Voice → '+(result.route||'handled'));
+    reply.append(el('small','execution-note',statusTag));
     brainAnswer(result.reply||'',false);
     if(result.operator_proposals?.length)inlineVoiceApproval(reply,sessionId);
     for(const job of (result.operator_jobs||[])){
