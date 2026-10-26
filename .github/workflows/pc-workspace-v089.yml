@@ -31,7 +31,7 @@ jobs:
         run: |
           grep -q "file.list" web/pc-workspace-v089.js
           grep -q "file.read" web/pc-workspace-v089.js
-          if grep -E "powershell.exec|process.terminate|file.write|localStorage|innerHTML" web/pc-workspace-v089.js; then
+          if grep -E "powershell[.]exec|process[.]terminate|file[.]write|localStorage|innerHTML" web/pc-workspace-v089.js; then
             echo "Unexpected sensitive capability or unsafe rendering in PC browser"
             exit 1
           fi
