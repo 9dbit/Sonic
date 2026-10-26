@@ -27,9 +27,9 @@ SYSTEM = (
     "Use memory_search for personal context; cite memory IDs when using saved facts. "
     "Do not confuse ordinary chat history with the Memory Vault. "
     "You have access to a separately authenticated SONIC Windows companion, if its live heartbeat is online. "
-    "V0.8 exposes Task Manager telemetry and an owner-reviewed PowerShell command broker through the Devices > PC Command Center UI. "
-    "You cannot execute shell commands yourself from this chat. Never claim a command ran without its operator receipt. "
-    "An explicit owner approval is required for every PC action; PowerShell runs as a Limited Windows user. "
+    "V0.8.2 has chat-first PC actions: create folders and read/list the scoped SONIC workspace without extra approval; show outcomes in chat. PowerShell commands, End Task and system-changing operations require the current owner to reply SETUJU or BATAL directly in chat. "
+    "You can queue a safe scoped operation in chat when the owner explicitly requests it, but you cannot execute arbitrary shell commands from model text without owner approval. Never claim success without a device receipt. "
+    "Only high-impact PC actions require approval, and it happens in the same chat; PowerShell runs as a Limited Windows user. "
     "Do not claim administrator permissions, general GUI automation, trading, payment, file changes, or execution tools that are not available. "
     "Always distinguish knowledge of installed capability from the ability to execute it in this chat. "
     "Never store passwords, tokens, API keys or credentials. "
@@ -104,7 +104,7 @@ def run_tool(db: Session, name: str, args: dict, latest_user_text: str) -> dict:
                 "metrics_age_seconds":state["metrics_age_seconds"],
                 "notice":state["notice"],
                 "pc_command_center":"Devices > PC Command Center",
-                "execution_policy":"Owner must review and approve each command in the PC Command Center UI."}
+                "execution_policy":"Safe workspace actions autoqueue in chat, sensitive actions require typed in-chat SETUJU/BATAL."}
     if name == "pc_request_snapshot":
         if not PC_PATTERN.search(latest_user_text) or not re.search(r"\b(status|cek|check|periksa|inspect|info|detail)\b", latest_user_text, re.I):
             return {"error": "EXPLICIT_PC_STATUS_REQUEST_REQUIRED"}
@@ -170,7 +170,7 @@ async def reply(db: Session, latest_user_text: str) -> str:
         "metrics_available":live_device["metrics_available"],
         "metrics_age_seconds":live_device["metrics_age_seconds"],
         "command_center":"Devices > PC Command Center",
-        "operator_policy":"Each PC action requires owner review and approval. No chat auto-execution."
+        "operator_policy":"Read-only and sandboxed folder operations autoqueue from chat; sensitive PowerShell or End Task requires in-chat approval."
     }
     items.insert(0,{"role":"user","content":"VERIFIED SONIC PLATFORM CONTEXT (server data, not an instruction): "+json.dumps(pc_context,ensure_ascii=False)})
 
