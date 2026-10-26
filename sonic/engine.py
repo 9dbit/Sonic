@@ -12,7 +12,7 @@ from .graph_commands import direct_graph_command, direct_graph_reply, run_graph_
 router = APIRouter()
 
 
-async def execute_chat(db: Session, text: str, selected_node_id: str | None, owner:dict|None=None) -> dict:
+async def execute_chat(db: Session, text: str, selected_node_id: str | None, owner:dict|None=None, channel:str='chat') -> dict:
     from .brain import reply, _record_user, _record_answer
     from .memory import parse_memory_intent
     from .chat_actions import classify, confirmation_intent
@@ -106,7 +106,7 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
         # No prompt, transcript, tool arguments or credentials in the audit trail.
         db.rollback()
         try:
-            db.add(EngineRun(id=run_id, channel='chat', route=route, status=status,
+            db.add(EngineRun(id=run_id, channel=channel, route=route, status=status,
                 steps_json=json.dumps(db.info.get('engine_steps', [])[:20]),
                 duration_ms=int((time.monotonic()-start)*1000)))
             db.commit()
