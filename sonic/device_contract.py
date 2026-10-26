@@ -3,7 +3,7 @@ import math
 import re
 from typing import Any
 
-ACTIONS = frozenset({'desktop.mkdir', 'file.mkdir', 'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect', 'powershell.exec', 'process.terminate'})
+ACTIONS = frozenset({'desktop.mkdir', 'file.mkdir', 'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect', 'powershell.exec', 'process.terminate', 'window.open', 'window.focus', 'window.close'})
 RECIPES = {
     'clock': 'Get-Date -Format o',
     'memory': 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress',
@@ -98,7 +98,8 @@ def clean_request(action: str, payload: dict) -> dict:
     fields = {'shell.run': {'recipe'}, 'file.read': {'path'}, 'mouse.click': {'window', 'x', 'y'},
               'keyboard.type': {'window', 'text'}, 'keyboard.key': {'window', 'key'},
               'file.list': {'path'}, 'file.mkdir': {'path'}, 'desktop.mkdir': {'name'}, 'process.list': set(), 'window.list': set(), 'shell.inspect': {'command'},
-              'powershell.exec': {'command','timeout_seconds'}, 'process.terminate': {'pid','expected_name'}}[action]
+              'powershell.exec': {'command','timeout_seconds'}, 'process.terminate': {'pid','expected_name'},
+              'window.open': {'app'}, 'window.focus': {'app'}, 'window.close': {'app'}}[action]
     if set(payload) != fields:
         raise ValueError('INVALID_ARGUMENTS')
     if action == 'shell.run' and (not isinstance(payload['recipe'], str) or payload['recipe'] not in RECIPES):
@@ -108,6 +109,10 @@ def clean_request(action: str, payload: dict) -> dict:
     if action == 'powershell.exec':
         result_command = validate_powershell_command(payload['command'],payload['timeout_seconds'])
         payload = {**payload, 'command': result_command}
+    if action in ('window.open','window.focus','window.close'):
+        from .window_policy_v090 import APP_LABELS
+        if not isinstance(payload['app'], str) or payload['app'] not in APP_LABELS:
+            raise ValueError('WINDOW_APP_NOT_ALLOWLISTED')
     if action == 'process.terminate':
         pid, name = payload['pid'], payload['expected_name']
         if type(pid) is not int or not 4 < pid < 2**31 or not isinstance(name,str) or not re.fullmatch(r'[a-zA-Z0-9_. -]{1,100}',name):
