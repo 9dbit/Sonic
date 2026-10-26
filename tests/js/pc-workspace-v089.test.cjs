@@ -131,6 +131,9 @@ test('User-confirmed read only listing queues exactly one request and uses authe
   assert.equal(calls.filter(c=>c.path.endsWith('/confirm')).length,1);
   assert.equal(pc.path,'.');
   assert.equal(elements.get('wsPcList').children.length,3);
+  const entries=elements.get('wsPcList').children;
+  assert.equal(entries[0].children[1].children[0].disabled,false,'safe file must be clickable after listing');
+  assert.equal(entries[2].children[1].children[0].disabled,true,'Windows-reserved file remains blocked');
   assert.equal(elements.get('wsPcStatus').textContent.includes('agent-reported'),true);
   pc.clear();
   assert.equal(elements.get('wsPcList').children.length,0);
