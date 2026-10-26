@@ -38,7 +38,7 @@ jobs:
           node --check web/motion-core.js
           node --check web/graph.js
           python -m compileall -q scripts/e2e_shell_v100.py
-          test -s web/assets/sonic-mark.svg
+          test -s web/sonic-mark.svg
           if grep -E 'innerHTML|localStorage|fetch\(|WebSocket|navigator.mediaDevices' web/sonic-shell-v100.js; then
             echo 'UI-only controller must not access private data or media'
             exit 1
