@@ -1,0 +1,19 @@
+name: SONIC V0.8.9 Live Staging Smoke
+on:
+  push:
+    branches:
+      - test/sonic-v089-staging-http-smoke-20261026
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-staging-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unauthenticated GET-only staging acceptance
+        run: python scripts/smoke_live_staging_v089.py
