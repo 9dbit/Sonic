@@ -274,7 +274,11 @@ def status(request_id:str,owner:dict=Depends(auth.require_owner),db:Session=Depe
     row=owner_row(db,request_id,owner)
     if row.state in ('pending','queued','leased') and row.expires_at<=utcnow():
         row.state='expired';db.commit()
-    return receipt(row)
+    output=receipt(row)
+    operation=db.get(ChatOperation,row.id)
+    if operation and row.state in ('done','failed') and row.result_json:
+        output['chat_completion']=chat_result_text(row,json.loads(row.result_json),row.state=='done')
+    return output
 
 
 @router.get('/api/operator/history')
