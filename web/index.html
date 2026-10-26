@@ -7,22 +7,23 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Neural Brain</title>
-  <link rel="stylesheet" href="/assets/style.css?v=0.8.5">
-  <link rel="stylesheet" href="/assets/engine-style.css?v=0.8.5">
-  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.8.5">
-  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.8.5">
-  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.8.5">
-  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.8.5">
-  <link rel="stylesheet" href="/assets/pc-command-v08.css?v=0.8.5">
-  <script src="/assets/graph.js?v=0.8.5" defer></script>
-  <script src="/assets/engine-ui.js?v=0.8.5" defer></script>
-  <script src="/assets/voice.js?v=0.8.5" defer></script>
-  <script src="/assets/wake-v05.js?v=0.8.5" defer></script>
-  <script src="/assets/motion-math.js?v=0.8.5" defer></script>
-  <script src="/assets/motion-core.js?v=0.8.5" defer></script>
-  <script src="/assets/persona-studio.js?v=0.8.5" defer></script>
-  <script src="/assets/app.js?v=0.8.5" defer></script>
-  <script src="/assets/pc-command-v08.js?v=0.8.5" defer></script>
+  <link rel="stylesheet" href="/assets/style.css?v=0.8.6">
+  <link rel="stylesheet" href="/assets/engine-style.css?v=0.8.6">
+  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.8.6">
+  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.8.6">
+  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.8.6">
+  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.8.6">
+  <link rel="stylesheet" href="/assets/pc-command-v08.css?v=0.8.6">
+  <link rel="stylesheet" href="/assets/integrations-v086.css?v=0.8.6">
+  <script src="/assets/graph.js?v=0.8.6" defer></script>
+  <script src="/assets/engine-ui.js?v=0.8.6" defer></script>
+  <script src="/assets/voice.js?v=0.8.6" defer></script>
+  <script src="/assets/wake-v05.js?v=0.8.6" defer></script>
+  <script src="/assets/motion-math.js?v=0.8.6" defer></script>
+  <script src="/assets/motion-core.js?v=0.8.6" defer></script>
+  <script src="/assets/persona-studio.js?v=0.8.6" defer></script>
+  <script src="/assets/app.js?v=0.8.6" defer></script>
+  <script src="/assets/pc-command-v08.js?v=0.8.6" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -37,6 +38,7 @@
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-7 5 8"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2-8-8-2Z"/><path d="m11 13 10-10"/></symbol>
     <symbol id="i-audio" viewBox="0 0 24 24"><path d="M4 10v4h4l5 5V5l-5 5Zm12-3a8 8 0 0 1 0 10m3-13a12 12 0 0 1 0 16"/></symbol>
+    <symbol id="i-integration" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="8.5" y="14" width="7" height="7" rx="2"/><path d="M6.5 10v2h5.5v2M17.5 10v2H12"/></symbol>
     <symbol id="i-fit" viewBox="0 0 24 24"><path d="M3 8V3h5m8 0h5v5m0 8v5h-5M8 21H3v-5"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7a9 9 0 1 0 1 8M20 2v6h-6"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
@@ -56,7 +58,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.8.5</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.8.6</b></span><h1 id="pageTitle">Neural Brain</h1></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
@@ -64,6 +66,7 @@
         <div class="graph-toolbar">
           <button id="toggleInspector" class="mobile-control" aria-expanded="false" aria-label="Search and inspector"><svg><use href="#i-search"/></svg></button>
           <button id="fitGraph" title="Fit all nodes"><svg><use href="#i-fit"/></svg><span>Fit</span></button>
+          <button id="focusIntegration" type="button" title="Focus Integration particle" aria-label="Focus Integration particle"><svg><use href="#i-integration"/></svg><span>Integration</span></button>
           <button id="dimensionGraph" aria-pressed="true">3D</button>
           <button id="rotateGraph" aria-pressed="true">Orbit on</button>
           <button id="refreshGraph" title="Refresh graph" aria-label="Refresh graph"><svg><use href="#i-refresh"/></svg></button>
@@ -190,6 +193,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.8.5</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.8.6</small></form></div>
 </body>
 </html>
