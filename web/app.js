@@ -163,20 +163,20 @@
     async function finishVoiceApproval(text){
       yes.disabled=true;no.disabled=true;
       try{
-        const result=await dispatchSpokenPC(sessionId,crypto.randomUUID(),text);
+        const result=await dispatchSpokenPC(sessionId,crypto.randomUUID(),text,'approval_button');
         if(result?.handled&&liveVoice?.active)liveVoice.verifiedPCReceipt(result.reply);
       }catch(err){notify('Persetujuan suara gagal: '+err.message);yes.disabled=false;no.disabled=false;}
     }
     row.append(yes,no);message.append(row);
   }
-  async function dispatchSpokenPC(sessionId,itemId,text){
+  async function dispatchSpokenPC(sessionId,itemId,text,origin='transcript'){
     if(!sessionId||!/^[A-Za-z0-9_-]{1,150}$/.test(itemId||'')){
       return {handled:true,reply:'Identitas transkrip suara tidak lengkap. Ulangi perintah setelah sambungan voice tersambung.'};
     }
     let result;
     try{
       result=await API('/api/voice/sessions/'+encodeURIComponent(sessionId)+'/dispatch',{
-        method:'POST',body:JSON.stringify({item_id:itemId,transcript:String(text).slice(0,1300)})
+        method:'POST',body:JSON.stringify({item_id:itemId,transcript:String(text).slice(0,1300),origin})
       });
     }catch(err){
       result={handled:true,reply:'PC action tidak diproses: '+err.message,
