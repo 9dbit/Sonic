@@ -101,7 +101,11 @@ with local_server() as (url,token),sync_playwright() as p:
         page.locator('#wsPcDeviceTab').click()
         expect(page.locator('#wsPcList')).to_have_text('')
         assert len(operations)==2, 'switching back must not silently refetch PC files'
-        page.locator('#logout').click()
+        if page.locator('#logout').is_visible():
+            page.locator('#logout').click()
+        else:
+            page.locator('.nav[data-tab=setup]').click()
+            page.locator('#setupLogout').click()
         expect(page.locator('#loginOverlay')).to_be_visible()
         expect(page.locator('#wsPcText')).to_have_text('')
         assert not errors, errors
