@@ -1,0 +1,68 @@
+"""SONIC V0.8.2 local workspace-only folder operations.
+
+This module is intentionally independent of the cloud policy implementation:
+even a malformed/compromised request cannot escape the configured workspace.
+"""
+from pathlib import Path
+import re
+
+RESERVED={'CON','PRN','AUX','NUL',*[f'COM{i}' for i in range(1,10)],*[f'LPT{i}' for i in range(1,10)]}
+PROTECTED={'.git','.ssh','.aws','.config','.venv','secrets','credentials'}
+
+
+def validate_relative_folder(raw: str) -> str:
+    if not isinstance(raw,str) or not 1<=len(raw.strip())<=180:
+        raise PermissionError('FOLDER_NAME_REQUIRED')
+    raw=raw.strip().replace('\\','/')
+    if raw.startswith(('/', '~')) or re.match(r'^[A-Za-z]:',raw):
+        raise PermissionError('WORKSPACE_RELATIVE_ONLY')
+    parts=raw.split('/')
+    if len(parts)>5 or any(not 1<=len(p)<=70 for p in parts):
+        raise PermissionError('FOLDER_DEPTH_OR_LENGTH')
+    for p in parts:
+        if p in ('.','..') or p[-1] in (' ','.') or p.casefold() in PROTECTED:
+            raise PermissionError('UNSAFE_FOLDER_NAME')
+        if p.split('.')[0].upper() in RESERVED:
+            raise PermissionError('WINDOWS_RESERVED_NAME')
+        if any(ord(c)<32 or c in '<>:"|?*$%' for c in p):
+            raise PermissionError('UNSAFE_FOLDER_CHARACTER')
+    return '/'.join(parts)
+
+
+def create_folder(root: Path, relative: str) -> dict:
+    safe=validate_relative_folder(relative)
+    root=Path(root).resolve(strict=True)
+    if not root.is_dir():
+        raise PermissionError('WORKSPACE_ROOT_UNAVAILABLE')
+    parts=safe.split('/')
+    current=root
+    for part in parts:
+        current=current/part
+        if current.is_symlink():
+            raise PermissionError('SYMLINK_FOLDER_BLOCKED')
+    target=current.resolve(strict=False)
+    if target==root or root not in target.parents:
+        raise PermissionError('OUTSIDE_SONIC_WORKSPACE')
+    was_present=target.exists()
+    if was_present and not target.is_dir():
+        raise PermissionError('EXISTING_PATH_IS_FILE')
+    target.mkdir(parents=True,exist_ok=True)
+    # Verify actual path after creation in case an ancestor was replaced.
+    check=target.resolve(strict=True)
+    if root not in check.parents:
+        raise PermissionError('WORKSPACE_ESCAPE_DETECTED')
+    return {'created':not was_present,'exists':True,'relative_path':safe,
+            'path':str(check),'scope':'sonic_workspace'}
+
+
+def workspace_path(root: Path, raw: str, exists: bool=True) -> Path:
+    """Resolve relative paths safely, preserving legacy absolute in-root paths."""
+    root=Path(root).resolve(strict=True)
+    if not isinstance(raw,str) or not raw or len(raw)>500 or '\0' in raw:
+        raise PermissionError('INVALID_WORKSPACE_PATH')
+    p=Path(raw)
+    target=(p if p.is_absolute() else (root/p))
+    resolved=target.resolve(strict=exists)
+    if resolved!=root and root not in resolved.parents:
+        raise PermissionError('WORKSPACE_ONLY')
+    return resolved
