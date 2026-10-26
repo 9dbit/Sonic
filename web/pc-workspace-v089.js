@@ -177,7 +177,9 @@
           try{joinPath(this.path,item.name,item.kind==='file'?'file':'folder');return true;}
           catch(_){return false;}
         })();
-        name.disabled=!allowed||this.busy;
+        // Rendered after a completed listing, so do not leave rows disabled
+        // when the asynchronous request transitions back to idle.
+        name.disabled=!allowed;
         const info=make('small','',item.kind==='directory'?'Folder':Number.isSafeInteger(item.bytes)?item.bytes.toLocaleString('id-ID')+' bytes':'File teks');
         details.append(name,info);row.append(label,details);host.append(row);
       }
