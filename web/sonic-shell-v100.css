@@ -878,3 +878,54 @@ body.sonic-shell-v100{
  .sonic-shell-v100 .app .nav,
  .sonic-shell-v100 .app button{transition:none!important}
 }
+
+/* Visual QA polish: let the actual neural nodes own center stage. */
+.sonic-shell-v100 .app .hub-list button:not(.nav):not(.plain):not(.logout),
+.sonic-shell-v100 .app .search-results button:not(.nav):not(.plain):not(.logout){
+  background:rgba(15,31,50,.82)!important;
+  color:#afc9de!important;
+  border:1px solid rgba(103,160,205,.13)!important;
+  box-shadow:none!important;
+  border-radius:9px!important;
+  padding:10px 9px!important;
+  min-height:37px;
+  font-weight:540;
+}
+.sonic-shell-v100 .app .hub-list button:not(:disabled):hover:not(.nav):not(.plain):not(.logout),
+.sonic-shell-v100 .app .search-results button:not(:disabled):hover:not(.nav):not(.plain):not(.logout){
+  background:rgba(31,74,117,.48)!important;
+  border-color:rgba(106,201,248,.30)!important;
+  color:#f5fbff!important;
+}
+.sonic-shell-v100 .app .hub-list b{color:#7eabc9!important}
+.sonic-shell-v100 .graph-empty{
+  left:auto!important;
+  right:26px!important;
+  top:auto!important;
+  bottom:53px!important;
+  transform:none!important;
+  width:208px!important;
+  max-width:208px!important;
+  padding:15px 17px!important;
+  text-align:left!important;
+  background:rgba(8,16,28,.86)!important;
+  border:1px solid rgba(86,145,197,.18)!important;
+  backdrop-filter:blur(13px);
+  box-shadow:0 15px 40px #0006!important;
+}
+.sonic-shell-v100 .graph-empty .eyebrow{font-size:8px!important;line-height:1.6}
+.sonic-shell-v100 .graph-empty h2{font-size:15px!important;font-weight:680;line-height:1.35;margin:8px 0!important}
+.sonic-shell-v100 .graph-empty p{font-size:10px!important;line-height:1.55;margin:0;color:#87a9c1!important}
+@media(max-width:1020px){
+  .sonic-shell-v100 .graph-empty{
+    left:50%!important;right:auto!important;top:40%!important;bottom:auto!important;
+    width:min(260px,70%)!important;max-width:260px!important;
+    text-align:center!important;transform:translate(-50%,-50%)!important;
+    padding:13px 16px!important;
+  }
+}
+@media(max-width:720px){
+  .sonic-shell-v100 .graph-empty{top:46%!important;width:min(255px,72%)!important;padding:12px!important}
+  .sonic-shell-v100 .graph-empty h2{font-size:14px!important}
+  .sonic-shell-v100 .graph-empty p{font-size:9px!important}
+}
