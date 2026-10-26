@@ -411,8 +411,10 @@
       }
       if(handleVoiceSessionCommand(text))return {handled:true,silent:true};
       const result=await dispatchSpokenPC(meta.sessionId,meta.itemId,text);
-      item.append(el('small','execution-note',result.handled
-        ?'PC action / stored in SONIC chat history':'Voice transcript / not automatically saved'));
+      const queued=!!(result.operator_jobs?.length||result.operator_proposals?.length);
+      item.append(el('small','execution-note',queued
+        ?'PC action / receipt recorded in SONIC chat'
+        :result.handled?'PC status / no new device action':'Voice transcript / not automatically saved'));
       return result;
     },
     onReferences:refs=>renderReferences($('brainReceipt'),refs),
