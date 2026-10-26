@@ -19,7 +19,7 @@ CREATE_WORD=re.compile(r'\b(?:buat(?:kan)?|dibuatkan|bikinin|bikin(?:kan)?|creat
                        r'tambahkan|dibikinin|tolong\s+bikin|mau\s+buat|minta\s+buat|buat\s+dong)\b',re.I)
 LEADING=re.compile(r'^(?:(?:hei|hey|hai|halo)\s+)?(?:sonic|sonik)\s*[,.:]?\s*',re.I)
 NAME_LABEL=re.compile(r'\b(?:nama\s+folder(?:nya)?|namanya|nama\s+direktori|'
-                      r'bernama|yang\s+namanya|disebut|called|named)\s*[:=]?\s*',re.I)
+                      r'bernama|yang\s+namanya|dengan\s+nama|nama|disebut|called|named)\s*[:=]?\s*',re.I)
 UNSAFE_CONTEXT=re.compile(r'\b(?:jangan|tidak\s+usah|nggak\s+usah|bukan|contoh(?:nya)?|'
                           r'misalnya|bagaimana\s+cara|gimana\s+cara|apakah|kenapa|'
                           r'mengapa|andaikan|what\s+if|kalau\s+misal|pernah|sebelumnya)\b',re.I)
@@ -56,6 +56,8 @@ def normalize_spoken(text: str) -> str:
 
 def _single_name(value: str) -> str | None:
     s=value.strip(' \t\r\n,;:.')
+    if re.match(r'^(?:(?:di|pada|on|in)\s+)?(?:desktop|dekstop)(?:\s+.+)?$',s,re.I):
+        return None
     s=TAIL_STOP.sub('',s).strip(' \t\r\n,;:.')
     s=FILLER_START.sub('',s).strip()
     s=FILLER_END.sub('',s).strip(' \t\r\n,;:.')
@@ -147,6 +149,6 @@ def parse_followup_name(text: str) -> str | None:
         return None
     if CREATE_WORD.search(s):
         return None
-    s=re.sub(r'^(?:nama(?:\s+folder(?:nya)?)?|namanya|bernama|'
+    s=re.sub(r'^(?:namanya|nama(?:\s+folder(?:nya)?)?|bernama|'
              r'foldernya)\s*[:=]?\s*','',s,flags=re.I).strip()
     return _single_name(s)
