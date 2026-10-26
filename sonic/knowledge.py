@@ -15,6 +15,7 @@ from .brain import TOOLS
 from .config import setting
 from .db import Device, MemoryNote, MemorySource, MemoryLink, get_db, utcnow
 from .memory import record, terms, SECRET_PATTERN
+from .integrations import integration_snapshot
 
 router = APIRouter()
 NOTE_LIMIT = 500
@@ -65,6 +66,18 @@ def graph_snapshot(db: Session) -> dict:
         tid = 'tool:' + tool['name']
         node(tid, tool['name'].replace('_', ' '), 'tool', tool['description'], source='tool_registry', state='available_with_policy')
         edge('system:sonic', tid, 'structural', 'declares tool', 'sonic.brain.TOOLS')
+    # One owner-visible Integration particle. The executor catalog is shown
+    # inside its inspector, not as invented connected apps or extra brain nodes.
+    registry = integration_snapshot(db)
+    connected = registry['counts']['connected']
+    total_adapters = registry['counts']['total']
+    node('integration:hub', 'Integration', 'integration',
+         f'{connected}/{total_adapters} eksekutor terhubung. Klik untuk memeriksa RDC, Google Drive, Notepad dan Windows Native.',
+         source='sonic.integration_registry', state='configured',
+         adapters=registry['adapters'], integration_counts=registry['counts'],
+         notice=registry['notice'], generated_at=registry['generated_at'])
+    edge('system:sonic', 'integration:hub', 'structural',
+         'registered execution adapters', 'sonic.integrations.CATALOG')
     device = db.get(Device, setting('SONIC_DEVICE_ID', 'TRADEVICEPC'))
     if device:
         age = max(0, int((utcnow() - device.last_seen).total_seconds()))
@@ -72,6 +85,7 @@ def graph_snapshot(db: Session) -> dict:
         node(did, device.hostname or device.id, 'device', 'Authenticated SONIC companion; PC actions require separate owner approval.',
              source='devices', state='online' if age < 120 else 'offline', last_seen_seconds_ago=age)
         edge('system:sonic', did, 'structural', 'registered companion', 'devices:' + device.id)
+        edge('integration:hub', did, 'structural', 'Windows Native companion', 'devices:' + device.id)
     degree = Counter()
     for item in edges:
         degree[item['source']] += 1
