@@ -222,7 +222,10 @@ def chat_result_text(row:OperatorRequest,result:dict,success:bool) -> str:
         names=', '.join(str(e.get('name',''))[:70] for e in entries[:35] if isinstance(e,dict))
         return f"Isi folder {str(result.get('directory',''))[:180]}: {names or '(kosong)'}"
     if row.action=='file.read':
-        content=str(result.get('content',''))[:10000]
+        from .memory import SECRET_PATTERN
+        content=str(result.get('content',''))[:8000]
+        if SECRET_PATTERN.search(content):
+            return 'File berhasil dibaca, tetapi kontennya mengandung pola informasi sensitif. SONIC tidak menyalinnya ke histori chat.'
         return f"Isi file {str(result.get('path',''))[:200]}:\n{content}"
     if row.action=='process.list':
         names=', '.join(f"{i.get('process','')} (PID {i.get('pid','')})" for i in result.get('processes',[])[:25] if isinstance(i,dict))
