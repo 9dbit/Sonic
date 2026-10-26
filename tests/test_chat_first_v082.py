@@ -160,3 +160,16 @@ def test_consent_bound_to_owner_session(client,monkeypatch):
     r=chat(client,h2,'setuju')
     assert 'Tidak ada' in r.json()['reply']
     assert next_job(client) is None
+
+
+def test_file_read_secret_content_never_saved_in_history(client):
+    h=login(client);connect(client)
+    proposal=chat(client,h,'baca file notes.txt').json()
+    job=next_job(client)
+    assert job['action']=='file.read'
+    finish(client,job,{'path':'D:/Sonic/work/notes.txt',
+                       'content':'password: very-sensitive-example'})
+    history=client.get('/api/history').json()['messages']
+    assistant=' '.join(m['content'] for m in history if m['role']=='assistant')
+    assert 'very-sensitive-example' not in assistant
+    assert 'informasi sensitif' in assistant
