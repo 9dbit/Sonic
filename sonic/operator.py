@@ -64,7 +64,7 @@ def recent_voice_and_chat_diagnostics(request:Request,db:Session=Depends(get_db)
         'voice_dispatch_recent':attempt_rows[:25],
         'chat_history_last_150':{
             'user_messages':len(user),'assistant_messages':len(responses),
-            'user_folder_mentions':sum(bool(re.search(r'\b(?:folder|direktori|mkdir)\b',m.content,re.I)) for m in user),
+            'user_folder_mentions':sum(bool(re.search(r'\b(?:folder(?:nya)?|direktori|mkdir)\b',m.content,re.I)) for m in user),
             'assistant_device_refusals':sum(bool(re.search(r'(?:tidak bisa|belum bisa|kendala teknis).{0,120}(?:folder|pc|komputer|powershell)',m.content,re.I|re.S)) for m in responses),
             'assistant_verified_folder_receipts':sum('Folder Desktop berhasil dibuat' in m.content for m in responses)
         },
