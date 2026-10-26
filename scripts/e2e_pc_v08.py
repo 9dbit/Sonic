@@ -37,9 +37,9 @@ with local_server(settings=settings) as (url,owner), sync_playwright() as p:
         return response.json()
     heartbeat={
         'device_id':'TRADEVICEPC','hostname':'TRADEVICEPC','platform':'Windows',
-        'agent_version':'0.8.0',
+        'agent_version':'0.8.2',
         'capabilities':['system.metrics','system.status','powershell.exec',
-                        'process.terminate','shell.inspect'],
+                        'process.terminate','shell.inspect','file.mkdir'],
         'metrics':{
             'cpu_usage_percent':34.4,'ram_total_bytes':16*2**30,
             'ram_available_bytes':8*2**30,'ram_used_percent':50,
@@ -133,6 +133,46 @@ with local_server(settings=settings) as (url,owner), sync_playwright() as p:
         page.locator('#pcApprovalCancel').click()
         page.wait_for_timeout(150)
         assert agent('/api/device/operator/next',{})['job'] is None
+
+        # V0.8.2: basic folder creation is executed from Chat with no
+        # secondary approval and never opens the Devices page.
+        page.locator('.nav[data-tab="chat"]').click()
+        name='Chat QA '+label
+        page.locator('#message').fill('buat folder "'+name+'" di TRADEVICEPC')
+        page.locator('#send').click()
+        expect(page.locator('#chatFeed')).to_contain_text('tanpa konfirmasi tambahan',timeout=12000)
+        assert page.locator('#chatFeed .chat-inline-approval').count()==0
+        folder=None
+        for _ in range(30):
+            folder=agent('/api/device/operator/next',{}).get('job')
+            if folder:break
+            page.wait_for_timeout(180)
+        assert folder and folder['action']=='file.mkdir' and folder['payload']['path']==name,folder
+        agent('/api/device/operator/result',{
+            'request_id':folder['id'],'lease':folder['lease'],'success':True,
+            'result':{'created':True,'exists':True,'path':'D:/Sonic/work/'+name,'relative_path':name}
+        })
+        expect(page.locator('#chatFeed')).to_contain_text('Folder berhasil dibuat',timeout=12000)
+        assert page.locator('#devicesPanel').is_hidden()
+
+        # High impact requests prompt within chat; neither dialog nor page hop.
+        page.locator('#message').fill('PowerShell: Get-Date')
+        page.locator('#send').click()
+        expect(page.locator('#chatFeed .chat-inline-approval')).to_have_count(1,timeout=10000)
+        assert agent('/api/device/operator/next',{})['job'] is None
+        page.locator('#chatFeed .chat-inline-approval .chat-approve-button').click()
+        reviewed=None
+        for _ in range(32):
+            reviewed=agent('/api/device/operator/next',{}).get('job')
+            if reviewed:break
+            page.wait_for_timeout(180)
+        assert reviewed and reviewed['action']=='powershell.exec'
+        agent('/api/device/operator/result',{
+            'request_id':reviewed['id'],'lease':reviewed['lease'],'success':True,
+            'result':{'exit_code':0,'events_sent':0}
+        })
+        expect(page.locator('#chatFeed')).to_contain_text('PowerShell selesai',timeout=12000)
+        assert page.locator('#devicesPanel').is_hidden()
 
         assert not errors,errors
         result.append({'viewport':label,'readiness':True,'approval':True,
