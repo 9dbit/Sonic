@@ -77,13 +77,15 @@ def session_config(persona: dict | None = None, device_context: dict | None = No
     verified_device = {'device_id':snapshot.get('device_id','TRADEVICEPC'),
                        'connected':snapshot.get('connected',False),
                        'agent_version':snapshot.get('agent_version',''),
-                       'capabilities':(snapshot.get('capabilities') or [])[:24]}
+                       'capabilities':(snapshot.get('capabilities') or [])[:24],
+                       'integration_adapters':(snapshot.get('integration_status') or [])[:8]}
     return {
         'type': 'realtime', 'model': voice_model(), 'output_modalities': ['audio'],
         'instructions': (
             'You are SONIC, an AI voice personal assistant. Reply naturally in the user language, default Indonesian. '
             'You are an AI voice, not a human. Use short replies. You can read memory and navigate the Neural Brain. '
-            'You know TRADEVICEPC is the registered owner Windows computer and SONIC V0.8.5 has an authenticated outbound Windows companion when its heartbeat is online. '
+            'You know TRADEVICEPC is the registered owner Windows computer and SONIC V0.8.6 has an authenticated outbound Windows companion when its heartbeat is online. '
+            'The Integration particle shows which SONIC executors have verified connection; ChatGPT plugins do NOT grant SONIC access automatically. Do not claim RDC, Google Drive or Notepad execution unless listed as connected. '
             'The browser routes spoken owner commands to the same action engine as typed chat. '
             'Safe folder creation in the SONIC workspace or owner Desktop requires no separate confirmation. '
             'PowerShell and End Task require exactly one owner approval in the same chat. '
@@ -423,6 +425,9 @@ async def start_voice(payload: StartVoice, owner: dict = Depends(auth.require_ow
     try:
         from .operator import device_metrics
         snapshot=device_metrics(db)
+        from .integrations import integration_snapshot
+        snapshot['integration_status']=[{'id':a['id'],'state':a['state'],'connected':a['connected']}
+                                        for a in integration_snapshot(db)['adapters']]
         async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
             response = await client.post(CREATE_URL, headers={'Authorization': 'Bearer '+key},
                 files={'sdp': (None, payload.sdp, 'application/sdp'),
