@@ -5,6 +5,7 @@ on:
     branches:
       - feature/sonic-pc-command-center-v08-20261026
       - feature/sonic-chat-first-actions-v082-20261026
+      - feature/sonic-voice-desktop-bridge-v083-20261026
   pull_request:
     paths:
       - 'sonic/**'
@@ -42,6 +43,8 @@ jobs:
           node --test tests/js/*.test.cjs
       - name: Synthetic PC owner approval and stream browser E2E
         run: python scripts/e2e_pc_v08.py
+      - name: Voice transcript Desktop actions and same-chat approval on Chrome
+        run: python scripts/e2e_voice_desktop_v083.py
       - name: Neural Brain and dark theme regression
         run: python scripts/e2e_motion_v072.py
       - name: Upload browser evidence
@@ -52,6 +55,7 @@ jobs:
           path: |
             artifacts/pc-v08/
             artifacts/motion-v072/
+            artifacts/voice-desktop-v083/
           if-no-files-found: warn
           retention-days: 7
 
