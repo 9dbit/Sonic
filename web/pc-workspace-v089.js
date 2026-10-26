@@ -207,7 +207,8 @@
       if(this.mode!=='pc'||this.busy)return;
       if(!['file.list','file.read'].includes(action))throw Error('Aksi PC tidak diizinkan.');
       const path=cleanRelative(requested,action==='file.read'?'file':'folder');
-      if(!(await this.checkConnection()))return;
+      const beforeCheck=this.generation;
+      if(!(await this.checkConnection())||this.mode!=='pc'||this.generation!==beforeCheck)return;
       const purpose=action==='file.list'?'melihat isi folder':'membaca file teks';
       const label=path==='.'?'root SONIC pada Windows':path;
       if(!confirm('Izinkan SONIC '+purpose+' "'+label+'" pada TRADEVICEPC?\n\nHanya di dalam root workspace Windows yang telah dikonfigurasi. Tidak membuat atau mengubah file.'))return;
@@ -265,7 +266,14 @@
         }
       }catch(error){
         if(generation===this.generation){
-          this.status('PC tidak berhasil: '+error.message);
+          // A transport failure after queuing is *uncertain*, not proof the PC
+          // did nothing. Best-effort cancellation cannot undo a completed read.
+          if(id){
+            await this.api('/api/operator/requests/'+encodeURIComponent(id),{method:'DELETE'}).catch(()=>{});
+            this.status('Status pembacaan PC belum terkonfirmasi. Pembatalan diminta; operasi yang sudah berjalan mungkin telah membaca file. '+error.message);
+          }else{
+            this.status('Permintaan PC tidak terkirim: '+error.message);
+          }
           this.notify(error.message);
         }
       }finally{
