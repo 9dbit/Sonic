@@ -929,3 +929,50 @@ body.sonic-shell-v100{
   .sonic-shell-v100 .graph-empty h2{font-size:14px!important}
   .sonic-shell-v100 .graph-empty p{font-size:9px!important}
 }
+
+/* Final visual review: Chat's central hero sits directly on the command deck,
+   without the old flat grey rectangle interrupting the black-space canvas. */
+.sonic-shell-v100 #chatPanel .hero{
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  outline:0!important;
+  padding:16px 0!important;
+  border-radius:0!important;
+}
+/* Short mobile labels preserve original nav aria-label and full text on desktop. */
+@media(max-width:720px){
+  .sonic-shell-v100 .sidebar-content .nav span[data-short]{
+    font-size:0!important;
+    line-height:1!important;
+  }
+  .sonic-shell-v100 .sidebar-content .nav span[data-short]::after{
+    content:attr(data-short);
+    display:block;
+    font-size:10px!important;
+    letter-spacing:0;
+    line-height:1.22;
+    white-space:nowrap;
+    font-weight:610;
+  }
+  /* In an empty Vault, keep the help card below the graph's central nodes
+     and above the fixed composer, instead of masking the particle network. */
+  .sonic-shell-v100 .graph-empty{
+    top:auto!important;
+    bottom:156px!important;
+    left:50%!important;right:auto!important;
+    transform:translateX(-50%)!important;
+    width:min(270px,74%)!important;
+  }
+}
+@media(max-width:390px){
+  .sonic-shell-v100 .sidebar-content .nav span[data-short]::after{font-size:9px!important}
+}
+@media(max-height:690px) and (max-width:720px){
+  .sonic-shell-v100 .graph-empty{
+    bottom:141px!important;
+    max-width:230px!important;
+    padding:9px 12px!important;
+  }
+  .sonic-shell-v100 .graph-empty p{display:none!important}
+}
