@@ -6,6 +6,7 @@ on:
       - feature/sonic-pc-command-center-v08-20261026
       - feature/sonic-chat-first-actions-v082-20261026
       - feature/sonic-voice-desktop-bridge-v083-20261026
+      - feature/sonic-voice-command-v084-20261026
   pull_request:
     paths:
       - 'sonic/**'
