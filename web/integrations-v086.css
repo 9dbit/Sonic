@@ -1,0 +1,35 @@
+/* SONIC Integration Hub. Flat #000 canvas, charcoal panels, cyan/blue/orange.
+   No glow, glass haze, gradients, or ornamental outlines in this inspector. */
+.graph-toolbar #focusIntegration{background:#1469db;color:#fff;border:0}
+.graph-toolbar #focusIntegration:hover{background:#207eff;color:#fff}
+.graph-toolbar #focusIntegration svg{width:14px;height:14px}
+.node-inspector:has(.integration-summary){background:#141414;border:0;padding:12px;max-height:none}
+.node-inspector:has(.integration-summary) h3{color:#fff;font-size:17px;margin:5px 0 12px}
+.node-inspector:has(.integration-summary) .node-kind{color:#4da3ff}
+.integration-summary{background:#202020;border-radius:12px;padding:13px 12px;margin-bottom:9px}
+.integration-summary .integration-eyebrow{display:block;color:#66aaff;font-size:9px;letter-spacing:.14em;font-weight:700}
+.integration-summary .integration-total{font-size:29px;line-height:1.25;display:block;color:#fff;margin:6px 0 3px;font-weight:600}
+.integration-summary p{margin:4px 0 0!important;font-size:10px!important;line-height:1.55!important;color:#a4adbd!important}
+.integration-list{display:flex;flex-direction:column;gap:8px}
+.integration-entry{background:#202020;border:0;border-radius:11px;padding:12px;min-width:0}
+.integration-entry-heading{display:flex;justify-content:space-between;gap:6px;align-items:flex-start}
+.integration-entry-heading strong{font-size:11px;color:#fff;line-height:1.4;font-weight:650;min-width:0}
+.integration-status{display:inline-flex;align-items:center;flex-shrink:0;font-size:8px;font-weight:650;border:0;border-radius:30px;padding:4px 7px;white-space:nowrap;background:#303030;color:#9ca3af}
+.integration-status.online{background:#11509d;color:#fff}
+.integration-status.offline,.integration-status.not_connected,.integration-status.not_ready{color:#ffa347;background:#32291f}
+.integration-entry .integration-purpose{font-size:10px;line-height:1.5;color:#d5dde7;margin:8px 0 6px}
+.integration-entry .integration-meta{font-size:9px;line-height:1.5;color:#8dabc8;margin:5px 0}
+.integration-details{font-size:9px;color:#8da4b9;margin-top:9px}
+.integration-details summary{color:#68b5ff;cursor:pointer;padding:5px 0;list-style-position:inside}
+.integration-details p{font-size:9px!important;line-height:1.5!important;margin:7px 0!important;color:#a2acba!important;white-space:normal!important;overflow-wrap:anywhere}
+.integration-disclaimer{font-size:9px!important;line-height:1.6!important;color:#ffa347!important;margin:12px 0!important}
+.node-inspector .integration-refresh{background:#1668dc!important;border:0!important;border-radius:18px!important;padding:8px 11px!important;color:#fff!important}
+.node-inspector:has(.integration-summary) .small-button{background:#292929;border:0;border-radius:18px;color:#d6e4f4}
+@media(max-width:650px){
+ .graph-toolbar #focusIntegration span{display:none}
+ .graph-toolbar #focusIntegration{padding:7px 9px;min-width:32px}
+ .node-inspector:has(.integration-summary){padding:12px}
+ .integration-entry-heading strong{font-size:12px}
+ .integration-entry .integration-purpose{font-size:11px}
+ .integration-status{font-size:9px}
+}
