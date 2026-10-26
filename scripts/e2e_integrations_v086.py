@@ -90,7 +90,11 @@ with local_server(settings=settings) as (url,owner),sync_playwright() as p:
         assert summary['selected']=='integration:hub',summary
         assert summary['inspectorVisible'],summary
         assert summary['extraWidth']<=5,summary
-        assert summary['bg']=='rgb(0, 0, 0)',summary
+        command_deck=page.locator('body').evaluate("el=>el.classList.contains('sonic-shell-v100')")
+        # R1 intentionally renders a near-black layered panel rather than
+        # the previous flat black surface. Executor and authorization checks
+        # above remain unchanged and must still pass.
+        assert summary['bg']==('rgb(5, 10, 18)' if command_deck else 'rgb(0, 0, 0)'),summary
         assert not errors,errors
         page.screenshot(path=str(OUT/('integration-'+viewport+'.png')),full_page=False)
         report.append({'viewport':viewport,**summary,'pageErrors':errors})
