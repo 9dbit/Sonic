@@ -98,6 +98,8 @@ def direct_graph_command(text: str, selected_node_id: str | None = None) -> tupl
     """Anchored navigation shortcuts; ordinary questions remain model conversations."""
     text = normalize(text).strip()
     text = re.sub(r'^(?:sonic[,:.!\s]+)?(?:(?:tolong|please)\s+)?', '', text, flags=re.I).rstrip('.!')
+    if re.fullmatch(r'(?:buka|lihat|tampilkan|perlihatkan|fokus|show|open|focus(?: on)?)\s+(?:node\s+)?integrations?',text,re.I) or re.fullmatch(r'(?:buka|lihat|tampilkan|fokus|show|open)\s+(?:node\s+)?integrasi',text,re.I):
+        return 'graph_focus', {'node_id': 'integration:hub'}
     if re.fullmatch(r'(?:kembali ke (?:seluruh|semua) (?:brain|graph)|reset (?:brain|graph)(?: view)?|show (?:the )?(?:whole|entire) (?:brain|graph))', text, re.I):
         return 'graph_reset', {}
     match = re.fullmatch(r'(?:buka|open|fokus(?:kan)?(?: pada)?|focus(?: on)?)\s+(?:memory|memori|catatan|note)\s*#?\s*(\d+)', text, re.I)
