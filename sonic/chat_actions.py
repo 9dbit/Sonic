@@ -34,15 +34,15 @@ NAME_MARKER = (r'(?:(?:dengan\s+)?nama\s+folder(?:nya)?|'
                r'bernama|namanya|named|dengan\s+nama)')
 SPOKEN_DESKTOP_PATTERNS = (
     # "Buatkan di desktop dengan nama foldernya Today"
-    re.compile(r'^'+MAKE_PREFIX+r'(?:(?:folder|direktori|directory)\s+)?'
+    re.compile(r'^'+MAKE_PREFIX+r'(?:(?:folder|direktori|directory)\s+)?(?:baru\s+|new\s+)?'
                +DESKTOP_PLACE+r'\s+'+NAME_MARKER+r'\s+(?P<name>.+)$',re.I),
     # "Buat folder bernama Today di desktop TRADEVICEPC"
-    re.compile(r'^'+MAKE_PREFIX+r'(?:(?:folder|direktori|directory)\s+)?'
+    re.compile(r'^'+MAKE_PREFIX+r'(?:(?:folder|direktori|directory)\s+)?(?:baru\s+|new\s+)?'
                +r'(?:(?:bernama|namanya|named|dengan\s+nama)\s+)?'
                +r'(?P<name>.+?)\s+'+DESKTOP_PLACE+r'$',re.I),
     # "Di desktop TRADEVICEPC buat folder namanya Today"
     re.compile(r'^'+DESKTOP_PLACE+r'\s+'+MAKE_PREFIX+
-               r'(?:(?:folder|direktori|directory)\s+)?'
+               r'(?:(?:folder|direktori|directory)\s+)?(?:baru\s+|new\s+)?'
                +r'(?:(?:bernama|namanya|named|dengan\s+nama)\s+)?'
                +r'(?P<name>.+)$',re.I),
 )
