@@ -48,6 +48,18 @@ SPOKEN_DESKTOP_PATTERNS = (
 )
 
 
+def pc_status_followup(text: str) -> bool:
+    """Spoken question about the last verified PC action, not a new command."""
+    s=PREFIX.sub('',str(text).strip()).strip().casefold().rstrip('.?!')
+    return bool(re.fullmatch(
+        r'(?:sudah\s+(?:jadi|dibuat|selesai|berhasil|belum)|'
+        r'(?:apakah\s+)?folder(?:\s+[a-z0-9 _-]{1,45})?\s+'
+        r'(?:sudah\s+)?(?:jadi|dibuat|selesai|berhasil|ada)|'
+        r'(?:apa|bagaimana|gimana)\s+(?:status|hasil)(?:nya|\s+perintah)?|'
+        r'(?:cek|lihat)\s+status\s+(?:folder|perintah|pekerjaan)(?:\s+tadi)?|'
+        r'solusi\s+(?:lain|lainnya)\s+apa)',s,re.I))
+
+
 def looks_like_pc_action(text: str) -> bool:
     """Distinguish failed PC parsing from ordinary general voice conversation."""
     if not isinstance(text,str):
