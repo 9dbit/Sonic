@@ -67,8 +67,9 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
                     if chat_action.kind=='automatic':
                         operator_jobs.append({'id':job['id'],'action':job['action']})
                         desc=(f"folder {chat_action.payload.get('path')}" if chat_action.action=='file.mkdir'
+                              else f"folder {chat_action.payload.get('name')} di Desktop" if chat_action.action=='desktop.mkdir'
                               else chat_action.action)
-                        answer=_record_answer(db,'Saya jalankan '+desc+' langsung di workspace TRADEVICEPC, tanpa konfirmasi tambahan. Menunggu hasil terverifikasi dari Windows agent...')
+                        answer=_record_answer(db,'Saya jalankan '+desc+' di TRADEVICEPC tanpa konfirmasi tambahan. Menunggu konfirmasi hasil dari Windows agent...')
                     else:
                         operator_proposals.append({'id':job['id'],'action':job['action']})
                         preview=json.dumps(chat_action.payload,ensure_ascii=False,indent=2)
