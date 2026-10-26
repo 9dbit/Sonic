@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 import windows_command_v08 as command_broker
+import windows_workspace_v082 as workspace_actions
 
 HERE=Path(__file__).resolve().parent
 DEVICE=os.environ.get('SONIC_DEVICE_ID','TRADEVICEPC')
@@ -329,7 +330,8 @@ def execute(action,params):
                             ' '.join(parts)+' | Select-Object -First 35 | Format-Table -AutoSize | Out-String -Width 130'],
                             timeout=8,capture_output=True,text=True,errors='replace',shell=False)
         return {'exit_code':run.returncode,'output':run.stdout[:9000],'stderr':run.stderr[:500]}
-    if action=='file.list':return list_workspace(params.get('path',''))
+    if action=='file.mkdir':return workspace_actions.create_folder(ALLOWED_ROOT,params.get('path',''))
+    if action=='file.list':return list_workspace(str(workspace_actions.workspace_path(ALLOWED_ROOT,params.get('path','.'),exists=True)))
     if action=='process.list':return list_processes()
     if action=='window.list':return list_windows()
     if action=='shell.run':
@@ -339,7 +341,7 @@ def execute(action,params):
                          timeout=5,capture_output=True,text=True,encoding='utf-8',errors='replace',shell=False)
         return {'exit_code':p.returncode,'output':p.stdout[:6000],'stderr':p.stderr[:500]}
     if action=='file.read':
-        target=Path(params.get('path','')).resolve(strict=True)
+        target=workspace_actions.workspace_path(ALLOWED_ROOT,params.get('path',''),exists=True)
         if target==ALLOWED_ROOT or ALLOWED_ROOT not in target.parents:
             raise PermissionError('WORKSPACE_ONLY')
         if not target.is_file() or target.stat().st_size>32768:
@@ -382,18 +384,18 @@ def execute(action,params):
 
 def system_status():
     return {'hostname':platform.node(),'platform':platform.platform(),'logical_cpu_count':os.cpu_count(),
-            'sonic_agent_version':'0.8.0','capabilities':['system.status','system.metrics']}
+            'sonic_agent_version':'0.8.2','capabilities':['system.status','system.metrics']}
 
 
 def run_once(only_heartbeat=False):
     m=extended_stats()
     shell_enabled=os.environ.get('SONIC_ENABLE_POWERSHELL_EXEC','').lower() in ('1','true','yes')
-    capabilities=['system.status','system.metrics','shell.run','file.read','file.list',
+    capabilities=['system.status','system.metrics','shell.run','file.read','file.list','file.mkdir',
                   'process.list','window.list','mouse.click','keyboard.type','keyboard.key',
                   'shell.inspect','process.terminate']
     if shell_enabled:capabilities.append('powershell.exec')
     api('/api/device/heartbeat',{'device_id':DEVICE,'hostname':platform.node()[:120],
-        'platform':platform.platform()[:200],'agent_version':'0.8.0',
+        'platform':platform.platform()[:200],'agent_version':'0.8.2',
         'capabilities':capabilities,
         'metrics':m,'gui_targets':[]})
     if only_heartbeat:return
