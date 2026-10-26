@@ -9,9 +9,10 @@ $python = 'D:\Sonic\.venv\Scripts\python.exe'
 $tokenFile = Join-Path $root 'device-token.dpapi'
 $agentSource = Join-Path $PSScriptRoot 'windows_agent_v05.py'
 $brokerSource = Join-Path $PSScriptRoot 'windows_command_v08.py'
+$workspaceSource = Join-Path $PSScriptRoot 'windows_workspace_v082.py'
 $taskName = 'SONIC Read-only Companion'
 
-foreach ($path in @($root,$workspace,$python,$tokenFile,$agentSource,$brokerSource)) {
+foreach ($path in @($root,$workspace,$python,$tokenFile,$agentSource,$brokerSource,$workspaceSource)) {
     if (-not (Test-Path -LiteralPath $path)) { throw "Missing requirement: $path" }
 }
 & $python -c 'import psutil' | Out-Null
@@ -32,6 +33,7 @@ $stage = Join-Path $workspace 'sonic-v08-install-candidate'
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 Copy-Item -LiteralPath $agentSource -Destination (Join-Path $stage 'windows_agent_v05.py') -Force
 Copy-Item -LiteralPath $brokerSource -Destination (Join-Path $stage 'windows_command_v08.py') -Force
+Copy-Item -LiteralPath $workspaceSource -Destination (Join-Path $stage 'windows_workspace_v082.py') -Force
 
 # Validate without dequeuing any owner-approved operation.
 $encrypted = Get-Content -LiteralPath $tokenFile -Raw
@@ -56,11 +58,14 @@ try {
 
 $destination = Join-Path $root 'windows_agent_v05.py'
 $brokerDest = Join-Path $root 'windows_command_v08.py'
+$workspaceDest = Join-Path $root 'windows_workspace_v082.py'
 $runner = Join-Path $root 'Start-SONIC-Companion-V08.ps1'
 $backup = Join-Path $root 'windows_agent_v05.before_v08.py'
 $brokerBackup = Join-Path $root 'windows_command_v08.previous.py'
+$workspaceBackup = Join-Path $root 'windows_workspace_v082.previous.py'
 if(Test-Path $destination) { Copy-Item -LiteralPath $destination -Destination $backup -Force }
 if(Test-Path $brokerDest) { Copy-Item -LiteralPath $brokerDest -Destination $brokerBackup -Force }
+if(Test-Path $workspaceDest) { Copy-Item -LiteralPath $workspaceDest -Destination $workspaceBackup -Force }
 
 $runnerText = @'
 $ErrorActionPreference = 'Stop'
@@ -90,6 +95,7 @@ try {
     Stop-ScheduledTask -TaskName $taskName -ErrorAction Stop
     Copy-Item -LiteralPath (Join-Path $stage 'windows_agent_v05.py') -Destination $destination -Force
     Copy-Item -LiteralPath (Join-Path $stage 'windows_command_v08.py') -Destination $brokerDest -Force
+    Copy-Item -LiteralPath (Join-Path $stage 'windows_workspace_v082.py') -Destination $workspaceDest -Force
     $runnerText | Set-Content -LiteralPath $runner -Encoding UTF8
     $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument (
         '-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File "' + $runner + '"')
@@ -101,6 +107,7 @@ try {
     Write-Warning 'Install failed. Restoring the previous SONIC Scheduled Task.'
     if(Test-Path $backup) { Copy-Item -LiteralPath $backup -Destination $destination -Force }
     if(Test-Path $brokerBackup) { Copy-Item -LiteralPath $brokerBackup -Destination $brokerDest -Force }
+    if(Test-Path $workspaceBackup) { Copy-Item -LiteralPath $workspaceBackup -Destination $workspaceDest -Force }
     Set-ScheduledTask -TaskName $taskName -Action $previousActions | Out-Null
     Start-ScheduledTask -TaskName $taskName
     throw
