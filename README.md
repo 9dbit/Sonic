@@ -6,6 +6,8 @@ Current staging engine: [V0.8.7 durable execution, voice/chat routing and result
 
 V0.8.8 adds [Workspace, Notes, direct double-tap voice and grouped Neural nodes](docs/SONIC_V088_WORKSPACE_VOICE.md). Cloud notes are separate from Windows files and Google Drive.
 
+V0.8.9 adds [an opt-in, read-only TRADEVICEPC browser inside Workspace](docs/SONIC_V089_PC_WORKSPACE_READONLY.md) using the existing authenticated Windows companion. Each file list/read requires an explicit owner gesture and confirmation. Windows writes, general file sync, Google Drive and biometric family recognition remain unavailable.
+
 ## V0.1 foundation
 
 | Area | Status |

@@ -9,6 +9,7 @@ from contextlib import suppress
 from datetime import timedelta
 import hashlib
 import json
+import logging
 import re
 from typing import Literal
 from uuid import UUID, uuid4
@@ -25,6 +26,7 @@ from .config import setting
 from .db import (VoiceSession, VoiceGate, VoiceToolCall, VoiceProposal, VoiceActionDispatch, VoicePendingFolder, ChatMessage, OwnerSession,
                  MemoryNote, EngineRun, get_db, session_factory, utcnow)
 from .persona import profile, provider_voice, persona_instruction
+from .provider_diagnostics import classify_provider_error, browser_error_description
 from .graph_commands import GRAPH_TOOLS, QueryArgs, run_graph_tool, tool
 from .memory import search_notes, validate_memory, save_note, record
 
@@ -445,8 +447,20 @@ async def start_voice(payload: StartVoice, owner: dict = Depends(auth.require_ow
         db.refresh(row); row.state = 'uncertain'; row.close_reason = 'provider_request_uncertain'; db.commit()
         raise HTTPException(502, 'Voice initialization was not confirmed. No automatic retry; close the session and retry later.') from None
     if response.status_code not in (200, 201):
+        # Surface an allowlisted provider code instead of hiding whether this is
+        # prepaid credit, project budget, rate limiting, or unavailable model.
+        # Never log/error-report raw response bodies, microphone media or keys.
+        try:
+            provider_body = response.json()
+        except (ValueError, TypeError):
+            provider_body = None
+        diagnosis = classify_provider_error(response.status_code, provider_body, response.headers)
+        logging.getLogger('sonic.voice.provider').warning(
+            'realtime_create_rejected status=%s code=%s type=%s request_id=%s model=%s',
+            diagnosis['status'], diagnosis['code'], diagnosis['error_type'] or 'unknown',
+            diagnosis['request_id'] or 'none', voice_model())
         db.refresh(row); row.state = 'failed'; row.close_reason = 'provider_rejected'; db.commit()
-        raise HTTPException(502, f'Voice provider rejected initialization (HTTP {response.status_code}); check model access and billing')
+        raise HTTPException(502, browser_error_description(diagnosis))
     # Never accept an arbitrary upstream Location as a request destination.
     location = response.headers.get('location', '')
     call_id = location.rstrip('/').split('/')[-1]
