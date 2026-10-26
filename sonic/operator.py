@@ -14,7 +14,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from . import auth
 from .config import setting
-from .db import Device, DeviceTelemetry, OperatorRequest, OperatorOutput, OwnerSession, get_db, utcnow
+from .db import Device, DeviceTelemetry, OperatorRequest, OperatorOutput, OwnerSession, ChatMessage, ChatOperation, get_db, utcnow
 from .device_contract import ACTIONS, RECIPES, clean_metrics, clean_request
 
 router=APIRouter()
@@ -148,6 +148,93 @@ def receipt(row):
             'result':json.loads(row.result_json) if row.result_json else None}
 
 
+# Safe, scoped operations can be queued directly from an authenticated owner chat
+# request. Everything else keeps a pending review, resolved IN THE SAME CHAT.
+AUTO_SAFE_ACTIONS=frozenset({'file.mkdir','file.list','file.read','process.list','window.list'})
+
+def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:int,auto:bool) -> dict:
+    try:
+        safe=clean_request(action,payload)
+    except (ValueError,TypeError) as exc:
+        raise HTTPException(422,str(exc)) from None
+    if auto and action not in AUTO_SAFE_ACTIONS:
+        raise HTTPException(403,'OPERATION_REQUIRES_CHAT_APPROVAL')
+    if not auto and action not in {'powershell.exec','process.terminate'}:
+        raise HTTPException(403,'CHAT_REVIEW_ACTION_NOT_SUPPORTED')
+    ensure_capability(db,action)
+    sid=auth.sha256(owner['sid'])
+    active=db.scalar(select(func.count()).select_from(OperatorRequest).where(
+        OperatorRequest.owner_sid==sid,
+        OperatorRequest.state.in_(['pending','queued','leased']),
+        OperatorRequest.expires_at>utcnow())) or 0
+    if active>=4:
+        raise HTTPException(429,'Maksimal empat tugas PC aktif. Tunggu hasil atau batalkan tugas sebelumnya.')
+    if not auto:
+        pending=db.scalars(select(OperatorRequest).join(
+            ChatOperation,ChatOperation.request_id==OperatorRequest.id).where(
+            OperatorRequest.owner_sid==sid,OperatorRequest.state=='pending',
+            OperatorRequest.expires_at>utcnow()).limit(1)).first()
+        if pending:
+            raise HTTPException(409,'Masih ada perintah sensitif menunggu jawaban setuju/batal di chat.')
+    rid=str(uuid4());raw=json.dumps(safe,sort_keys=True,separators=(',',':'))
+    digest=hashlib.sha256((rid+action+raw).encode()).hexdigest()
+    row=OperatorRequest(id=rid,owner_sid=sid,device_id=setting('SONIC_DEVICE_ID','TRADEVICEPC'),
+        action=action,payload_json=raw,digest=digest,
+        state='queued' if auto else 'pending',
+        expires_at=utcnow()+timedelta(seconds=180 if auto else 120))
+    db.add(row)
+    db.add(ChatOperation(request_id=rid,source_message_id=source_message_id))
+    db.commit()
+    return receipt(row)
+
+
+def chat_decide(db:Session,owner:dict,approved:bool) -> dict | None:
+    sid=auth.sha256(owner['sid'])
+    pending=db.scalars(select(OperatorRequest).join(
+        ChatOperation,ChatOperation.request_id==OperatorRequest.id).where(
+        OperatorRequest.owner_sid==sid,OperatorRequest.state=='pending',
+        OperatorRequest.expires_at>utcnow()).order_by(
+        OperatorRequest.created_at.desc()).limit(2)).all()
+    if not pending:return None
+    if len(pending)>1:raise HTTPException(409,'Ada beberapa proposal. Batalkan salah satunya dulu.')
+    row=pending[0]
+    if approved:
+        ensure_capability(db,row.action)
+        row.state='queued'
+        row.expires_at=utcnow()+timedelta(seconds=180 if row.action=='powershell.exec' else 90)
+    else:
+        row.state='cancelled'
+    db.commit()
+    return receipt(row)
+
+
+def chat_result_text(row:OperatorRequest,result:dict,success:bool) -> str:
+    if not success:
+        code=str(result.get('error') or result.get('detail') or 'DEVICE_ACTION_FAILED')[:140]
+        return f"SONIC: tindakan {row.action} gagal pada TRADEVICEPC ({code})."
+    if row.action=='file.mkdir':
+        p=str(result.get('path','folder tanpa path terverifikasi'))[:250]
+        return ('Folder berhasil dibuat' if result.get('created') is True else
+                'Folder sudah tersedia')+f' di TRADEVICEPC: {p}'
+    if row.action=='file.list':
+        entries=result.get('items',[])
+        names=', '.join(str(e.get('name',''))[:70] for e in entries[:35] if isinstance(e,dict))
+        return f"Isi folder {str(result.get('directory',''))[:180]}: {names or '(kosong)'}"
+    if row.action=='file.read':
+        content=str(result.get('content',''))[:10000]
+        return f"Isi file {str(result.get('path',''))[:200]}:\n{content}"
+    if row.action=='process.list':
+        names=', '.join(f"{i.get('process','')} (PID {i.get('pid','')})" for i in result.get('processes',[])[:25] if isinstance(i,dict))
+        return f"Proses Windows terdeteksi: {names or '(tidak ada data)'}"
+    if row.action=='window.list':
+        names=', '.join(str(i.get('title',''))[:100] for i in result.get('windows',[])[:20] if isinstance(i,dict))
+        return f"Jendela aktif: {names or '(tidak ada jendela terdeteksi)'}"
+    if row.action=='powershell.exec':
+        return f"Perintah PowerShell selesai (exit code: {result.get('exit_code','unknown')}). Lihat streaming output di chat atau audit PC."
+    if row.action=='process.terminate':
+        return f"End Task selesai: {str(result.get('name','process'))[:80]} PID {result.get('pid','unknown')}."
+    return f"Tindakan {row.action} selesai di TRADEVICEPC."
+
 @router.get('/api/operator/capabilities')
 def capabilities(_:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
     return {**device_metrics(db),'shell_recipes':RECIPES, 'shell_inspection_examples':['Get-Process','Get-Service','Get-NetAdapter','Get-CimInstance Win32_Processor'],
@@ -274,4 +361,13 @@ def result(p:Result,request:Request,db:Session=Depends(get_db)):
     if len(raw.encode())>32768:raise HTTPException(413,'Result exceeds 32KB limit')
     row.result_json=raw
     if row.state=='leased':row.state='done' if p.success else 'failed'
+    operation=db.get(ChatOperation,row.id)
+    if operation and not operation.notification_sent and row.state in ('done','failed'):
+        try:
+            data=json.loads(raw)
+            summary=chat_result_text(row,data,row.state=='done')
+            db.add(ChatMessage(role='assistant',content=summary[:12000]))
+            operation.notification_sent=True
+        except (ValueError,TypeError):
+            pass
     db.commit();return {'accepted':True,'state':row.state}
