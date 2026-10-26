@@ -75,6 +75,7 @@ def capability_reply(data:dict) -> str:
         abilities.append("memantau CPU, RAM, disk, network, proses, services, dan GPU jika driver menyediakannya")
     if 'process.list' in caps:abilities.append("melihat daftar proses berjalan")
     if 'file.mkdir' in caps:abilities.append("membuat folder otomatis di workspace SONIC langsung lewat chat")
+    if 'desktop.mkdir' in caps:abilities.append("membuat folder di Desktop Windows langsung dari chat atau suara")
     if 'file.list' in caps:abilities.append("menjelajah folder kerja SONIC yang diizinkan")
     if 'file.read' in caps:abilities.append("membaca file teks dari workspace yang diizinkan")
     if 'powershell.exec' in caps and setting('SONIC_ENABLE_POWERSHELL_EXEC','false').lower() in ('true','1','yes'):
@@ -151,7 +152,7 @@ def receipt(row):
 
 # Safe, scoped operations can be queued directly from an authenticated owner chat
 # request. Everything else keeps a pending review, resolved IN THE SAME CHAT.
-AUTO_SAFE_ACTIONS=frozenset({'file.mkdir','file.list','file.read','process.list','window.list'})
+AUTO_SAFE_ACTIONS=frozenset({'desktop.mkdir','file.mkdir','file.list','file.read','process.list','window.list'})
 
 def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:int,auto:bool) -> dict:
     try:
@@ -221,6 +222,10 @@ def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:st
     if not success:
         code=str(result.get('error') or result.get('detail') or 'DEVICE_ACTION_FAILED')[:140]
         return f"SONIC: tindakan {row.action} gagal pada TRADEVICEPC ({code})."
+    if row.action=='desktop.mkdir':
+        p=str(result.get('path','desktop tanpa path terverifikasi'))[:250]
+        return ('Folder Desktop berhasil dibuat' if result.get('created') is True else
+                'Folder Desktop sudah tersedia')+f' di TRADEVICEPC: {p}'
     if row.action=='file.mkdir':
         p=str(result.get('path','folder tanpa path terverifikasi'))[:250]
         return ('Folder berhasil dibuat' if result.get('created') is True else
