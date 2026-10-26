@@ -164,9 +164,17 @@
           method:'POST',body:JSON.stringify({action,payload})
         });
         this.pending=receipt;
+        const windowNotice=receipt.action.startsWith('window.')
+          ? receipt.action==='window.close'&&receipt.payload.app==='metatrader5'
+            ? 'PERINGATAN: menutup MetaTrader 5 dapat menghentikan EA atau trailing stop lokal. Posisi broker tidak otomatis ditutup. WM_CLOSE tanpa force-kill.'
+            : receipt.action==='window.close'
+              ? 'Penutupan normal mungkin membuka dialog Simpan. Tidak ada force-kill.'
+              : 'Hanya aplikasi allowlisted, tanpa shell atau order trading.'
+          : null;
         $('pcApprovalText').textContent=JSON.stringify({
           device_id:'TRADEVICEPC',
           action:receipt.action,payload:receipt.payload,
+          ...(windowNotice?{warning:windowNotice}:{}),
           digest:receipt.digest,expires_at:receipt.expires_at
         },null,2);
         this.dialog.showModal();
@@ -193,7 +201,9 @@
         this.active=request;this.cursor=0;
         $('pcStop').disabled=false;$('pcReview').disabled=true;
         $('pcOutput').textContent='> '+request.action+'\n'+
-          (request.action==='powershell.exec'?request.payload.command:'PID '+request.payload.pid+'\n')+'\n';
+          (request.action==='powershell.exec'?request.payload.command:
+           request.action.startsWith('window.')?JSON.stringify(request.payload,null,2):
+           'PID '+request.payload.pid+'\n')+'\n';
         this.status('Queued for TRADEVICEPC','queued');
         await this.watch(request.id);
       }catch(error){
