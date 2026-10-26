@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/sonic-pc-command-center-v08-20261026
+      - feature/sonic-chat-first-actions-v082-20261026
   pull_request:
     paths:
       - 'sonic/**'
