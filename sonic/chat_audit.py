@@ -1,8 +1,9 @@
 """Owner-only chat history friction diagnostics; never logs conversation text."""
 import re
+import json
 from collections import Counter
 from sqlalchemy import select
-from .db import ChatMessage, OperatorRequest
+from .db import ChatMessage, OperatorRequest, VoiceActionDispatch, VoiceSession
 
 
 def is_chat_log_request(text: str) -> bool:
@@ -25,6 +26,17 @@ def summarize_chat_friction(db) -> str:
     jobs=db.scalars(select(OperatorRequest).order_by(OperatorRequest.created_at.desc()).limit(80)).all()
     state=Counter(row.state for row in jobs)
     actions=Counter(row.action for row in jobs)
+    voice=db.scalars(select(VoiceActionDispatch).order_by(
+        VoiceActionDispatch.created_at.desc()).limit(80)).all()
+    sessions=db.scalars(select(VoiceSession).order_by(
+        VoiceSession.created_at.desc()).limit(30)).all()
+    voice_routes=Counter()
+    accepted_jobs=0
+    for item in voice:
+        try:receipt=json.loads(item.result_json)
+        except (ValueError,TypeError):receipt={}
+        voice_routes[receipt.get('route','unavailable')]+=1
+        accepted_jobs+=len(receipt.get('operator_jobs') or [])
     notes=(
         f"Audit histori SONIC (maksimal 100 pesan terbaru): {len(user)} pesan pengguna, "
         f"{folder} menyebut folder/direktori, {powershell} menyebut PowerShell, "
@@ -36,6 +48,10 @@ def summarize_chat_friction(db) -> str:
         f"Jenis terbanyak: "+(', '.join(f'{k}={v}' for k,v in actions.most_common(4)) or 'belum ada')+'. '
         "Perubahan V0.8.2: membuat folder di workspace dan tindakan baca yang aman tidak memerlukan approval tambahan. "
         "PowerShell dan End Task disetujui langsung lewat chat (SETUJU/BATAL). "
+        "Audit voice (maksimal 80 dispatch tersimpan): {len(voice)} percobaan, "
+        f"{accepted_jobs} tindakan PC diterima, {len(sessions)} sesi suara terbaru, "
+        f"rute "+(', '.join(f'{k}={v}' for k,v in voice_routes.most_common(5)) or 'belum ada')+'. '
+        "Voice yang tidak dikenali sebagai tindakan PC belum seluruhnya tercatat pada versi lama. "
         "Audit ini hanya merangkum data database yang tersedia, bukan isi log eksternal atau kredensial."
     )
     return notes
