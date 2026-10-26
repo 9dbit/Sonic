@@ -6,7 +6,7 @@
       this.options=options;this.state='idle';this.generation=0;this.pc=null;this.dc=null;
       this.stream=null;this.audio=null;this.sessionId=null;this.seen=new Set();this.toolChain=Promise.resolve();
       this.activeResponse=false;this.pendingTools=0;this.continueNeeded=false;this.inputSpeaking=false;this.muted=false;
-      this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;this.turnChain=Promise.resolve();
+      this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;this.turnChain=Promise.resolve();this.verifiedSpeech=[];
     }
     get active(){return this.state!=='idle';}
     setState(state){this.state=state;this.options.onState?.(state);}
@@ -15,7 +15,7 @@
       if(this.active)return;
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){throw Error('Realtime voice memerlukan HTTPS dan browser dengan WebRTC.');}
       const generation=++this.generation;this.setState('connecting');this.toolChain=Promise.resolve();this.seen.clear();this.pendingTools=0;this.continueNeeded=false;this.muted=false;this.requestStarted=false;
-      this.sessionId=crypto.randomUUID();this.turnChain=Promise.resolve();const sessionId=this.sessionId;
+      this.sessionId=crypto.randomUUID();this.turnChain=Promise.resolve();this.verifiedSpeech=[];const sessionId=this.sessionId;
       try{
         const media=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
         if(generation!==this.generation){media.getTracks().forEach(t=>t.stop());return;}
@@ -66,16 +66,19 @@
               if(generation!==this.generation || !this.active)return;
               if(routing?.silent)return;
               if(routing?.handled){
-                // A verified application receipt, never a fabricated model action.
+                // Server-verified action responses are spoken in an isolated
+                // no-tools response. The model cannot invent a second PC plan.
                 this.send({type:'conversation.item.create',item:{
                   type:'message',role:'user',content:[{type:'input_text',
-                    text:'VERIFIED_SONIC_ACTION_ROUTE (application result, not an additional owner command): '+
+                    text:'VERIFIED_SONIC_ACTION_ROUTE (read-only application result): '+
                          JSON.stringify({status:routing.processing?'processing':'accepted',
                            reply:String(routing.reply||'').slice(0,1200)})}]
                 }});
+                this.sayVerified(routing.reply||'Perintah diterima, belum ada hasil Windows.');
+                return;
               }
-              // The provider is explicitly configured create_response=false.
-              // Only the browser resumes the voice answer after authorization.
+              // General conversation still uses the normal Realtime model,
+              // after server validation has ruled out a PC command.
               this.continueNeeded=true;
               this.continueResponse();
             }).catch(err=>this.options.onError?.(String(err)));
@@ -108,8 +111,39 @@
         if(generation===this.generation){this.send({type:'conversation.item.create',item:{type:'function_call_output',call_id:callId,output:JSON.stringify(output)}});this.continueNeeded=true;}
       }).catch(()=>{}).finally(()=>{if(generation===this.generation){this.pendingTools=Math.max(0,this.pendingTools-1);this.continueResponse();}});
     }
-    continueResponse(){if(this.continueNeeded&&!this.pendingTools&&!this.activeResponse&&!this.inputSpeaking&&this.active){this.continueNeeded=false;this.activeResponse=true;this.send({type:'response.create'});}}
-    verifiedPCReceipt(text){if(!this.active)return;this.send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'VERIFIED_SONIC_DEVICE_RESULT (read-only receipt from the Windows agent): '+String(text).slice(0,1600)}]}});this.continueNeeded=true;this.continueResponse();}
+    sayVerified(text){
+      const statement=String(text||'').trim().slice(0,1150);
+      if(!this.active||!statement)return;
+      this.verifiedSpeech.push(statement);
+      // Bound backlog while a long spoken response is finishing.
+      if(this.verifiedSpeech.length>5)this.verifiedSpeech.splice(0,this.verifiedSpeech.length-5);
+      this.continueNeeded=true;
+      this.continueResponse();
+    }
+    continueResponse(){
+      if(!this.continueNeeded||this.pendingTools||this.activeResponse||this.inputSpeaking||!this.active)return;
+      this.continueNeeded=false;
+      this.activeResponse=true;
+      if(this.verifiedSpeech.length){
+        const statement=this.verifiedSpeech.shift();
+        if(this.verifiedSpeech.length)this.continueNeeded=true;
+        // Isolate status speech from the conversational model. The input is
+        // always a bounded trusted application receipt, not a new PC command.
+        this.send({type:'response.create',response:{
+          conversation:'none',output_modalities:['audio'],tool_choice:'none',tools:[],
+          max_output_tokens:240,
+          instructions:'You are the SONIC status speaker. Read the provided Indonesian status faithfully in one concise sentence. Do not invent tool calls, promise an action, suggest alternatives, ask questions, or claim completed unless the status explicitly says completed. Do not add apologies or commentary.',
+          input:[{type:'message',role:'user',content:[{type:'input_text',text:statement}]}]
+        }});
+      }else this.send({type:'response.create'});
+    }
+    verifiedPCReceipt(text){
+      if(!this.active)return;
+      this.send({type:'conversation.item.create',item:{type:'message',role:'user',content:[
+        {type:'input_text',text:'VERIFIED_SONIC_DEVICE_RESULT (read-only receipt from the Windows agent): '+String(text).slice(0,1600)}
+      ]}});
+      this.sayVerified(text);
+    }
     memoryReceipt(receipt){this.send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'SAVED_MEMORY_RECEIPT from the SONIC application: '+JSON.stringify(receipt)}]}});this.continueNeeded=true;this.continueResponse();}
     mute(){if(!this.stream)return;this.muted=!this.muted;for(const t of this.stream.getAudioTracks())t.enabled=!this.muted;if(this.muted)this.send({type:'input_audio_buffer.clear'});this.setState(this.muted?'muted':'listening');}
     async resumeAudio(){if(this.audio){await this.audio.play();this.options.onPlaybackResumed?.();}}
@@ -121,7 +155,7 @@
       if(this.dc){this.dc.onclose=null;this.dc.onerror=null;this.dc.onmessage=null;this.dc.close();this.dc=null;}
       if(this.pc){this.pc.onconnectionstatechange=null;this.pc.ontrack=null;this.pc.close();this.pc=null;}
       if(this.audio){this.audio.pause();this.audio.srcObject=null;this.audio.remove();this.audio=null;}
-      this.sessionId=null;this.requestStarted=false;this.pendingTools=0;this.continueNeeded=false;this.activeResponse=false;this.speaking=false;this.inputSpeaking=false;
+      this.sessionId=null;this.requestStarted=false;this.pendingTools=0;this.continueNeeded=false;this.activeResponse=false;this.speaking=false;this.inputSpeaking=false;this.verifiedSpeech=[];
       this.setState('idle');this.options.onStopped?.(reason);
       if(id&&started)await this.closeRemote(id);
     }
