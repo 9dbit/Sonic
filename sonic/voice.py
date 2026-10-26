@@ -312,7 +312,7 @@ async def dispatch_voice_action(
             else:
                 canonical=spoken
             from .engine import execute_chat
-            data=await execute_chat(db,canonical,None,owner)
+            data=await execute_chat(db,canonical,None,owner,channel='voice')
             result={'handled':True,'reply':data['reply'],
                     'operator_jobs':data.get('operator_jobs',[]),
                     'operator_proposals':data.get('operator_proposals',[]),
