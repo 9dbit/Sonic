@@ -120,3 +120,35 @@ def test_button_origin_cannot_submit_arbitrary_pc_command(client,provider):
 def test_paraphrased_owner_confirmation_only_with_pending_review():
     assert confirmation_intent('Oke, setuju. Jalankan pakai PowerShell.')=='approve'
     assert confirmation_intent('solusi lainnya apa?') is None
+
+
+def test_voice_says_what_windows_agent_actually_confirmed(client,provider):
+    h=login(client);connect(client);sid=start(client,h)
+    accepted=dispatch(client,h,sid,'folder_for_followup',
+        'Buatkan di desktop dengan nama foldernya Today.')
+    assert accepted.status_code==200
+    queued=dispatch(client,h,sid,'status_before_done','Sudah jadi?')
+    assert queued.status_code==200
+    assert queued.json()['route']=='voice_pc_status'
+    assert 'belum selesai' in queued.json()['reply']
+    job=next_job(client)
+    finish(client,job,{'created':True,'exists':True,'name':'Today',
+        'scope':'owner_desktop','path':'C:/Users/Owner/Desktop/Today'})
+    checked=dispatch(client,h,sid,'status_after_done','Apakah folder Today sudah dibuat?')
+    assert checked.status_code==200,checked.text
+    assert checked.json()['route']=='voice_pc_status'
+    assert 'Folder Desktop berhasil dibuat' in checked.json()['reply']
+    assert 'C:/Users/Owner/Desktop/Today' in checked.json()['reply']
+    assert next_job(client) is None
+
+
+def test_voice_never_fabricates_completion_before_an_agent_receipt(client,provider):
+    h=login(client);connect(client);sid=start(client,h)
+    accepted=dispatch(client,h,sid,'accept_first',
+        'Tolong buat folder Today di Desktop TRADEVICEPC.')
+    assert accepted.json()['operator_jobs']
+    status=dispatch(client,h,sid,'followup_1','Solusi lainnya apa?')
+    assert status.status_code==200
+    assert status.json()['route']=='voice_pc_status'
+    assert 'belum selesai' in status.json()['reply']
+    assert 'berhasil dibuat' not in status.json()['reply']
