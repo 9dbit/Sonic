@@ -18,13 +18,19 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None) -> 
     start = time.monotonic()
     run_id = str(uuid4())
     db.info.update(ui_actions=[], memory_events=[], memory_references=[], engine_steps=[], selected_node_id=selected_node_id)
-    from .operator import direct_device_command, device_metrics, metrics_reply
-    pc_request = direct_device_command(text)
-    command = None if pc_request else direct_graph_command(text, selected_node_id)
-    route = 'device_metrics' if pc_request else 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
+    from .operator import direct_device_command, direct_capability_question, capability_reply, device_metrics, metrics_reply
+    pc_capabilities = direct_capability_question(text)
+    pc_request = not pc_capabilities and direct_device_command(text)
+    command = None if pc_request or pc_capabilities else direct_graph_command(text, selected_node_id)
+    route = 'device_capabilities' if pc_capabilities else 'device_metrics' if pc_request else 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
     status = 'completed'
     try:
-        if pc_request:
+        if pc_capabilities:
+            _record_user(db,text)
+            data=device_metrics(db)
+            db.info['engine_steps'].append({'tool':'device.capabilities','status':'read' if data['connected'] else 'offline'})
+            answer=_record_answer(db,capability_reply(data))
+        elif pc_request:
             _record_user(db, text)
             data = device_metrics(db)
             db.info['ui_actions'].append({'type':'device.metrics','device_id':data['device_id']})
