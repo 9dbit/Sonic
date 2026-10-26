@@ -20,7 +20,7 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.8.0'
+VERSION = '0.8.2'
 
 
 @asynccontextmanager
@@ -106,7 +106,7 @@ def session_status(request: Request):
     except HTTPException:
         return {"authenticated": False}
     return {"authenticated": True, "csrf": owner["csrf"], "model": model_name(), "version": VERSION,
-            "capabilities": ["chat", "explicit-memory", "knowledge-graph", "owner-memory-links", "voice-ui", "device-status"]}
+            "capabilities": ["chat", "explicit-memory", "knowledge-graph", "owner-memory-links", "voice-ui", "device-status", "chat-first-pc-actions", "inline-approvals"]}
 
 
 @app.post("/api/login")
@@ -138,13 +138,13 @@ def history(_: dict = Depends(auth.require_owner), db: Session = Depends(get_db)
 
 
 @app.post("/api/chat")
-async def chat(payload: ChatForm, _: dict = Depends(auth.require_owner_write), db: Session = Depends(get_db)):
+async def chat(payload: ChatForm, owner: dict = Depends(auth.require_owner_write), db: Session = Depends(get_db)):
     check_db()
     text = payload.message.strip()
     if not text:
         raise HTTPException(422, "Message required")
     from .engine import execute_chat
-    return await execute_chat(db, text, payload.selected_node_id)
+    return await execute_chat(db, text, payload.selected_node_id, owner)
 
 
 
