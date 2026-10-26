@@ -241,6 +241,10 @@ async def dispatch_voice_action(
                 key='name' if action=='desktop.mkdir' else 'path'
                 intent=type(intent)('action',ChatAction('automatic',action,{key:folder_name}))
                 consume_pending=True
+            elif re.search(r'[/\\:<>*?|]|\b(?:secrets|windows|NUL|namanya|nama\s+foldernya)\b',spoken,re.I):
+                # Keep the pending request open; never send an unsafe folder name
+                # to the Windows agent or improvise a generic Realtime answer.
+                intent=type(intent)('unsafe')
 
     try:
         typed_action=classify(spoken)
