@@ -97,6 +97,8 @@ def _verify_target(app, target):
     user.IsWindow.restype=wintypes.BOOL
     if not user.IsWindow(hwnd):raise RuntimeError('WINDOW_HANDLE_CHANGED')
     pid=wintypes.DWORD(0)
+    user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+    user.GetWindowThreadProcessId.restype=wintypes.DWORD
     user.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
     if pid.value!=target['pid']:
         raise PermissionError('WINDOW_PROCESS_CHANGED')
@@ -117,8 +119,9 @@ def _foreground(app,target):
     user.SetForegroundWindow.argtypes=[wintypes.HWND]
     user.SetForegroundWindow.restype=wintypes.BOOL
     user.SetForegroundWindow(hwnd)
+    user.GetForegroundWindow.restype=wintypes.HWND
     # Windows may deny focus stealing. Report the measured result, not intention.
-    return int(user.GetForegroundWindow())==target['hwnd']
+    return int(user.GetForegroundWindow() or 0)==target['hwnd']
 
 
 def _launch_path(app):
