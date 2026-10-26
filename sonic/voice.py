@@ -291,7 +291,7 @@ async def dispatch_voice_action(
         elif intent.kind in ('unsafe','ambiguous'):
             message=('Nama atau tujuan folder tidak aman. Tidak ada perintah yang dijalankan.'
                      if intent.kind=='unsafe' else
-                     'Perintah PC belum cukup jelas sehingga tidak dijalankan. Sebutkan satu nama folder dan lokasinya.')
+                     'Belum ada perintah yang dijalankan di TRADEVICEPC. Sebutkan satu nama folder dan lokasinya.')
             db.add(ChatMessage(role='user',content=spoken[:1300]))
             db.add(ChatMessage(role='assistant',content=message))
             db.commit()
