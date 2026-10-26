@@ -27,7 +27,10 @@ body.sonic-shell-v100{
   font-size:14px;
   letter-spacing:-.01em;
 }
-.sonic-shell-v100 .app{isolation:isolate}
+/* Do not isolate .app: voice controls live inside it while the original
+   sonicFocusShade is appended to body. Isolation would trap voice Mute/Stop
+   behind the shade despite their deliberately higher z-index. */
+.sonic-shell-v100 .app{isolation:auto}
 .sonic-shell-v100 .app :is(button,a,input,textarea,select,[tabindex]):focus-visible,
 .sonic-shell-v100 :is(.login-overlay,.voice-dialog,.operator-review) :is(button,input):focus-visible{
   outline:2px solid #7ce4ff!important;
