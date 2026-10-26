@@ -20,7 +20,7 @@ def summarize_chat_friction(db) -> str:
     """Aggregates personal SONIC history in place. Never echoes raw chat text."""
     messages=db.scalars(select(ChatMessage).order_by(ChatMessage.id.desc()).limit(100)).all()
     user=[row for row in messages if row.role=='user']
-    folder=sum(bool(re.search(r'\b(?:folder|direktori|directory|mkdir)\b',row.content,re.I)) for row in user)
+    folder=sum(bool(re.search(r'\b(?:folder(?:nya)?|direktori|directory|mkdir)\b',row.content,re.I)) for row in user)
     powershell=sum('powershell' in row.content.casefold() for row in user)
     confirmations=sum(bool(re.fullmatch(r'(?:setuju|batal|batalkan|approve|konfirmasi|ya jalankan|oke jalankan)',row.content.casefold().strip())) for row in user)
     jobs=db.scalars(select(OperatorRequest).order_by(OperatorRequest.created_at.desc()).limit(80)).all()
@@ -37,6 +37,7 @@ def summarize_chat_friction(db) -> str:
         except (ValueError,TypeError):receipt={}
         voice_routes[receipt.get('route','unavailable')]+=1
         accepted_jobs+=len(receipt.get('operator_jobs') or [])
+    voice_route_text=', '.join(f'{k}={v}' for k,v in voice_routes.most_common(5)) or 'belum ada'
     notes=(
         f"Audit histori SONIC (maksimal 100 pesan terbaru): {len(user)} pesan pengguna, "
         f"{folder} menyebut folder/direktori, {powershell} menyebut PowerShell, "
@@ -46,11 +47,11 @@ def summarize_chat_friction(db) -> str:
         f"{state['done']} selesai, {state['failed']} gagal, "
         f"{state['cancelled']} dibatalkan, {state['expired']} kedaluwarsa. "
         f"Jenis terbanyak: "+(', '.join(f'{k}={v}' for k,v in actions.most_common(4)) or 'belum ada')+'. '
-        "Perubahan V0.8.2: membuat folder di workspace dan tindakan baca yang aman tidak memerlukan approval tambahan. "
+        "Perubahan V0.8.5: membuat folder di workspace dan tindakan baca yang aman tidak memerlukan approval tambahan. "
         "PowerShell dan End Task disetujui langsung lewat chat (SETUJU/BATAL). "
-        "Audit voice (maksimal 80 dispatch tersimpan): {len(voice)} percobaan, "
+        f"Audit voice (maksimal 80 dispatch tersimpan): {len(voice)} percobaan, "
         f"{accepted_jobs} tindakan PC diterima, {len(sessions)} sesi suara terbaru, "
-        f"rute "+(', '.join(f'{k}={v}' for k,v in voice_routes.most_common(5)) or 'belum ada')+'. '
+        f"rute {voice_route_text}. "
         "Voice yang tidak dikenali sebagai tindakan PC belum seluruhnya tercatat pada versi lama. "
         "Audit ini hanya merangkum data database yang tersedia, bukan isi log eksternal atau kredensial."
     )
