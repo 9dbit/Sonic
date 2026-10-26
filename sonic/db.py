@@ -221,6 +221,16 @@ class OperatorOutput(Base):
 
 
 
+# Chat-originated PC operations persist completion receipts in chat history.
+# Additive table: existing SONIC Postgres tables remain untouched.
+class ChatOperation(Base):
+    __tablename__ = 'chat_operations_v082'
+    request_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    notification_sent: Mapped[bool] = mapped_column(default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 class PersonaPreference(Base):
     """One-owner settings; separate from saved facts and conversation history."""
     __tablename__ = 'persona_preferences'
