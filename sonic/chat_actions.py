@@ -22,6 +22,46 @@ TAIL=re.compile(r'\s+(?:di|pada|on|in)\s+(?:tradevicepc|pc|komputer|komputer say
                 r'workspace(?: sonic)?|folder kerja(?: sonic)?)\s*$',re.I)
 
 
+# Common spoken-utterance variants must be interpreted from the owner's exact
+# transcript, never from untrusted assistant/model output. No fuzzy path edits.
+MAKE_PREFIX = r'(?:(?:tolong|please|coba|mohon)\s+)?(?:buat(?:kan)?|bikin(?:kan)?|bikinin|create)\s+'
+DESKTOP_PLACE = (r'(?:di|pada|on|in)\s+(?:desktop|dekstop|desktopku|desktop\s+saya)'
+                 r'(?:\s+(?:tradevice\s*pc|threadvice\s*pc|tradevicepc|threadvicepc|'
+                 r'komputer(?:\s+saya)?|windows(?:\s+pc)?|pc))?')
+FOLDER_LABEL = r'(?:folder|direktori|directory)'
+NAME_MARKER = (r'(?:(?:dengan\s+)?nama\s+folder(?:nya)?|'
+               r'folder(?:nya)?\s+(?:bernama|namanya|nama)|'
+               r'bernama|namanya|named|dengan\s+nama)')
+SPOKEN_DESKTOP_PATTERNS = (
+    # "Buatkan di desktop dengan nama foldernya Today"
+    re.compile(r'^'+MAKE_PREFIX+r'(?:(?:folder|direktori|directory)\s+)?'
+               +DESKTOP_PLACE+r'\s+'+NAME_MARKER+r'\s+(?P<name>.+)$',re.I),
+    # "Buat folder bernama Today di desktop TRADEVICEPC"
+    re.compile(r'^'+MAKE_PREFIX+r'(?:(?:folder|direktori|directory)\s+)?'
+               +r'(?:(?:bernama|namanya|named|dengan\s+nama)\s+)?'
+               +r'(?P<name>.+?)\s+'+DESKTOP_PLACE+r'$',re.I),
+    # "Di desktop TRADEVICEPC buat folder namanya Today"
+    re.compile(r'^'+DESKTOP_PLACE+r'\s+'+MAKE_PREFIX+
+               r'(?:(?:folder|direktori|directory)\s+)?'
+               +r'(?:(?:bernama|namanya|named|dengan\s+nama)\s+)?'
+               +r'(?P<name>.+)$',re.I),
+)
+
+
+def looks_like_pc_action(text: str) -> bool:
+    """Distinguish failed PC parsing from ordinary general voice conversation."""
+    if not isinstance(text,str):
+        return False
+    s=PREFIX.sub('',text.strip()).strip()
+    if BAD_CONTEXT.search(s):
+        return False
+    if re.match(r'^'+MAKE_PREFIX,s,re.I) and re.search(
+        r'\b(?:folder(?:nya)?|direktori|desktop|dekstop|komputer|tradevice|threadvice)\b',s,re.I):
+        return True
+    return bool(re.match(r'^(?:oke[,.\s]+)?(?:setuju|jalankan\s+(?:pakai|lewat)\s+powershell)\b',s,re.I)
+                or re.match(r'^(?:jalankan|eksekusi)\s+powershell\b',s,re.I))
+
+
 @dataclass(frozen=True)
 class ChatAction:
     kind: Literal['automatic','review']
@@ -63,10 +103,23 @@ def classify(text: str) -> ChatAction | None:
             'pid':int(m.group('pid')),'expected_name':m.group('name').strip()})
         return ChatAction('review','process.terminate',payload)
 
+    # Full spoken variants where location precedes the folder name.
+    # Always resolve into the dedicated Desktop action, never the workspace.
+    for pattern in SPOKEN_DESKTOP_PATTERNS:
+        spoken=pattern.fullmatch(s)
+        if spoken:
+            name=_strip_scope(spoken.group('name'))
+            if not name:
+                return None
+            safe=clean_workspace_folder(name)
+            if '/' in safe:
+                raise ValueError('DESKTOP_SINGLE_FOLDER_ONLY')
+            return ChatAction('automatic','desktop.mkdir',{'name':safe})
+
     # The Windows Desktop is a distinct, explicitly named safe target.
     # Never silently redirect a "desktop" request to D:\Sonic\work.
     desktop=re.fullmatch(
-        r'(?:(?:tolong|please|coba)\s+)?(?:buat(?:kan)?|bikin|create)\s+'
+        r'(?:(?:tolong|please|coba|mohon)\s+)?(?:buat(?:kan)?|bikin(?:kan)?|bikinin|create)\s+'
         r'(?:(?:sebuah|satu|a|new)\s+)?(?:folder|direktori|directory)\s+'
         r'(?:(?:baru|new)\s+)?(?:(?:bernama|named|nama(?:nya)?)\s*[:=]?\s*)?'
         r'(?P<name>.+?)\s+(?:di|pada|on|in)\s+'
@@ -80,10 +133,10 @@ def classify(text: str) -> ChatAction | None:
         clean=clean_workspace_folder(name)
         return ChatAction('automatic','desktop.mkdir',{'name':clean})
     if re.search(r'\b(?:di|pada|on|in)\s+(?:desktop|dekstop|desktopku)\b',s,re.I) and re.match(
-        r'(?:(?:tolong|please|coba)\s+)?(?:buat(?:kan)?|bikin|create)\s+',s,re.I):
+        r'(?:(?:tolong|please|coba|mohon)\s+)?(?:buat(?:kan)?|bikin(?:kan)?|bikinin|create)\s+',s,re.I):
         return None
 
-    m=re.fullmatch(r'(?:(?:tolong|please|coba)\s+)?(?:buat(?:kan)?|bikin|create)\s+'
+    m=re.fullmatch(r'(?:(?:tolong|please|coba|mohon)\s+)?(?:buat(?:kan)?|bikin(?:kan)?|bikinin|create)\s+'
                    r'(?:(?:sebuah|satu|a|new)\s+)?(?:folder|direktori|directory)\s+'
                    r'(?:(?:baru|new)\s+)?(?:(?:bernama|named|nama(?:nya)?)\s*[:=]?\s*)?'
                    r'(?P<name>.+?)\s*',s,re.I|re.S)
