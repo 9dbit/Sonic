@@ -30,7 +30,7 @@ with local_server() as (url,owner),sync_playwright() as p:
                               has_touch=name=='mobile')
         errors=[]
         page.on('pageerror',lambda e:errors.append(str(e)))
-        page.add_init_script("""() => {
+        page.add_init_script("""(() => {
           Object.defineProperty(window,'SonicVoice',{
             configurable:true,
             set(C){
@@ -44,7 +44,7 @@ with local_server() as (url,owner),sync_playwright() as p:
             },
             get(){return this.__VoiceProxy;}
           });
-        }""")
+        })();""")
         seen=[]
         def route_dispatch(route):
             data=route.request.post_data_json
