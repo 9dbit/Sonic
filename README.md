@@ -4,6 +4,8 @@
 
 Current staging engine: [V0.8.7 durable execution, voice/chat routing and result evidence](docs/SONIC_V087_EXECUTION_ENGINE.md).
 
+V0.8.8 adds [Workspace, Notes, direct double-tap voice and grouped Neural nodes](docs/SONIC_V088_WORKSPACE_VOICE.md). Cloud notes are separate from Windows files and Google Drive.
+
 ## V0.1 foundation
 
 | Area | Status |

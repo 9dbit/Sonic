@@ -25,6 +25,28 @@ class OwnerSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
+class WorkspaceGate(Base):
+    __tablename__ = 'workspace_gate_v088'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class WorkspaceItem(Base):
+    """Owner's cloud text workspace, separate from Windows and Memory Vault."""
+    __tablename__ = 'workspace_items_v088'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    parent_id: Mapped[str] = mapped_column(String(36), default='root', nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slot: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    content: Mapped[str] = mapped_column(Text, default='', nullable=False)
+    create_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    trashed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

@@ -1,8 +1,8 @@
 (() => {
   'use strict';
   const $=id=>document.getElementById(id);
-  const tabs={brain:'brainPanel',chat:'chatPanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
-  const titles={brain:'Neural Brain',chat:'Command Center',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
+  const tabs={brain:'brainPanel',chat:'chatPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
+  const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   let csrf=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
@@ -23,6 +23,7 @@
   function notify(message){clearTimeout(toastTimer);$('notice').textContent=String(message);$('notice').classList.remove('hidden');toastTimer=setTimeout(()=>$('notice').classList.add('hidden'),7000);}
   function activityState(next){activity=next;window.sonicMotion?.setState(next);$('assistantCore').dataset.state=next;$('activityLabel').textContent=({idle:'READY',thinking:'THINKING',saving:'SAVED',listening:'LISTENING',speaking:'SPEAKING',error:'UNAVAILABLE'})[next]||'READY';}
   function clearPrivateUI(){
+    window.sonicMotion?.returnHome();window.sonicWorkspace?.clear();
     $('executionTasks').replaceChildren();watchingJobs.clear();
     wake?.stop();liveVoice?.stop('session_expired');speechAudio?.pause();$('voiceProposalHost').replaceChildren();
     graph.setVisible(false);graph.nodes=[];graph.edges=[];graph.lookup.clear();graph.positions.clear();graph.projected?.clear();graph.selected=null;graph.path=[];graph.highlight=null;graph.initialized=false;
@@ -38,6 +39,7 @@
     return body;
   }
   function setTab(tab){if(!tabs[tab])return;currentTab=tab;for(const [name,id] of Object.entries(tabs))$(id).classList.toggle('hidden',name!==tab);
+    if(window.sonicWorkspace){window.sonicWorkspace.visible=tab==='workspace';if(tab==='workspace')window.sonicWorkspace.refresh().catch(e=>notify(e.message));}
     document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
     $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&!!csrf);
     if(!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadTasks();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
@@ -482,8 +484,9 @@
     const reject=button('Discard',async()=>{try{await API('/api/voice/sessions/'+sessionId+'/memories/'+proposal.proposal_id+'/reject',{method:'POST',body:'{}'});card.remove();}catch(e){notify(e.message);}},'plain');controls.append(save,reject);card.append(controls);host.append(card);
   }
   liveVoice=new window.SonicVoice({api:API,onActions:applyGraphActions,onProposal:showVoiceProposal,onError:notify,
+    onInputStart:()=>window.sonicWorkspace?.captureContext(),
     onState:state=>{window.sonicRealtimeActive=state!=='idle';$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
-    onConnected:info=>{$('voiceStateText').textContent='Connecting audio';$('coreModel').textContent=info.model+' / realtime';},
+    onConnected:info=>{$('coreModel').textContent=info.model+' / realtime';},
     onTranscript:async(role,text,meta={})=>{
       if(!text.trim())return {handled:false};
       const item=line(role,text);
@@ -492,6 +495,8 @@
         brainAnswer(text);return {handled:false};
       }
       if(handleVoiceSessionCommand(text))return {handled:true,silent:true};
+      const workspace=await window.sonicWorkspace?.handleVoice(text,meta.inputContext||null);
+      if(workspace?.handled){line('assistant',workspace.reply);return workspace;}
       const result=await dispatchSpokenPC(meta.sessionId,meta.itemId,text);
       const queued=!!(result.operator_jobs?.length||result.operator_proposals?.length);
       item.append(el('small','execution-note',queued
@@ -505,6 +510,7 @@
     onPlaybackResumed:()=>$('voiceResume').classList.add('hidden'),
     onStopped:()=>{$('voiceProposalHost').replaceChildren();$('voiceResume').classList.add('hidden');if(csrf)loadSetup();if(wake?.enabled&&!document.hidden)wake.resume();}
   });
+  window.sonicWorkspace=new window.SonicWorkspace({api:API,notify,open:()=>setTab('workspace'),read:text=>{if(liveVoice.active)liveVoice.verifiedPCReceipt(text);else speak(text,{force:true});}});
   window.addEventListener('sonic:persona-applied',async event=>{
     // Future TTS and text chats already use the saved server persona.
     // Realtime voice output cannot be switched in the middle of a session.
@@ -520,6 +526,17 @@
     }
   });
   $('talkSonic').addEventListener('click',openVoiceDialog);$('cancelVoice').addEventListener('click',()=>$('voiceConsent').close());
+  // Runs in the second tap's event stack, before any await: that tap is the
+  // owner's application consent. Browser/OS permission still applies.
+  window.addEventListener('sonic:invoke',event=>{
+    if(event.detail?.consent!=='double_tap')return;
+    if(!csrf){window.sonicMotion?.returnHome();notify('Masuk ke SONIC sebelum memulai mikrofon.');return;}
+    $('voiceSessionBar').classList.remove('compact');$('voiceHide').textContent='Minimize';
+    if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
+    if(waiting){notify('Tunggu respons chat selesai, lalu double tap lagi.');return;}
+    $('voiceConsent').close();wake?.pause();speech?.stop();window.sonicWorkspace?.stopDictation();speechAudio?.pause();window.speechSynthesis?.cancel();
+    liveVoice.start().catch(error=>{notify(error.message);if(wake?.enabled)wake.resume();});
+  });
   $('voiceConsentForm').addEventListener('submit',async e=>{e.preventDefault();if(!$('voiceAgree').checked)return;$('voiceConsent').close();wake?.pause();speech?.stop();window.speechSynthesis?.cancel();try{await liveVoice.start();}catch(error){notify(error.message);}});
   $('voiceStop').addEventListener('click',()=>liveVoice.stop());$('voiceHide').addEventListener('click',()=>{$('voiceSessionBar').classList.toggle('compact');$('voiceHide').textContent=$('voiceSessionBar').classList.contains('compact')?'Expand':'Minimize';});$('voiceMute').addEventListener('click',()=>liveVoice.mute());$('voiceResume').addEventListener('click',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
   $('refreshRuns').addEventListener('click',loadRuns);

@@ -1,0 +1,41 @@
+name: SONIC Workspace and Voice Invocation
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'sonic/**'
+      - 'tests/**'
+      - 'scripts/e2e_workspace_v088.py'
+      - '.github/workflows/workspace-v088.yml'
+permissions:
+  contents: read
+jobs:
+  workspace-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test dependencies
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Verify storage and graph geometry
+        run: |
+          python -m pytest -q tests/test_workspace_v088.py
+          node --test tests/js/graph-layout.test.cjs
+          node --check web/workspace.js
+          node --check web/app.js
+      - name: Real HTTP and synthetic microphone on desktop and mobile
+        run: python scripts/e2e_workspace_v088.py
+      - name: Keep synthetic screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-workspace-v088
+          path: artifacts/workspace-v088/

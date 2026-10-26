@@ -20,7 +20,7 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.8.7'
+VERSION = '0.8.8'
 
 
 @asynccontextmanager
@@ -289,6 +289,8 @@ app.include_router(integrations_router)
 app.include_router(operator_router)
 app.include_router(speech_router)
 app.include_router(persona_router)
+from .workspace import router as workspace_router
+app.include_router(workspace_router)
 
 
 @app.middleware("http")

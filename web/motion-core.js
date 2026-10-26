@@ -8,7 +8,14 @@
   constructor(anchor){
    this.anchor=anchor;this.float=document.createElement('div');this.float.id='sonicMotionFloat';
    this.float.className='sonic-motion-float';this.float.dataset.state='idle';this.float.tabIndex=0;
-   this.float.setAttribute('role','button');this.float.setAttribute('aria-label','SONIC Motion Core: tap once to enlarge 10%, twice within one second to center, Escape to return');
+   this.float.setAttribute('role','button');this.float.setAttribute('aria-label','SONIC: double tap to center and start microphone; Escape to return');
+   this.float.setAttribute('aria-pressed','false');
+   this.float.title='Double tap untuk memulai mikrofon dan pemrosesan audio OpenAI';
+   this.shade=document.createElement('div');this.shade.id='sonicFocusShade';this.shade.setAttribute('aria-hidden','true');
+   this.focusControls=document.createElement('div');this.focusControls.className='sonic-focus-controls';this.focusControls.hidden=true;
+   const hint=document.createElement('p');hint.textContent='SONIC · Double tap memulai mikrofon dan audio OpenAI';
+   const home=document.createElement('button');home.type='button';home.textContent='Kembali ke posisi awal';home.addEventListener('click',()=>this.returnHome());
+   this.focusControls.append(hint,home);document.body.append(this.shade,this.focusControls);
    this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');this.float.append(this.canvas);
    this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
@@ -27,16 +34,18 @@
    this.frameRequest=requestAnimationFrame(t=>this.frame(t));
   }
   attach(){
-   const press=()=>{const now=performance.now();if(math.doubleTap(this.lastTap,now)){this.lastTap=-Infinity;this.setFocus(!this.focused);}else{this.lastTap=now;this.float.classList.add('preview');clearTimeout(this.tapTimer);this.tapTimer=setTimeout(()=>this.float.classList.remove('preview'),1100);}};
+   const press=()=>{const now=performance.now();if(math.doubleTap(this.lastTap,now)){this.lastTap=-Infinity;this.setFocus(true);window.dispatchEvent(new CustomEvent('sonic:invoke',{detail:{consent:'double_tap'}}));}else{this.lastTap=now;this.float.classList.add('preview');clearTimeout(this.tapTimer);this.tapTimer=setTimeout(()=>this.float.classList.remove('preview'),1100);}};
    this.float.addEventListener('click',e=>{e.stopPropagation();press();});
    this.float.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();press();}else if(e.key==='Escape')this.returnHome();});
    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.focused)this.returnHome();});
-   window.addEventListener('resize',()=>this.updateHome(!this.focused));
+   window.addEventListener('resize',()=>{this.updateHome(!this.focused);if(this.focused)this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));});
    window.addEventListener('scroll',()=>this.updateHome(!this.focused),{passive:true});
    document.addEventListener('visibilitychange',()=>{this.paused=document.hidden;});
    // When switching between panels, the anchor may have zero dimensions.
    const observer=new MutationObserver(()=>{if(!this.focused)this.updateHome(true);this.prioritizePanels();});
    for(const node of [this.anchor.closest('section'),el('graphInspector'),el('graphFilters')])if(node)observer.observe(node,{attributes:true,attributeFilter:['class','style']});
+   // Filter content arrives asynchronously and pushes the home anchor down.
+   if(el('filterList'))observer.observe(el('filterList'),{childList:true,subtree:true});
    this.observer=observer;this.prioritizePanels();
    this.float.addEventListener('mouseenter',()=>{if(!this.focused)this.float.classList.add('hover');});
    this.float.addEventListener('mouseleave',()=>this.float.classList.remove('hover'));
@@ -53,6 +62,9 @@
   place(rect){for(const key of ['left','top','width','height'])this.float.style[key]=rect[key]+'px';}
   setFocus(on){if(on===this.focused)return;this.updateHome(false);this.focused=on;
    this.float.classList.toggle('focused',on);this.float.classList.remove('preview');this.float.setAttribute('aria-pressed',String(on));
+   document.body.classList.toggle('sonic-focused',on);this.focusControls.hidden=!on;
+   if(on){this.backgroundInert=new Map();for(const node of document.querySelectorAll('.panel,.sidebar,.topbar,#nodeDetailPopup')){this.backgroundInert.set(node,node.inert);node.inert=true;}}
+   else{for(const [node,prior] of this.backgroundInert||[])node.inert=prior;this.backgroundInert=null;}
    if(on){this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));this.float.focus({preventScroll:true});}
    else this.place(this.home);
   }
@@ -103,7 +115,7 @@
    if(!this.paused){this.time+=dt*this.speed;this.draw();}
    this.frameRequest=requestAnimationFrame(t=>this.frame(t));
   }
-  stop(){this.running=false;cancelAnimationFrame(this.frameRequest);clearTimeout(this.tapTimer);this.observer?.disconnect();this.float.remove();}
+  stop(){this.returnHome();this.running=false;cancelAnimationFrame(this.frameRequest);clearTimeout(this.tapTimer);this.observer?.disconnect();this.float.remove();this.shade.remove();this.focusControls.remove();}
  }
  const init=()=>{const anchor=el('sonicMotionAnchor');if(anchor)window.sonicMotion=new SonicMotionCore(anchor);};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
