@@ -64,6 +64,9 @@ with local_server() as (url,token),sync_playwright() as p:
         page.locator('#ownerToken').fill(token)
         page.locator('#loginForm button[type=submit]').click()
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('hidden'),timeout=12000)
+        # An unconfigured fresh owner can start on Setup; request the Brain
+        # explicitly instead of assuming a preconfigured owner's default tab.
+        page.locator('.nav[data-tab="brain"]').click()
         expect(page.locator('#brainPanel')).to_be_visible()
         expect(page.locator('#graphStage canvas').first).to_be_visible(timeout=12000)
         expect(page.locator('#sonicMotionFloat canvas')).to_be_visible(timeout=12000)
