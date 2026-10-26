@@ -99,7 +99,7 @@ def integration_snapshot(db: Session) -> dict:
         entry["recent_completed_jobs"] = 0
         if entry["id"] == "windows-native":
             entry["connected"] = fresh and bool(verified_actions)
-            entry["state"] = "online" if entry["connected"] else "offline"
+            entry["state"] = "online" if entry["connected"] else "not_ready" if online else "offline"
             entry["verification"] = "live_device_heartbeat_and_capabilities" if entry["connected"] else "none"
             entry["last_verified_at"] = (
                 telemetry.updated_at.isoformat() + "Z" if entry["connected"] else None
@@ -113,6 +113,7 @@ def integration_snapshot(db: Session) -> dict:
                 "Verified outbound companion heartbeat and capabilities. "
                 "This does not prove a particular voice command completed."
                 if entry["connected"] else
+                "The companion is reachable but has no fresh callable capabilities." if online else
                 "The registered Windows companion is offline or its capability snapshot is stale."
             )
         elif entry["id"] == "notepad":
