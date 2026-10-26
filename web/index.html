@@ -24,7 +24,9 @@
   <script src="/assets/motion-core.js?v=0.8.8" defer></script>
   <script src="/assets/persona-studio.js?v=0.8.8" defer></script>
   <link rel="stylesheet" href="/assets/workspace.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/pc-workspace-v089.css?v=0.8.9">
   <script src="/assets/workspace.js?v=0.8.8" defer></script>
+  <script src="/assets/pc-workspace-v089.js?v=0.8.9" defer></script>
   <script src="/assets/app.js?v=0.8.8" defer></script>
   <script src="/assets/pc-command-v08.js?v=0.8.8" defer></script>
 </head>
@@ -107,11 +109,35 @@
       </section>
       <section class="panel workspace-panel hidden" id="workspacePanel" aria-label="Workspace SONIC">
         <div class="ws-heading"><div><span class="eyebrow">YOUR FILES &amp; NOTES</span><h2>Workspace</h2><p>Folder dan catatan dalam satu ruang. Ketik, dikte, atau panggil SONIC.</p></div><div class="ws-actions"><button id="wsNewFolder" type="button" class="ws-button">+ Folder</button><button id="wsNewNote" type="button" class="ws-button primary">+ Catatan</button></div></div>
+        <div class="ws-root-tabs" role="group" aria-label="Pilih penyimpanan">
+          <button id="wsPcCloudTab" type="button" class="ws-root-tab active" aria-pressed="true">SONIC Cloud</button>
+          <button id="wsPcDeviceTab" type="button" class="ws-root-tab" aria-pressed="false">TRADEVICEPC <span>Read-only</span></button>
+        </div>
         <div class="ws-layout">
-          <aside class="ws-sidebar" aria-label="Folder workspace"><h3>LOKASI</h3><button id="wsCloud" type="button" class="active">SONIC Cloud</button><div id="wsTree" class="ws-tree"></div><button type="button" disabled>TRADEVICEPC<span class="ws-pending">File manager belum terhubung</span></button><button type="button" disabled>Google Drive<span class="ws-pending">Belum dihubungkan</span></button><button id="wsTrash" type="button">Trash</button></aside>
+          <aside class="ws-sidebar" aria-label="Folder workspace"><h3>LOKASI</h3><button id="wsCloud" type="button" class="active">SONIC Cloud</button><div id="wsTree" class="ws-tree"></div><button id="wsPc" type="button">TRADEVICEPC<span class="ws-pending">Read-only · izin setiap akses</span></button><button type="button" disabled>Google Drive<span class="ws-pending">Belum dihubungkan</span></button><button id="wsTrash" type="button">Trash</button></aside>
           <div class="ws-browser"><div class="ws-toolbar"><input id="wsSearch" class="ws-search" type="search" maxlength="100" placeholder="Cari nama file atau folder…" aria-label="Cari file dan folder"><button id="wsRefresh" type="button" aria-label="Refresh workspace">↻</button></div><nav id="wsBreadcrumbs" class="ws-breadcrumbs" aria-label="Lokasi folder"></nav><div id="wsList" class="ws-list" aria-live="polite"></div></div>
           <aside id="wsPreview" class="ws-preview hidden" aria-label="Editor catatan"><div class="ws-preview-head"><h3 id="wsPreviewName"></h3><button id="wsClosePreview" type="button" class="ws-button" aria-label="Tutup editor">←</button></div><p id="wsPreviewPath" class="ws-preview-path"></p><textarea id="wsEditor" class="ws-editor" maxlength="100000" spellcheck="false" aria-label="Isi catatan" placeholder="Mulai menulis…"></textarea><p id="wsFolderInfo" class="ws-folder-info hidden"></p><span id="wsSaveState" class="ws-save-state" role="status"></span><div class="ws-editor-actions"><button id="wsSave" type="button">Simpan</button><button id="wsDictate" type="button">Dikte</button><button id="wsRead" type="button">Bacakan</button><button id="wsReload" type="button">Muat ulang</button></div><div class="ws-editor-actions"><button id="wsRename" type="button">Ganti nama</button><button id="wsMove" type="button">Pindahkan</button><button id="wsDelete" type="button">Ke Trash</button><button id="wsRestore" type="button" class="hidden">Pulihkan</button></div></aside>
-        </div><p id="wsStatus" class="ws-status" role="status"></p><div class="ws-voice-help"><strong>COBA DENGAN SUARA</strong><br>“Buka workspace” · “Buat folder Proyek” · “Buat catatan Rapat” · “Cari file Rapat”<br>Pilih catatan, lalu “Tambahkan ke catatan …”, “Simpan catatan”, atau “Bacakan catatan ini”.</div>
+        </div>
+        <section id="wsPcArea" class="ws-pc-area hidden" aria-label="TRADEVICEPC file browser read-only">
+          <div class="ws-pc-intro"><strong>TRADEVICEPC / Authorized SONIC Workspace</strong>
+            <p>Jelajahi file teks di folder kerja SONIC Windows. Hanya membaca, tidak otomatis menyinkronkan, menyimpan, memindahkan, atau menghapus file PC.</p>
+          </div>
+          <div class="ws-pc-toolbar" role="group" aria-label="Perintah browser PC">
+            <button id="wsPcRoot" type="button">Buka root PC</button>
+            <button id="wsPcUp" type="button">Naik folder</button>
+            <button id="wsPcRefresh" type="button">Muat ulang</button>
+            <button id="wsPcCancel" type="button">Hentikan permintaan</button>
+          </div>
+          <nav id="wsPcBreadcrumbs" class="ws-pc-crumbs" aria-label="Path Workspace PC"></nav>
+          <p id="wsPcStatus" class="ws-pc-status" role="status" aria-live="polite">Pemeriksaan koneksi diperlukan.</p>
+          <div id="wsPcList" class="ws-pc-list" aria-live="polite"></div>
+          <section id="wsPcPreview" class="ws-pc-preview hidden" aria-label="Preview teks Windows">
+            <div class="ws-pc-preview-header"><h3 id="wsPcFileName"></h3><button id="wsPcClose" type="button">Tutup preview</button></div>
+            <pre id="wsPcText" tabindex="0"></pre>
+            <p id="wsPcEvidence"></p>
+          </section>
+        </section>
+        <p id="wsStatus" class="ws-status" role="status"></p><div class="ws-voice-help"><strong>COBA DENGAN SUARA</strong><br>“Buka workspace” · “Buat folder Proyek” · “Buat catatan Rapat” · “Cari file Rapat”<br>Pilih catatan, lalu “Tambahkan ke catatan …”, “Simpan catatan”, atau “Bacakan catatan ini”.</div>
       </section>
       <section class="panel info-panel hidden" id="memoryPanel">
         <div class="section-head"><div><span class="eyebrow">PERSISTENT KNOWLEDGE</span><h2>Memory Vault</h2><p>Catatan yang kamu simpan. Bukan seluruh riwayat percakapan.</p></div><span id="memoryTotal" class="number-badge">0</span></div>
