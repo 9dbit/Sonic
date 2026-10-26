@@ -74,6 +74,7 @@ def capability_reply(data:dict) -> str:
     if data['metrics_available']:
         abilities.append("memantau CPU, RAM, disk, network, proses, services, dan GPU jika driver menyediakannya")
     if 'process.list' in caps:abilities.append("melihat daftar proses berjalan")
+    if 'file.mkdir' in caps:abilities.append("membuat folder otomatis di workspace SONIC langsung lewat chat")
     if 'file.list' in caps:abilities.append("menjelajah folder kerja SONIC yang diizinkan")
     if 'file.read' in caps:abilities.append("membaca file teks dari workspace yang diizinkan")
     if 'powershell.exec' in caps and setting('SONIC_ENABLE_POWERSHELL_EXEC','false').lower() in ('true','1','yes'):
@@ -85,9 +86,9 @@ def capability_reply(data:dict) -> str:
     return (f"{device_id} adalah PC Windows milik Anda yang terhubung ke SONIC. "
             f"Status: online; companion {data.get('agent_version') or 'versi tidak tersedia'}. "
             "Kemampuan yang terverifikasi saat ini: "+ "; ".join(abilities)+
-            ". Buka Devices > PC Command Center untuk menjalankan operasi. "
-            "Setiap aksi yang dijalankan membutuhkan review dan persetujuan Anda; "
-            "chat ini tidak otomatis menjalankan PowerShell atau mengendalikan GUI secara bebas.")
+            ". Untuk operasi aman cukup perintahkan saya langsung di chat. "
+            "PowerShell dan End Task memerlukan persetujuan sekali melalui balasan SETUJU/BATAL di chat; "
+            "tidak perlu pindah halaman, dan GUI automation tetap dibatasi.")
 
 
 @router.get('/api/device/metrics')
