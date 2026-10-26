@@ -53,6 +53,43 @@ def direct_device_command(text:str) -> bool:
                 not re.search(r'\b(?:jangan|simpan|ingat|save|remember)\b',s))
 
 
+# Deterministic answers for questions about SONIC's own registered Windows PC.
+# Model instructions alone must never be the only way to know our device identity.
+def direct_capability_question(text:str) -> bool:
+    s=text.casefold()
+    device=bool(re.search(r'\\b(?:tradevicepc|tradevice|komputer|computer|pc|sonic)\\b',s))
+    intent=bool(re.search(r'apa yang (?:kita |sonic )?bisa|bisa (?:lakukan|apa)|kemampuan|capabilit|fitur.*(?:pc|komputer)|what can (?:you|sonic|we) do|kontrol.*(?:pc|komputer)',s))
+    return device and intent
+
+
+def capability_reply(data:dict) -> str:
+    device_id=data['device_id']
+    if not data['connected']:
+        return (f"{device_id} adalah komputer Windows yang terdaftar sebagai perangkat SONIC, "
+                "tetapi companion sekarang offline atau heartbeat-nya sudah kedaluwarsa. "
+                "Saat online, SONIC dapat membaca Task Manager dan menampilkan PC Command Center. "
+                "Saya tidak akan mengklaim PowerShell siap sebelum capability perangkat terverifikasi.")
+    caps=set(data.get('capabilities') or [])
+    abilities=[]
+    if data['metrics_available']:
+        abilities.append("memantau CPU, RAM, disk, network, proses, services, dan GPU jika driver menyediakannya")
+    if 'process.list' in caps:abilities.append("melihat daftar proses berjalan")
+    if 'file.list' in caps:abilities.append("menjelajah folder kerja SONIC yang diizinkan")
+    if 'file.read' in caps:abilities.append("membaca file teks dari workspace yang diizinkan")
+    if 'powershell.exec' in caps and setting('SONIC_ENABLE_POWERSHELL_EXEC','false').lower() in ('true','1','yes'):
+        abilities.append("menjalankan perintah PowerShell setelah persetujuan eksplisit untuk setiap command")
+    elif 'shell.inspect' in caps:abilities.append("melakukan inspeksi PowerShell diagnostik yang dibatasi")
+    if 'process.terminate' in caps:abilities.append("mengakhiri proses non-kritis melalui End Task dengan persetujuan pemilik")
+    if 'window.list' in caps:abilities.append("membaca daftar jendela desktop")
+    if not abilities:abilities.append("menampilkan status dan heartbeat perangkat")
+    return (f"{device_id} adalah PC Windows milik Anda yang terhubung ke SONIC. "
+            f"Status: online; companion {data.get('agent_version') or 'versi tidak tersedia'}. "
+            "Kemampuan yang terverifikasi saat ini: "+ "; ".join(abilities)+
+            ". Buka Devices > PC Command Center untuk menjalankan operasi. "
+            "Setiap aksi yang dijalankan membutuhkan review dan persetujuan Anda; "
+            "chat ini tidak otomatis menjalankan PowerShell atau mengendalikan GUI secara bebas.")
+
+
 @router.get('/api/device/metrics')
 def metrics(_:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
     return device_metrics(db)
