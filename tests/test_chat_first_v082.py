@@ -185,3 +185,43 @@ def test_owner_can_audit_actual_chat_history_without_opening_devices(client):
     assert 'menyebut folder/direktori' in response.json()['reply']
     assert 'pending' in response.json()['reply']
     assert client.post('/api/chat',json={'message':'cek log chat history'}).status_code==403
+
+
+def test_streamed_shell_output_is_visible_inline_after_explicit_approval(client,monkeypatch):
+    monkeypatch.setenv('SONIC_ENABLE_POWERSHELL_EXEC','true')
+    h=login(client);connect(client)
+    proposal=chat(client,h,'PowerShell: Get-Date').json()
+    assert proposal['operator_proposals']
+    assert next_job(client) is None
+    approved=chat(client,h,'setuju').json()
+    assert approved['operator_jobs']
+    job=next_job(client)
+    lease={'request_id':job['id'],'lease':job['lease']}
+    response=client.post('/api/device/operator/stream',headers=DEVICE,json={
+        **lease,'sequence':1,'channel':'stdout','text':'Expected UTC time: 2026-10-26\n'})
+    assert response.status_code==200,response.text
+    finish(client,job,{'exit_code':0,'events_sent':1})
+    receipt=client.get('/api/operator/requests/'+job['id']).json()
+    assert receipt['state']=='done'
+    assert 'Expected UTC time: 2026-10-26' in receipt['chat_completion']
+    assert '\nOutput TRADEVICEPC' in receipt['chat_completion']
+    history=client.get('/api/history').json()['messages']
+    assert any('Expected UTC time' in row['content'] for row in history if row['role']=='assistant')
+
+
+def test_shell_secret_pattern_is_not_repeated_in_chat(client,monkeypatch):
+    monkeypatch.setenv('SONIC_ENABLE_POWERSHELL_EXEC','true')
+    h=login(client);connect(client)
+    chat(client,h,'PowerShell: Get-Date')
+    chat(client,h,'setuju')
+    job=next_job(client)
+    lease={'request_id':job['id'],'lease':job['lease']}
+    r=client.post('/api/device/operator/stream',headers=DEVICE,json={
+        **lease,'sequence':1,'channel':'stdout','text':'password: example-sensitive-not-for-chat\n'})
+    assert r.status_code==200,r.text
+    finish(client,job,{'exit_code':0,'events_sent':1})
+    state=client.get('/api/operator/requests/'+job['id']).json()
+    assert 'informasi sensitif' in state['chat_completion']
+    assert 'example-sensitive-not-for-chat' not in state['chat_completion']
+    history=client.get('/api/history').json()['messages']
+    assert all('example-sensitive-not-for-chat' not in m['content'] for m in history)
