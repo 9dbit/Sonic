@@ -69,6 +69,8 @@ def _single_name(value: str) -> str | None:
         return None
     if MULTI_ACTION.search(s) or any(x in s for x in ('\n','\r',';')):
         return None
+    if re.search(r'\b(?:yang\s+(?:kemarin|tadi)|kemarin\s+itu|yang\s+itu|folder\s+yang)\b',s,re.I):
+        return None
     if len(s.split())>7 or len(s)>70:
         return None
     try:
