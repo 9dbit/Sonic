@@ -79,7 +79,7 @@ def classify(text: str) -> ChatAction | None:
             return None
         clean=clean_workspace_folder(name)
         return ChatAction('automatic','desktop.mkdir',{'name':clean})
-    if re.search(r'\b(?:desktop|dekstop|desktopku)\b',s,re.I) and re.match(
+    if re.search(r'\b(?:di|pada|on|in)\s+(?:desktop|dekstop|desktopku)\b',s,re.I) and re.match(
         r'(?:(?:tolong|please|coba)\s+)?(?:buat(?:kan)?|bikin|create)\s+',s,re.I):
         return None
 
