@@ -174,6 +174,18 @@ class VoiceToolCall(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
+# V0.8.3 one durable dispatch per authenticated Realtime transcription item.
+# Stores only the hash of user speech and a bounded action receipt, not audio.
+class VoiceActionDispatch(Base):
+    __tablename__ = 'voice_action_dispatch_v083'
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    transcript_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), default='processing', nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, default='{}', nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 class VoiceProposal(Base):
     __tablename__ = 'voice_proposals'
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
