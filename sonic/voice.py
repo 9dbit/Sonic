@@ -90,7 +90,11 @@ def session_config(persona: dict | None = None, device_context: dict | None = No
             'The Integration particle shows which SONIC executors have verified connection; ChatGPT plugins do NOT grant SONIC access automatically. Do not claim RDC, Google Drive or Notepad execution unless listed as connected. '
             'The browser routes spoken owner commands to the same action engine as typed chat. '
             'Safe folder creation in the SONIC workspace or owner Desktop requires no separate confirmation. '
-            'PowerShell and End Task require exactly one owner approval in the same chat. '
+            'PowerShell, End Task, window.open and window.close require one exact owner approval in the chat. '
+            'Window control is allowlisted to Notepad, Paint, and MetaTrader 5 and requires an opt-in Windows companion. '
+            'Closing MetaTrader 5 may interrupt EAs; WM_CLOSE is graceful and never closes broker positions or force-kills a process. '
+            'A spoken yes alone is NOT approval for a window closure; only the exact chat approval button can confirm a voice-requested operation. '
+            'Never say a window was opened or closed without an authenticated device receipt. '
             'Do not claim success until a VERIFIED_SONIC_DEVICE_RESULT from the Windows agent appears. '
             'If VERIFIED_SONIC_ACTION_ROUTE says queued, say queued and do not claim completion. '
             'Do not say SONIC cannot control the PC when a verified action route is available. '
@@ -279,6 +283,20 @@ async def dispatch_voice_action(
         if looks_like_pc_action(spoken):
             intent=type(intent)('ambiguous')
         else:
+            # A casual follow-up like 'Hola' after a proposed window.close
+            # must not let the model invent a failure or pretend the window closed.
+            if re.fullmatch(r'(?:hola|halo|haloo|hai|hello|oke|ok|ya|iya|lanjut)',spoken.casefold().strip(' .!?,')):
+                from .db import OperatorRequest, ChatOperation
+                pending_window=db.scalar(select(OperatorRequest).join(
+                    ChatOperation,ChatOperation.request_id==OperatorRequest.id).where(
+                    OperatorRequest.owner_sid==owner_hash,
+                    OperatorRequest.action.in_(['window.open','window.close','window.focus']),
+                    OperatorRequest.state=='pending',OperatorRequest.expires_at>utcnow()
+                ).order_by(OperatorRequest.created_at.desc()).limit(1))
+                if pending_window:
+                    return {'handled':True,'route':'voice_window_pending',
+                            'reply':'Perintah window masih menunggu konfirmasi pada kartu di chat. Belum ada aksi pada Windows. Tekan Setujui atau Batal.',
+                            'operator_jobs':[],'operator_proposals':[]}
             return {'handled':False,'reason':'general_voice_conversation'}
 
     # Reserve the item before modifying any PC or pending-slot state.
@@ -310,8 +328,11 @@ async def dispatch_voice_action(
             db.commit()
             result=simple_result('voice_folder_slot',message)
         elif intent.kind in ('unsafe','ambiguous'):
+            from .window_policy_v090 import looks_like_window_command
             message=('Nama atau tujuan folder tidak aman. Tidak ada perintah yang dijalankan.'
                      if intent.kind=='unsafe' else
+                     'Belum ada perintah window yang dijalankan. Sebutkan buka, fokus, atau tutup diikuti Notepad, Paint, atau MetaTrader 5.'
+                     if looks_like_window_command(spoken) else
                      'Belum ada perintah yang dijalankan di TRADEVICEPC. Sebutkan satu nama folder dan lokasinya.')
             db.add(ChatMessage(role='user',content=spoken[:1300]))
             db.add(ChatMessage(role='assistant',content=message))
