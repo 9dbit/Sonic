@@ -320,6 +320,13 @@ def chat_output_excerpt(db:Session,request_id:str) -> str:
 
 def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:str='') -> str:
     if not success:
+        if row.action=='window.close' and result.get('close_requested') is True:
+            return ('Windows menerima permintaan penutupan normal, tetapi window belum terkonfirmasi tertutup. '
+                    'Mungkin ada dialog Simpan atau konfirmasi. SONIC tidak memaksa penutupan.')
+        if row.action=='window.open' and result.get('launch_requested') is True:
+            return 'Aplikasi diminta dibuka, tetapi window belum terverifikasi tampil. Jangan menganggap aplikasi sudah terbuka.'
+        if row.action=='window.focus' and result.get('focused') is False:
+            return 'Windows menolak perpindahan foreground. Window belum terverifikasi aktif.'
         if result.get('error')=='RESULT_VERIFICATION_FAILED':
             return 'Hasil folder dari TRADEVICEPC belum dapat diverifikasi: nama, lokasi, atau bukti keberadaannya tidak sesuai. Tugas ditandai gagal.'
         code=str(result.get('error') or result.get('detail') or 'DEVICE_ACTION_FAILED')[:140]
