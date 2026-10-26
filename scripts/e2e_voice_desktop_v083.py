@@ -81,7 +81,7 @@ with local_server() as (url,owner),sync_playwright() as p:
         assert page.evaluate("typeof window.__voiceOptions?.onTranscript")== 'function'
         page.evaluate("window.__voiceInstance.setState('listening');window.__voiceInstance.sessionId='synthetic_v083'")
         state=page.evaluate("""async () => await window.__voiceOptions.onTranscript('user',
-           'Tolong buatkan folder bernama Today di desktop Threadvice PC.',
+           'Buatkan di desktop dengan nama foldernya Today.',
            {sessionId:'synthetic_v083',itemId:'item_voice_desktop'})""")
         assert state['handled'] is True
         expect(page.locator('#chatFeed')).to_contain_text('Saya jalankan folder Today',timeout=10000)
@@ -95,7 +95,7 @@ with local_server() as (url,owner),sync_playwright() as p:
         expect(page.locator('#chatFeed')).to_contain_text('PowerShell selesai',timeout=12000)
         assert page.locator('#devicesPanel').is_hidden()
         assert [x['transcript'] for x in seen]==[
-            'Tolong buatkan folder bernama Today di desktop Threadvice PC.',
+            'Buatkan di desktop dengan nama foldernya Today.',
             'PowerShell: Get-Date','setuju']
         assert not errors,errors
         page.screenshot(path=str(OUT/('voice-desktop-'+name+'.png')),full_page=False)
