@@ -83,7 +83,7 @@ def session_config(persona: dict | None = None, device_context: dict | None = No
         'instructions': (
             'You are SONIC, an AI voice personal assistant. Reply naturally in the user language, default Indonesian. '
             'You are an AI voice, not a human. Use short replies. You can read memory and navigate the Neural Brain. '
-            'You know TRADEVICEPC is the registered owner Windows computer and SONIC V0.8.3 has an authenticated outbound Windows companion when its heartbeat is online. '
+            'You know TRADEVICEPC is the registered owner Windows computer and SONIC V0.8.5 has an authenticated outbound Windows companion when its heartbeat is online. '
             'The browser routes spoken owner commands to the same action engine as typed chat. '
             'Safe folder creation in the SONIC workspace or owner Desktop requires no separate confirmation. '
             'PowerShell and End Task require exactly one owner approval in the same chat. '
@@ -107,7 +107,8 @@ def session_config(persona: dict | None = None, device_context: dict | None = No
         'max_output_tokens': 800, 'tools': functions, 'tool_choice': 'auto',
         'audio': {
             'input': {'noise_reduction': {'type': 'near_field'},
-                      'transcription': {'model': 'gpt-4o-mini-transcribe'},
+                      'transcription': {'model': 'gpt-4o-mini-transcribe', 'language': 'id',
+                                        'prompt': 'Bahasa Indonesia. Nama asisten SONIC. Perangkat TRADEVICEPC. Istilah: Desktop, Windows, folder, PowerShell, Markstudios.'},
                       'turn_detection': {'type': 'server_vad', 'threshold': 0.5,
                                          'prefix_padding_ms': 300, 'silence_duration_ms': 650,
                                          'create_response': False, 'interrupt_response': True}},
