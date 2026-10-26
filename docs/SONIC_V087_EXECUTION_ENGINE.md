@@ -79,14 +79,28 @@ chat history. Credentials and transcripts are not added to execution audit runs.
 - Existing desktop/mobile voice-dispatch and inline-approval regression passed.
 - A PostgreSQL concurrency test runs in the existing isolated CI PostgreSQL
   service; it never uses the staging database.
+- GitHub PostgreSQL regression at `ec4ec80ecfa9e9859638fe7dce1a67323c88c91b`:
+  **285 passed**, including the real PostgreSQL concurrent dispatch test
+  ([run 40275762194](https://github.com/9dbit/Sonic/actions/runs/40275762194)).
+- The inherited V0.7.1 workflow now invokes the current V0.7.2 motion contract.
+  Its obsolete test inspected a sprite object removed by V0.7.2; the current
+  test verifies 5,880 sharp cyan-blue particles, no glow, gestures and layouts.
 - Browser/agent fixtures are synthetic. They are not live microphone, physical
   iPhone or actual Windows filesystem acceptance evidence.
 
 ## Deployment and next work
 
-Staging deployment and actual Windows acceptance are recorded separately after
-release. No companion reinstall, credential rotation, new Windows privileges or
-production changes are needed for this backward-compatible server release.
+Initial staging deployment `25df5f67-81c1-4184-b1e8-dc0734a116d0` succeeded at
+`ec4ec80ecfa9e9859638fe7dce1a67323c88c91b`. Owner login, task endpoints and
+authenticated companion polling succeeded. An actual staging chat command
+created `SONIC Engine QA 20261026-ec4ec8` in the owner's OneDrive Desktop.
+SONIC received the authenticated folder evidence and displayed completion.
+A separate read-only RDC filesystem check confirmed the exact named directory
+exists on TRADEVICEPC. This is real Windows acceptance for the **text** path;
+it does not establish live microphone or physical iPhone acceptance.
+
+No companion reinstall, credential rotation, new Windows privileges or
+production changes are required by this backward-compatible server release.
 
 Next milestones are a SONIC-owned RDC connection handshake, Google OAuth, a
 verified interactive Notepad workflow, and bounded multi-step task planning.
