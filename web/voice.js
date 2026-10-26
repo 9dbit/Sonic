@@ -6,7 +6,7 @@
       this.options=options;this.state='idle';this.generation=0;this.pc=null;this.dc=null;
       this.stream=null;this.audio=null;this.sessionId=null;this.seen=new Set();this.toolChain=Promise.resolve();
       this.activeResponse=false;this.pendingTools=0;this.continueNeeded=false;this.inputSpeaking=false;this.muted=false;
-      this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;this.turnChain=Promise.resolve();this.verifiedSpeech=[];
+      this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;this.turnChain=Promise.resolve();this.verifiedSpeech=[];this.transcriptsSeen=new Set();
     }
     get active(){return this.state!=='idle';}
     setState(state){this.state=state;this.options.onState?.(state);}
@@ -15,7 +15,7 @@
       if(this.active)return;
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){throw Error('Realtime voice memerlukan HTTPS dan browser dengan WebRTC.');}
       const generation=++this.generation;this.setState('connecting');this.toolChain=Promise.resolve();this.seen.clear();this.pendingTools=0;this.continueNeeded=false;this.muted=false;this.requestStarted=false;
-      this.sessionId=crypto.randomUUID();this.turnChain=Promise.resolve();this.verifiedSpeech=[];const sessionId=this.sessionId;
+      this.sessionId=crypto.randomUUID();this.turnChain=Promise.resolve();this.verifiedSpeech=[];this.transcriptsSeen.clear();const sessionId=this.sessionId;
       try{
         const media=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
         if(generation!==this.generation){media.getTracks().forEach(t=>t.stop());return;}
@@ -57,6 +57,9 @@
           if(typeof event.transcript==='string'&&event.transcript.trim()){
             const transcript=event.transcript.slice(0,1300);
             const itemId=typeof event.item_id==='string'?event.item_id:'';
+            if(itemId&&this.transcriptsSeen.has(itemId))break;
+            if(itemId)this.transcriptsSeen.add(itemId);
+            if(this.transcriptsSeen.size>200)this.transcriptsSeen.clear();
             this.turnChain=this.turnChain.then(async()=>{
               let routing={handled:false};
               try{
@@ -155,7 +158,7 @@
       if(this.dc){this.dc.onclose=null;this.dc.onerror=null;this.dc.onmessage=null;this.dc.close();this.dc=null;}
       if(this.pc){this.pc.onconnectionstatechange=null;this.pc.ontrack=null;this.pc.close();this.pc=null;}
       if(this.audio){this.audio.pause();this.audio.srcObject=null;this.audio.remove();this.audio=null;}
-      this.sessionId=null;this.requestStarted=false;this.pendingTools=0;this.continueNeeded=false;this.activeResponse=false;this.speaking=false;this.inputSpeaking=false;this.verifiedSpeech=[];
+      this.sessionId=null;this.requestStarted=false;this.pendingTools=0;this.continueNeeded=false;this.activeResponse=false;this.speaking=false;this.inputSpeaking=false;this.verifiedSpeech=[];this.transcriptsSeen.clear();
       this.setState('idle');this.options.onStopped?.(reason);
       if(id&&started)await this.closeRemote(id);
     }
