@@ -147,7 +147,11 @@ def test_voice_confirmation_in_same_session(client,provider,monkeypatch):
     assert yes.json()['operator_jobs'][0]['action']=='powershell.exec'
     job=next_job(client)
     assert job['action']=='powershell.exec'
-    assert utter(client,h,sid,'item_yes','setuju').json()['operator_jobs']==yes.json()['operator_jobs']
+    again=client.post(f'/api/voice/sessions/{sid}/dispatch',
+        json={'item_id':'item_owner_button','transcript':'setuju','origin':'approval_button'},
+        headers=h)
+    assert again.status_code==200
+    assert again.json()['operator_jobs']==yes.json()['operator_jobs']
 
 
 def test_unowned_or_expired_voice_cannot_enqueue_desktop(client,provider):
