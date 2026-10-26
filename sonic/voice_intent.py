@@ -84,6 +84,8 @@ def parse_voice_intent(transcript: str) -> VoiceIntent:
     """Strict text classification first, then spoken phrase recovery only for mkdir."""
     s=normalize_spoken(transcript)
     if not s:return VoiceIntent('not_pc')
+    if re.search(r'\b(?:yang\s+(?:kemarin|tadi)|folder\s+yang\s+kemarin|yang\s+itu)\b',s,re.I):
+        return VoiceIntent('ambiguous')
     if UNSAFE_CONTEXT.search(s):
         return VoiceIntent('not_pc')
     try:
