@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from .config import model_name, setting
 from .db import ChatMessage, Device, DeviceJob, chat_history, utcnow
 from .operator import device_metrics
+from .integrations import integration_snapshot
 from .memory import SECRET_PATTERN, parse_memory_intent, save_note, search_notes
 from .graph_commands import GRAPH_TOOLS, run_graph_tool
 from .persona import profile, persona_instruction
@@ -32,6 +33,7 @@ SYSTEM = (
     "Only high-impact PC actions require approval, and it happens in the same chat; PowerShell runs as a Limited Windows user. "
     "Do not claim administrator permissions, general GUI automation, trading, payment, file changes, or execution tools that are not available. "
     "Always distinguish knowledge of installed capability from the ability to execute it in this chat. "
+    "SONIC Neural Brain has an Integration particle listing execution-adapter inventory. Windows Native requires live verified capabilities. RDC, Google Drive and Notepad are candidates and are not connected unless SONIC itself proves an independent authorized connection. ChatGPT plugins do not transfer authorization to SONIC. "
     "Never store passwords, tokens, API keys or credentials. "
     "You may report device heartbeat and request a read-only system snapshot. "
     "You may prepare graph navigation with graph_search, graph_focus, graph_neighbors or graph_reset. "
@@ -162,8 +164,10 @@ async def reply(db: Session, latest_user_text: str) -> str:
     # Inject verified first-party connection status separately from user chat
     # and saved memories. This is read-only context, never executable instructions.
     live_device=device_metrics(db)
+    registry=integration_snapshot(db)
     pc_context={
         "device_id":live_device["device_id"],
+        "integration_adapters":[{"id":a["id"],"name":a["name"],"state":a["state"],"connected":a["connected"]} for a in registry["adapters"]],
         "connected":live_device["connected"],
         "agent_version":live_device["agent_version"] if live_device["connected"] else None,
         "capabilities":live_device["capabilities"],
