@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from . import auth
 from .config import setting
-from .db import (VoiceSession, VoiceGate, VoiceToolCall, VoiceProposal, VoiceActionDispatch, OwnerSession,
+from .db import (VoiceSession, VoiceGate, VoiceToolCall, VoiceProposal, VoiceActionDispatch, VoicePendingFolder, ChatMessage, OwnerSession,
                  MemoryNote, EngineRun, get_db, session_factory, utcnow)
 from .persona import profile, provider_voice, persona_instruction
 from .graph_commands import GRAPH_TOOLS, QueryArgs, run_graph_tool, tool
@@ -144,30 +144,44 @@ async def dispatch_voice_action(
     owner: dict = Depends(auth.require_owner_write),
     db: Session = Depends(get_db)
 ):
-    """Owner-origin transcribed speech, once per provider item id."""
+    """One accepted owner speech item => at most one validated Windows job.
+
+    Non-action conversation remains in Realtime. PC-looking speech NEVER
+    falls into an imaginative Realtime planning response.
+    """
     owned_session(db,session_id,owner,active=True)
     spoken=payload.transcript.strip()
-    from .chat_actions import classify,confirmation_intent,looks_like_pc_action,pc_status_followup
+    from .chat_actions import ChatAction, classify, confirmation_intent, looks_like_pc_action, pc_status_followup
+    from .voice_intent import parse_voice_intent, parse_followup_name
     from .chat_audit import is_chat_log_request
-    from .operator import direct_device_command,direct_capability_question
+    from .operator import direct_device_command, direct_capability_question
+    owner_hash=auth.sha256(owner['sid'])
+    item_key=hashlib.sha256((session_id+':'+payload.item_id).encode()).hexdigest()
+    utterance_hash=hashlib.sha256(spoken.encode()).hexdigest()
+    replay=db.get(VoiceActionDispatch,item_key)
+    if replay:
+        if replay.transcript_hash!=utterance_hash:
+            raise HTTPException(409,'VOICE_ITEM_ID_REUSED')
+        if replay.state=='done':
+            return json.loads(replay.result_json)
+        return {'handled':True,'processing':True,'reply':'Perintah suara sedang diproses.',
+                'operator_jobs':[],'operator_proposals':[]}
+    # A question about the result never queues a new action.
     if pc_status_followup(spoken):
-        # Read the actual Windows agent result of the most recent action
-        # accepted during THIS owner-authenticated Realtime session.
         from .db import OperatorRequest
         from .operator import chat_result_text, chat_output_excerpt
         recent=db.scalars(select(VoiceActionDispatch).where(
             VoiceActionDispatch.session_id==session_id,
             VoiceActionDispatch.state=='done').order_by(
-            VoiceActionDispatch.created_at.desc()).limit(8)).all()
+            VoiceActionDispatch.created_at.desc()).limit(12)).all()
         for entry in recent:
             try:
                 event=json.loads(entry.result_json)
             except (ValueError,TypeError):
                 continue
-            jobs=event.get('operator_jobs') or []
-            for item in reversed(jobs):
+            for item in reversed(event.get('operator_jobs') or []):
                 row=db.get(OperatorRequest,item.get('id',''))
-                if row is None or row.owner_sid!=auth.sha256(owner['sid']):
+                if row is None or row.owner_sid!=owner_hash:
                     continue
                 if row.state in ('done','failed'):
                     data=json.loads(row.result_json) if row.result_json else {}
@@ -175,70 +189,143 @@ async def dispatch_voice_action(
                         chat_output_excerpt(db,row.id) if row.action=='powershell.exec' else '')
                 else:
                     summary=f'Perintah {row.action} belum selesai. Status Windows Agent: {row.state}.'
-                return {'handled':True,'route':'voice_pc_status',
-                        'reply':summary,'operator_jobs':[],
-                        'operator_proposals':[]}
+                return {'handled':True,'route':'voice_pc_status','reply':summary,
+                        'operator_jobs':[],'operator_proposals':[]}
         return {'handled':True,'route':'voice_pc_status',
-                'reply':'Belum ada pekerjaan PC terverifikasi dalam sesi suara ini. Sebutkan lagi perintah lengkap yang ingin dijalankan.',
+                'reply':'Belum ada pekerjaan PC terverifikasi dalam sesi suara ini. Sebutkan kembali perintah lengkapnya.',
                 'operator_jobs':[],'operator_proposals':[]}
+
     confirmation=confirmation_intent(spoken)
     if payload.origin=='approval_button' and not confirmation:
         raise HTTPException(422,'APPROVAL_BUTTON_MUST_REFERENCE_EXISTING_PROPOSAL')
-    if confirmation and payload.origin=='transcript':
-        # Voice recognition is not sufficient to approve powerful commands.
-        # The owner must click the explicit button under the exact preview.
-        return {'handled':True,'route':'voice_approval_review',
-                'reply':'Belum ada PowerShell yang dijalankan. Untuk tindakan sensitif, tinjau perintah dan gunakan tombol Setujui di chat.',
+    pending=db.get(VoicePendingFolder,session_id)
+    if pending and (pending.expires_at<=utcnow() or pending.owner_sid!=owner_hash):
+        db.delete(pending);db.commit();pending=None
+
+    if pending and payload.origin=='transcript' and spoken.casefold().strip(' .,!') in ('batal','batalkan','jangan jadi','cancel'):
+        db.delete(pending);db.commit()
+        return {'handled':True,'route':'voice_folder_cancelled',
+                'reply':'Pembuatan folder dibatalkan. Tidak ada tindakan yang dikirim ke PC.',
                 'operator_jobs':[],'operator_proposals':[]}
+
+    if confirmation and payload.origin=='transcript':
+        return {'handled':True,'route':'voice_approval_review',
+                'reply':'Ucapan persetujuan belum menjalankan PowerShell. Tinjau perintah persisnya dan gunakan tombol Setujui di chat.',
+                'operator_jobs':[],'operator_proposals':[]}
+
+    intent=parse_voice_intent(spoken)
+    consume_pending=False
+    if pending and payload.origin=='transcript' and intent.kind in ('not_pc','need_location','need_name'):
+        if pending.scope=='choose_location':
+            location=spoken.casefold().strip(' \t,.!?')
+            if location in ('desktop','di desktop','dekstop','di dekstop','desktop tradevicepc'):
+                if pending.pending_name:
+                    intent=type(intent)('action',ChatAction('automatic','desktop.mkdir',
+                                                           {'name':pending.pending_name}))
+                    consume_pending=True
+                else:
+                    intent=type(intent)('need_name',detail='desktop')
+                    consume_pending=True
+            elif location in ('workspace','di workspace','folder kerja','di folder kerja'):
+                if pending.pending_name:
+                    intent=type(intent)('action',ChatAction('automatic','file.mkdir',
+                                                           {'path':pending.pending_name}))
+                    consume_pending=True
+                else:
+                    intent=type(intent)('need_name',detail='workspace')
+                    consume_pending=True
+        elif pending.scope in ('desktop','workspace'):
+            folder_name=parse_followup_name(spoken)
+            if folder_name:
+                action='desktop.mkdir' if pending.scope=='desktop' else 'file.mkdir'
+                key='name' if action=='desktop.mkdir' else 'path'
+                intent=type(intent)('action',ChatAction('automatic',action,{key:folder_name}))
+                consume_pending=True
+
     try:
-        actionable=classify(spoken) is not None
-    except (TypeError,ValueError):
-        actionable=True
-    supported=(actionable or confirmation_intent(spoken) is not None
-               or is_chat_log_request(spoken)
-               or direct_capability_question(spoken)
+        typed_action=classify(spoken)
+    except (ValueError,TypeError):
+        typed_action=None
+    actionable=(intent.kind!='not_pc' or typed_action is not None)
+    supported=(actionable or confirmation is not None or
+               is_chat_log_request(spoken) or direct_capability_question(spoken)
                or direct_device_command(spoken))
     if not supported:
         if looks_like_pc_action(spoken):
-            return {'handled':True,'route':'voice_pc_clarification',
-                    'reply':'Belum ada perintah yang dijalankan di TRADEVICEPC. Sebutkan nama folder dan tujuan secara jelas, misalnya: buat folder Today di Desktop TRADEVICEPC.',
-                    'operator_jobs':[],'operator_proposals':[]}
-        return {'handled':False,'reason':'general_voice_conversation'}
-    ident=hashlib.sha256((session_id+':'+payload.item_id).encode()).hexdigest()
-    utterance_hash=hashlib.sha256(spoken.encode()).hexdigest()
-    event=db.get(VoiceActionDispatch,ident)
-    if event:
-        if event.transcript_hash!=utterance_hash:
-            raise HTTPException(409,'VOICE_ITEM_ID_REUSED')
-        if event.state=='done':
-            return json.loads(event.result_json)
-        return {'handled':True,'processing':True,'reply':'Perintah suara sedang diproses.',
-                'operator_jobs':[],'operator_proposals':[]}
-    event=VoiceActionDispatch(id=ident,session_id=session_id,
-                              transcript_hash=utterance_hash,state='processing')
-    db.add(event)
+            intent=type(intent)('ambiguous')
+        else:
+            return {'handled':False,'reason':'general_voice_conversation'}
+
+    # Reserve the item before modifying any PC or pending-slot state.
+    db.add(VoiceActionDispatch(id=item_key,session_id=session_id,
+        transcript_hash=utterance_hash,state='processing'))
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
         return {'handled':True,'processing':True,'reply':'Perintah suara sudah diterima.',
                 'operator_jobs':[],'operator_proposals':[]}
+
+    def simple_result(route:str,message:str)->dict:
+        return {'handled':True,'route':route,'reply':message,
+                'operator_jobs':[],'operator_proposals':[]}
+
     try:
-        from .engine import execute_chat
-        data=await execute_chat(db,spoken,None,owner)
-        result={'handled':True,'reply':data['reply'],
-                'operator_jobs':data.get('operator_jobs',[]),
-                'operator_proposals':data.get('operator_proposals',[]),
-                'route':data.get('engine',{}).get('route','voice')}
-        event=db.get(VoiceActionDispatch,ident)
-        event.state='done';event.result_json=json.dumps(result,ensure_ascii=False)[:18000]
+        if intent.kind in ('need_name','need_location'):
+            scope=('choose_location' if intent.kind=='need_location' else
+                   'desktop' if intent.detail=='desktop' else 'workspace')
+            keep_name=intent.detail if scope=='choose_location' and intent.detail!='folder' else ''
+            db.merge(VoicePendingFolder(session_id=session_id,owner_sid=owner_hash,
+                scope=scope,pending_name=keep_name,
+                expires_at=utcnow()+timedelta(seconds=120)))
+            message=('Mau membuat folder di Desktop atau workspace SONIC?' if scope=='choose_location'
+                else f'Folder di {scope} belum diberi nama. Sebutkan satu nama folder.')
+            db.add(ChatMessage(role='user',content=spoken[:1300]))
+            db.add(ChatMessage(role='assistant',content=message))
+            db.commit()
+            result=simple_result('voice_folder_slot',message)
+        elif intent.kind in ('unsafe','ambiguous'):
+            message=('Nama atau tujuan folder tidak aman. Tidak ada perintah yang dijalankan.'
+                     if intent.kind=='unsafe' else
+                     'Perintah PC belum cukup jelas sehingga tidak dijalankan. Sebutkan satu nama folder dan lokasinya.')
+            db.add(ChatMessage(role='user',content=spoken[:1300]))
+            db.add(ChatMessage(role='assistant',content=message))
+            db.commit()
+            result=simple_result('voice_pc_clarification',message)
+        else:
+            if intent.kind=='action' and intent.action is not None:
+                action=intent.action
+                if action.action=='desktop.mkdir':
+                    # Only one validated relative Windows folder name.
+                    name=action.payload['name']
+                    canonical=f'buat folder "{name}" di desktop TRADEVICEPC'
+                elif action.action=='file.mkdir':
+                    name=action.payload['path']
+                    canonical=f'buat folder "{name}" di TRADEVICEPC'
+                else:
+                    canonical=spoken
+            else:
+                canonical=spoken
+            from .engine import execute_chat
+            data=await execute_chat(db,canonical,None,owner)
+            result={'handled':True,'reply':data['reply'],
+                    'operator_jobs':data.get('operator_jobs',[]),
+                    'operator_proposals':data.get('operator_proposals',[]),
+                    'route':data.get('engine',{}).get('route','voice')}
+            if consume_pending and pending:
+                db.delete(pending)
+                db.commit()
+        row=db.get(VoiceActionDispatch,item_key)
+        row.state='done'
+        row.result_json=json.dumps(result,ensure_ascii=False)[:18000]
         db.commit()
         return result
     except Exception:
         db.rollback()
-        event=db.get(VoiceActionDispatch,ident)
-        if event:
-            event.state='failed';event.result_json=json.dumps({'handled':True,'error':'VOICE_ACTION_FAILED'})
+        row=db.get(VoiceActionDispatch,item_key)
+        if row:
+            row.state='failed'
+            row.result_json=json.dumps({'handled':True,'error':'VOICE_ACTION_FAILED'})
             db.commit()
         raise
 
