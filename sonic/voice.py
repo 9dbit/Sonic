@@ -84,7 +84,7 @@ def session_config(persona: dict | None = None, device_context: dict | None = No
         'instructions': (
             'You are SONIC, an AI voice personal assistant. Reply naturally in the user language, default Indonesian. '
             'You are an AI voice, not a human. Use short replies. You can read memory and navigate the Neural Brain. '
-            'You know TRADEVICEPC is the registered owner Windows computer and SONIC V0.8.6 has an authenticated outbound Windows companion when its heartbeat is online. '
+            'You know TRADEVICEPC is the registered owner Windows computer and SONIC V0.8.7 has an authenticated outbound Windows companion when its heartbeat is online. '
             'The Integration particle shows which SONIC executors have verified connection; ChatGPT plugins do NOT grant SONIC access automatically. Do not claim RDC, Google Drive or Notepad execution unless listed as connected. '
             'The browser routes spoken owner commands to the same action engine as typed chat. '
             'Safe folder creation in the SONIC workspace or owner Desktop requires no separate confirmation. '
@@ -139,6 +139,7 @@ class VoiceActionTurn(StrictBody):
     item_id: str = Field(min_length=1,max_length=150,pattern=r'^[A-Za-z0-9_-]+$')
     transcript: str = Field(min_length=1,max_length=1300)
     origin: Literal['transcript','approval_button'] = 'transcript'
+    approval_request_id: str | None = Field(default=None,min_length=36,max_length=36)
 
 
 @router.post('/api/voice/sessions/{session_id}/dispatch')
@@ -167,6 +168,19 @@ async def dispatch_voice_action(
             raise HTTPException(409,'VOICE_ITEM_ID_REUSED')
         if replay.state=='done':
             return json.loads(replay.result_json)
+        from .execution import input_identity, find_replay, replay_response
+        task=find_replay(db,input_identity(owner,'voice',item_key,spoken))
+        if task:
+            recovered=replay_response(db,task)
+            result={'handled':True,**recovered,'route':recovered['engine']['route']}
+            replay.state='done'
+            replay.result_json=json.dumps(result,ensure_ascii=False)
+            db.commit()
+            return result
+        if replay.state=='failed' or (utcnow()-replay.created_at).total_seconds()>120:
+            return {'handled':True,'route':'voice_dispatch_unconfirmed',
+                    'reply':'Penerimaan perintah belum terkonfirmasi. Tidak dijalankan ulang otomatis; periksa aktivitas tugas sebelum mencoba lagi.',
+                    'operator_jobs':[],'operator_proposals':[]}
         return {'handled':True,'processing':True,'reply':'Perintah suara sedang diproses.',
                 'operator_jobs':[],'operator_proposals':[]}
     # A question about the result never queues a new action.
@@ -186,6 +200,8 @@ async def dispatch_voice_action(
                 row=db.get(OperatorRequest,item.get('id',''))
                 if row is None or row.owner_sid!=owner_hash:
                     continue
+                from .execution import phase
+                phase(db,row)
                 if row.state in ('done','failed'):
                     data=json.loads(row.result_json) if row.result_json else {}
                     summary=chat_result_text(row,data,row.state=='done',
@@ -300,25 +316,18 @@ async def dispatch_voice_action(
             db.commit()
             result=simple_result('voice_pc_clarification',message)
         else:
-            if intent.kind=='action' and intent.action is not None:
-                action=intent.action
-                if action.action=='desktop.mkdir':
-                    # Only one validated relative Windows folder name.
-                    name=action.payload['name']
-                    canonical=f'buat folder "{name}" di desktop TRADEVICEPC'
-                elif action.action=='file.mkdir':
-                    name=action.payload['path']
-                    canonical=f'buat folder "{name}" di TRADEVICEPC'
-                else:
-                    canonical=spoken
-            else:
-                canonical=spoken
             from .engine import execute_chat
-            data=await execute_chat(db,canonical,None,owner,channel='voice')
+            # Pass the validated action as structured data. Parsing generated
+            # prose a second time can change a quoted name or Desktop scope.
+            data=await execute_chat(db,spoken,None,owner,channel='voice',request_id=item_key,
+                                    resolved_action=intent.action if intent.kind=='action' else None,
+                                    approval_request_id=payload.approval_request_id if payload.origin=='approval_button' else None)
             result={'handled':True,'reply':data['reply'],
                     'operator_jobs':data.get('operator_jobs',[]),
                     'operator_proposals':data.get('operator_proposals',[]),
-                    'route':data.get('engine',{}).get('route','voice')}
+                    'route':data.get('engine',{}).get('route','voice'),
+                    'engine':data.get('engine',{}),
+                    **({'task':data['task']} if data.get('task') else {})}
             if consume_pending and pending:
                 db.delete(pending)
                 db.commit()

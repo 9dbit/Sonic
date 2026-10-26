@@ -146,6 +146,25 @@ class EngineRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
 
 
+class ExecutionTask(Base):
+    """V0.8.7: atomic link between an input item and one leased PC operation.
+
+    Existing tables are unchanged. Prompts, credentials and provider item IDs
+    are not copied here; the replay identity and request content are hashed.
+    """
+    __tablename__ = 'execution_tasks_v087'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    request_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    owner_sid: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    channel: Mapped[str] = mapped_column(String(24), nullable=False)
+    adapter_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    response_json: Mapped[str] = mapped_column(Text, default='', nullable=False)
+    verification_json: Mapped[str] = mapped_column(Text, default='{}', nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
+
+
 class VoiceGate(Base):
     __tablename__ = 'voice_gate'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

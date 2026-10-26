@@ -65,7 +65,10 @@
               try{
                 routing=await this.options.onTranscript?.('user',transcript,
                   {sessionId:this.sessionId,itemId}) || {handled:false};
-              }catch(err){this.options.onError?.('Rute suara gagal: '+(err?.message||'unknown'));}
+              }catch(err){
+                this.options.onError?.('Rute suara gagal: '+(err?.message||'unknown'));
+                routing={handled:true,reply:'Penerimaan perintah belum terkonfirmasi. Periksa aktivitas tugas sebelum mencoba lagi.'};
+              }
               if(generation!==this.generation || !this.active)return;
               if(routing?.silent)return;
               if(routing?.handled){

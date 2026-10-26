@@ -79,3 +79,15 @@ test('repeated owner voice item never starts a duplicate desktop job via fronten
   await h.v.turnChain;
   assert.equal(called,1);
 });
+
+test('dispatch failure cannot fall through to an imaginative PC success response',async()=>{
+  const h=setup(async()=>{throw Error('network connection lost');});
+  h.v.event({type:'conversation.item.input_audio_transcription.completed',
+    item_id:'network_failure',transcript:'buat folder Today di Desktop'},0);
+  await h.v.turnChain;
+  const responses=h.outbound.filter(e=>e.type==='response.create');
+  assert.equal(responses.length,1);
+  assert.equal(responses[0].response.conversation,'none');
+  assert.match(responses[0].response.input[0].content[0].text,/belum terkonfirmasi/);
+  assert.equal(responses[0].response.tools.length,0);
+});

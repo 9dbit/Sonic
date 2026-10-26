@@ -86,7 +86,7 @@ def _strip_scope(raw: str) -> str:
     value=TAIL.sub('',value)
     value=ROOT.sub('',value)
     value=value.strip()
-    if len(value)>=2 and value[0]==value[-1] and value[0] in ('"',"'"):
+    if len(value)>=2 and (value[0],value[-1]) in (( '"','"'),("'","'"),('“','”'),('‘','’')):
         value=value[1:-1].strip()
     return value
 

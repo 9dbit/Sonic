@@ -2,6 +2,8 @@
 
 **SONIC is your personal AI assistant powered by OpenAI.** It is a general-purpose assistant, not an architecture-only system. SONIC combines conversation, user-approved memory, voice, tools, and an optional companion on your authorized PC.
 
+Current staging engine: [V0.8.7 durable execution, voice/chat routing and result evidence](docs/SONIC_V087_EXECUTION_ENGINE.md).
+
 ## V0.1 foundation
 
 | Area | Status |

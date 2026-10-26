@@ -61,7 +61,7 @@ def _single_name(value: str) -> str | None:
     s=TAIL_STOP.sub('',s).strip(' \t\r\n,;:.')
     s=FILLER_START.sub('',s).strip()
     s=FILLER_END.sub('',s).strip(' \t\r\n,;:.')
-    if len(s)>=2 and s[0] == s[-1] and s[0] in ("'",'"','“','”'):
+    if len(s)>=2 and (s[0],s[-1]) in (("'","'"),('"','"'),('“','”'),('‘','’')):
         s=s[1:-1].strip()
     if not s or s.casefold() in ('folder','foldernya','baru','new','folder baru',
                                  'nama foldernya','di desktop') or re.search(

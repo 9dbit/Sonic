@@ -6,6 +6,9 @@
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   let csrf=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
+  const watchingJobs=new Set();
+  const taskLabels={awaiting_approval:'Menunggu persetujuan',pending:'Menunggu persetujuan',queued:'Menunggu Windows',leased:'Sedang berjalan',running:'Sedang berjalan',completed:'Selesai',done:'Selesai',failed:'Gagal',cancelled:'Dibatalkan',expired:'Kedaluwarsa',rejected:'Tidak dijalankan',approved:'Persetujuan dicatat',needs_clarification:'Perlu nama dan tujuan yang jelas'};
+  const taskLabel=status=>taskLabels[status]||status;
   const filters=new Set(Object.keys(categoryNames));
   const graph=new window.SonicGraph($('graphStage'),{
     onSelect:(node,path)=>{renderInspector(node,path);if(node&&innerWidth<=650)toggleInspector(true);if(node?.category==='device')showDevicePopup().catch(e=>notify(e.message));else if(node&&node.category!=='integration')showNodePopup(node);},
@@ -20,6 +23,7 @@
   function notify(message){clearTimeout(toastTimer);$('notice').textContent=String(message);$('notice').classList.remove('hidden');toastTimer=setTimeout(()=>$('notice').classList.add('hidden'),7000);}
   function activityState(next){activity=next;window.sonicMotion?.setState(next);$('assistantCore').dataset.state=next;$('activityLabel').textContent=({idle:'READY',thinking:'THINKING',saving:'SAVED',listening:'LISTENING',speaking:'SPEAKING',error:'UNAVAILABLE'})[next]||'READY';}
   function clearPrivateUI(){
+    $('executionTasks').replaceChildren();watchingJobs.clear();
     wake?.stop();liveVoice?.stop('session_expired');speechAudio?.pause();$('voiceProposalHost').replaceChildren();
     graph.setVisible(false);graph.nodes=[];graph.edges=[];graph.lookup.clear();graph.positions.clear();graph.projected?.clear();graph.selected=null;graph.path=[];graph.highlight=null;graph.initialized=false;
     graph.ctx.clearRect(0,0,graph.width,graph.height);if(graph.gl)graph.gl.clear(graph.gl.COLOR_BUFFER_BIT);graph.tooltip.classList.add('hidden');
@@ -36,7 +40,7 @@
   function setTab(tab){if(!tabs[tab])return;currentTab=tab;for(const [name,id] of Object.entries(tabs))$(id).classList.toggle('hidden',name!==tab);
     document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
     $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&!!csrf);
-    if(!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
+    if(!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadTasks();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
   }
   function toggleInspector(open){$('graphInspector').classList.toggle('open',open);$('toggleInspector').setAttribute('aria-expanded',String(open));if(open){$('graphFilters').classList.remove('open');}}
   function toggleFilters(open){$('graphFilters').classList.toggle('open',open);$('toggleFilters').setAttribute('aria-expanded',String(open));if(open)toggleInspector(false);}
@@ -149,25 +153,31 @@
   function brainAnswer(text,error=false,events=[]){$('brainAnswer').classList.remove('hidden');$('brainAnswer').classList.toggle('error',error);$('brainAnswerText').textContent=text;$('brainReceipt').replaceChildren();events.forEach(e=>appendReceipt($('brainReceipt'),e));}
   function setWaiting(value){waiting=value;$('send').disabled=value;$('brainSend').disabled=value;}
   async function send(source,options={}){if(liveVoice?.active){notify('Stop sesi suara sebelum mengirim chat teks.');return;}const input=$(source==='brain'?'brainMessage':'message'),text=String(options.overrideText??input.value).trim();if(!text||waiting)return;
+    const requestId=options.requestId||crypto.randomUUID();
     if(window.sonicMotion?.handleCommand(text)){input.value='';notify('SONIC Motion Core kembali ke posisi semula.');return;}
     setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');if(!options.overrideText)input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
-    try{const r=await API('/api/chat',{method:'POST',body:JSON.stringify({message:text,selected_node_id:graph.selected||null})});pending.querySelector('.body').textContent=r.reply;const events=r.memory_events||[];
+    try{const r=await API('/api/chat',{method:'POST',body:JSON.stringify({message:text,selected_node_id:graph.selected||null,request_id:requestId,...(options.approvalId?{approval_request_id:options.approvalId}:{})})});pending.querySelector('.body').textContent=r.reply;const events=r.memory_events||[];
       events.forEach(e=>appendReceipt(pending,e));
-      if((r.operator_proposals||[]).length)inlineChatApproval(pending,source);
+      if((r.operator_proposals||[]).length)inlineChatApproval(pending,source,r.operator_proposals[0].id);
       for(const job of (r.operator_jobs||[]))watchChatJob(job,source).catch(err=>notify(err.message));brainAnswer(r.reply,false,events);
-      if(source==='brain'&&(r.operator_proposals||[]).length)inlineChatApproval($('brainReceipt'),source);activityState('idle');
+      if(source==='brain'&&(r.operator_proposals||[]).length)inlineChatApproval($('brainReceipt'),source,r.operator_proposals[0].id);activityState('idle');
       if(events.some(e=>e.saved)){await refreshGraph();if(currentTab==='memory')await loadMemory();const last=events.at(-1);if(last?.node_id&&graph.lookup.has(last.node_id)){graph.select(last.node_id);if(innerWidth<=650)toggleInspector(false);}}
       const applied=await applyGraphActions(r.ui_actions||[]);
       renderReferences(pending,r.memory_references||[]);renderReferences($('brainReceipt'),r.memory_references||[]);
-      if(r.engine)pending.append(el('span','execution-note','Engine '+r.engine.route+' / '+r.engine.status+(applied.length?' / graph '+applied.map(x=>x.status).join(', '):'')));
+      if(r.engine)pending.append(el('span','execution-note',taskLabel(r.engine.status)+(r.engine.task_id?' · Tugas '+r.engine.task_id.slice(0,8):'')+(applied.length?' / graph '+applied.map(x=>x.status).join(', '):'')));
       speak(r.reply,{force:!!options.readAloud});
-    }catch(error){pending.classList.add('error');pending.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');}
-    finally{setWaiting(false);if(innerWidth>650&&currentTab!=='brain')input.focus();}
+    }catch(error){pending.classList.add('error');pending.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');
+      if(!error.status||error.status>=500)pending.append(button('Periksa / coba kembali',()=>send(source,{...options,overrideText:text,requestId})));}
+    finally{setWaiting(false);$('chatFeed').scrollTop=$('chatFeed').scrollHeight;if(innerWidth>650&&currentTab!=='brain')input.focus();}
   }
   // Chat-first PC jobs: never require opening Devices merely to see progress.
   async function watchChatJob(job,source,options={}){
-    const tag=line('assistant','TRADEVICEPC: queued '+job.action);
+    if(watchingJobs.has(job.id))return;
+    watchingJobs.add(job.id);
+    const tag=line('assistant','TRADEVICEPC: '+taskLabel('queued')+' · '+job.action);
     const body=tag.querySelector('.body');
+    const stop=button('Batalkan tugas',async()=>{stop.disabled=true;try{await API('/api/operator/requests/'+encodeURIComponent(job.id),{method:'DELETE'});notify('Pembatalan diminta. Tindakan yang sudah dimulai mungkin sudah mengubah perangkat.');}catch(e){stop.disabled=false;notify(e.message);}},'plain');tag.append(stop);
+    try{
     for(let attempt=0;attempt<105;attempt++){
       await new Promise(done=>setTimeout(done,1700));
       if(!csrf)return;
@@ -179,47 +189,56 @@
             state.state==='failed'?'Perintah gagal di Windows Agent.':
             'Perintah dibatalkan atau kedaluwarsa.');
           tag.classList.toggle('error',state.state==='failed');
+          if(state.task?.verification?.status==='agent_verified')tag.append(el('small','execution-note','Folder diperiksa oleh Windows companion'));
+          else if(state.task?.verification?.status==='agent_reported')tag.append(el('small','execution-note','Hasil dilaporkan perangkat; perubahan aplikasi belum diperiksa terpisah'));
+          stop.remove();
+          $('chatFeed').scrollTop=$('chatFeed').scrollHeight;
           brainAnswer(body.textContent,state.state==='failed');
           options.onDone?.(body.textContent,state.state);
           return;
         }
-        body.textContent='TRADEVICEPC: '+job.action+' / '+state.state+'. Hasil akan tampil di sini.';
+        body.textContent='TRADEVICEPC: '+job.action+' / '+taskLabel(state.state)+'. Hasil akan tampil di sini.';
       }catch(error){
         if(error.status===401||error.status===404)return;
         body.textContent='Memeriksa TRADEVICEPC: '+error.message;
       }
     }
     body.textContent='Pemeriksaan waktu nyata berhenti. Perintah masih dapat dilihat di histori chat setelah agent memberi hasil.';
+    }finally{watchingJobs.delete(job.id);stop.remove();}
   }
-  function inlineChatApproval(message,source){
+  function inlineChatApproval(message,source,approvalId){
     const row=el('div','chat-inline-approval');
-    const yes=button('Setujui',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'setuju'});},'chat-approve-button');
-    const no=button('Batal',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'batal'});},'chat-reject-button');
+    const yes=button('Setujui',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'setuju',approvalId});},'chat-approve-button');
+    const no=button('Batal',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'batal',approvalId});},'chat-reject-button');
     row.append(yes,no);message.append(row);
   }
 
-  function inlineVoiceApproval(message,sessionId){
+  function inlineVoiceApproval(message,sessionId,approvalId){
     const row=el('div','chat-inline-approval');
     const yes=button('Setujui',()=>finishVoiceApproval('setuju'), 'chat-approve-button');
     const no=button('Batal',()=>finishVoiceApproval('batal'), 'chat-reject-button');
     async function finishVoiceApproval(text){
       yes.disabled=true;no.disabled=true;
       try{
-        const result=await dispatchSpokenPC(sessionId,crypto.randomUUID(),text,'approval_button');
+        const result=await dispatchSpokenPC(sessionId,crypto.randomUUID(),text,'approval_button',approvalId);
         if(result?.handled&&liveVoice?.active)liveVoice.verifiedPCReceipt(result.reply);
       }catch(err){notify('Persetujuan suara gagal: '+err.message);yes.disabled=false;no.disabled=false;}
     }
     row.append(yes,no);message.append(row);
   }
-  async function dispatchSpokenPC(sessionId,itemId,text,origin='transcript'){
+  async function dispatchSpokenPC(sessionId,itemId,text,origin='transcript',approvalId=null){
     if(!sessionId||!/^[A-Za-z0-9_-]{1,150}$/.test(itemId||'')){
       return {handled:true,reply:'Identitas transkrip suara tidak lengkap. Ulangi perintah setelah sambungan voice tersambung.'};
     }
     let result;
     try{
-      result=await API('/api/voice/sessions/'+encodeURIComponent(sessionId)+'/dispatch',{
-        method:'POST',body:JSON.stringify({item_id:itemId,transcript:String(text).slice(0,1300),origin})
-      });
+      const request={method:'POST',body:JSON.stringify({item_id:itemId,transcript:String(text).slice(0,1300),origin,...(approvalId?{approval_request_id:approvalId}:{})})};
+      for(let attempt=0;attempt<3;attempt++){
+        try{result=await API('/api/voice/sessions/'+encodeURIComponent(sessionId)+'/dispatch',request);}
+        catch(err){if(attempt===2||(err.status&&err.status<500))throw err;}
+        if(result&&!result.processing)break;
+        if(attempt<2)await new Promise(done=>setTimeout(done,800));
+      }
     }catch(err){
       result={handled:true,reply:'PC action tidak diproses: '+err.message,
         operator_jobs:[],operator_proposals:[]};
@@ -235,7 +254,7 @@
       :'Voice → '+(result.route||'handled'));
     reply.append(el('small','execution-note',statusTag));
     brainAnswer(result.reply||'',false);
-    if(result.operator_proposals?.length)inlineVoiceApproval(reply,sessionId);
+    if(result.operator_proposals?.length)inlineVoiceApproval(reply,sessionId,result.operator_proposals[0].id);
     for(const job of (result.operator_jobs||[])){
       watchChatJob(job,'chat',{onDone:(receipt)=>{
         if(liveVoice?.active && liveVoice.sessionId===sessionId)liveVoice.verifiedPCReceipt(receipt);
@@ -287,7 +306,9 @@
       $('setupList').replaceChildren();for(const [label,ready] of states){const row=el('div','memory-item');row.append(el('span','',label),el('strong','',ready?'Ready':'Pending'));$('setupList').append(row);}
     }catch(error){$('setupMessage').textContent=error.message;}}
   async function initialize(){const r=await API('/api/session');$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
-    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(brainConfigured?'brain':'setup');
+    const initialTab=currentTab;
+    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(brainConfigured?'brain':'setup'):currentTab);
+    await loadTasks(true);
   }
   async function signOut(){await liveVoice?.stop('logout');try{await API('/api/logout',{method:'POST'});}catch(error){notify('Sign out gagal: '+error.message);return;}
     csrf=null;speech?.stop();window.speechSynthesis?.cancel();clearPrivateUI();location.reload();}
@@ -344,6 +365,17 @@
     if(box.children.length){box.prepend(el('span','small-note','Catatan yang dibaca: '));host.append(box);}
   }
   async function loadRuns(){try{const r=await API('/api/engine/runs');$('engineRuns').replaceChildren();if(!r.runs.length)$('engineRuns').append(el('p','small-note','Belum ada eksekusi pada engine V0.4.'));for(const run of r.runs.slice(0,10)){const row=el('div','engine-run');row.append(el('span','',run.route),el('small','',run.status+' / '+run.duration_ms+' ms'));$('engineRuns').append(row);}}catch(e){$('engineRuns').textContent=e.message;}}
+  async function loadTasks(resume=false){
+    try{const r=await API('/api/engine/tasks');const host=$('executionTasks');host.replaceChildren();
+      if(!r.tasks.length)host.append(el('p','small-note','Belum ada tugas PC pada login ini.'));
+      for(const task of r.tasks){const row=el('div','engine-run');row.append(el('span','',task.action+' · '+task.id.slice(0,8)),el('small','',taskLabel(task.status)+' · '+(task.channel==='voice'?'Voice':'Chat')));host.append(row);
+        if(resume&&['queued','leased'].includes(task.state))watchChatJob(task,'chat').catch(e=>notify(e.message));
+        if(resume&&task.state==='pending'){const card=line('assistant','Menunggu persetujuan: '+task.action);const details=await API('/api/operator/requests/'+encodeURIComponent(task.id));card.append(el('pre','',JSON.stringify(details.payload,null,2)));inlineChatApproval(card,'chat',task.id);}
+      }
+    }catch(e){if($('executionTasks'))$('executionTasks').textContent=e.message;}
+  }
+  $('stopExecution').addEventListener('click',async()=>{const b=$('stopExecution');b.disabled=true;try{const r=await API('/api/engine/stop',{method:'POST',body:'{}'});notify(r.notice);await loadTasks();}catch(e){notify(e.message);}finally{b.disabled=false;}});
+  $('refreshExecutionTasks').addEventListener('click',()=>loadTasks());
   async function loadVoiceStatus(){const status=await API('/api/voice/status');$('voiceReadiness').textContent=(status.enabled&&status.configured?'Configured, live audio not yet verified. ':'Not enabled. ')+status.model+' / '+status.max_session_seconds+' sec / '+status.sessions_started_today_utc+' of '+(status.daily_limit_enabled?status.daily_session_limit+' sessions today (UTC)':'No SONIC daily session cap')+'.';return status;}
   async function openVoiceDialog(){
     if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}

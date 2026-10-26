@@ -43,13 +43,15 @@ jobs:
           node --check web/motion-math.js
           node --check web/app.js
           node --test tests/js/*.test.cjs
-      - name: Validate cyan pixels and gestures on desktop and mobile
-        run: python scripts/e2e_motion_v071.py
+      - name: Validate current sharp blue pixels and gestures on desktop and mobile
+        # V0.7.2 superseded the 2,940-point sprite renderer with 5,880 sharp
+        # cyan-blue points. Keep this inherited workflow on the current contract.
+        run: python scripts/e2e_motion_v072.py
       - name: Upload safe screenshots and metrics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sonic-v071-cyan-motion-evidence
-          path: artifacts/motion-v071/
+          path: artifacts/motion-v072/
           if-no-files-found: warn
           retention-days: 7
