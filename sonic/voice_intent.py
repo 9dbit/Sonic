@@ -16,7 +16,7 @@ DESKTOP_WORD=re.compile(r'\b(?:desktop|dekstop|desk\s*top|dek\s*stop|layar\s+des
 WORKSPACE_WORD=re.compile(r'\b(?:TRADEVICE\s*PC|TRADEVICEPC|THREADVICE\s*PC|'
                           r'TREADVICE\s*PC|workspace|folder\s+kerja)\b',re.I)
 CREATE_WORD=re.compile(r'\b(?:buat(?:kan)?|dibuatkan|bikinin|bikin(?:kan)?|create|'
-                       r'tambahkan|tolong\s+bikin|mau\s+buat|minta\s+buat|buat\s+dong)\b',re.I)
+                       r'tambahkan|dibikinin|tolong\s+bikin|mau\s+buat|minta\s+buat|buat\s+dong)\b',re.I)
 LEADING=re.compile(r'^(?:(?:hei|hey|hai|halo)\s+)?(?:sonic|sonik)\s*[,.:]?\s*',re.I)
 NAME_LABEL=re.compile(r'\b(?:nama\s+folder(?:nya)?|namanya|nama\s+direktori|'
                       r'bernama|yang\s+namanya|disebut|called|named)\s*[:=]?\s*',re.I)
@@ -26,14 +26,14 @@ UNSAFE_CONTEXT=re.compile(r'\b(?:jangan|tidak\s+usah|nggak\s+usah|bukan|contoh(?
 COMMAND_START=re.compile(r'^(?:(?:ya|oke|ok|sekarang|coba|tolong|mohon|'
                          r'please|bisa\s+tolong|bisa|coba\s+tolong)\s*[, ]*\s*)*'
                          r'(?:buat(?:kan)?|bikin(?:kan)?|bikinin|create|'
-                         r'tambahkan|dibuatkan)\b',re.I)
+                         r'tambahkan|dibuatkan|dibikinin)\b',re.I)
 MULTI_ACTION=re.compile(r'\b(?:lalu|kemudian|setelah\s+itu|terus\s+hapus|'
                         r'dan\s+(?:hapus|delete|rename|pindahkan|jalankan))\b',re.I)
 TAIL_STOP=re.compile(r'\s+(?:(?:di|pada|on|in)\s+)?(?:desktop|dekstop|'
                      r'tradevice\s*pc|threadvice\s*pc|komputer(?:\s+saya)?|'
-                     r'pc)(?:\s+(?:saya|ini))?\s*$',re.I)
+                     r'pc)(?:\s+(?:komputer(?:\s+saya)?|pc|saya|ini))?\s*$',re.I)
 FILLER_START=re.compile(r'^(?:(?:folder|direktori|directory|baru|new|satu|'
-                        r'yang|dengan|nama|namanya|bernama|disebut)\s+)+',re.I)
+                        r'yang|dengan|namanya|nama|bernama|disebut)\s+)+',re.I)
 FILLER_END=re.compile(r'[,.\s]+(?:ya|dong|tolong|sekarang|please|untuk\s+saya)\s*$',re.I)
 
 
@@ -61,7 +61,9 @@ def _single_name(value: str) -> str | None:
     s=FILLER_END.sub('',s).strip(' \t\r\n,;:.')
     if len(s)>=2 and s[0] == s[-1] and s[0] in ("'",'"','“','”'):
         s=s[1:-1].strip()
-    if not s or re.search(r'\b(?:folder|di\s+desktop)\s*$',s,re.I):
+    if not s or s.casefold() in ('folder','foldernya','baru','new','folder baru',
+                                 'nama foldernya','di desktop') or re.search(
+            r'\b(?:folder|foldernya|di\s+desktop)\s*$',s,re.I):
         return None
     if MULTI_ACTION.search(s) or any(x in s for x in ('\n','\r',';')):
         return None
@@ -99,7 +101,12 @@ def parse_voice_intent(transcript: str) -> VoiceIntent:
     if MULTI_ACTION.search(s):
         return VoiceIntent('ambiguous')
     if typed and typed.action=='desktop.mkdir':
-        return VoiceIntent('action',typed)
+        raw_name=typed.payload.get('name','')
+        # Generic words and spoken labels aren't actual names.
+        if raw_name.strip().casefold() not in ('folder','foldernya','baru','new',
+             'folder baru','nama foldernya') and not re.match(
+             r'^(?:yang\s+)?(?:namanya|bernama)\b',raw_name,re.I):
+            return VoiceIntent('action',typed)
     if typed and typed.action=='file.mkdir' and workspace and not desktop:
         return VoiceIntent('action',typed)
     if typed and typed.action=='file.mkdir' and not desktop and not workspace:
@@ -136,7 +143,7 @@ def parse_voice_intent(transcript: str) -> VoiceIntent:
 def parse_followup_name(text: str) -> str | None:
     """Accept a single safe folder name only after an explicit pending slot."""
     s=normalize_spoken(text)
-    if not s or BAD_CONTEXT.search(s) or UNSAFE_CONTEXT.search(s):
+    if not s or BAD_CONTEXT.search(s) or UNSAFE_CONTEXT.search(s) or re.match(r'^(?:delete|hapus|shutdown|restart|stop|batal|cancel)\b',s,re.I):
         return None
     if CREATE_WORD.search(s):
         return None
