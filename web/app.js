@@ -112,7 +112,8 @@
     try{const r=await API('/api/chat',{method:'POST',body:JSON.stringify({message:text,selected_node_id:graph.selected||null})});pending.querySelector('.body').textContent=r.reply;const events=r.memory_events||[];
       events.forEach(e=>appendReceipt(pending,e));
       if((r.operator_proposals||[]).length)inlineChatApproval(pending,source);
-      for(const job of (r.operator_jobs||[]))watchChatJob(job,source).catch(err=>notify(err.message));brainAnswer(r.reply,false,events);activityState('idle');
+      for(const job of (r.operator_jobs||[]))watchChatJob(job,source).catch(err=>notify(err.message));brainAnswer(r.reply,false,events);
+      if(source==='brain'&&(r.operator_proposals||[]).length)inlineChatApproval($('brainReceipt'),source);activityState('idle');
       if(events.some(e=>e.saved)){await refreshGraph();if(currentTab==='memory')await loadMemory();const last=events.at(-1);if(last?.node_id&&graph.lookup.has(last.node_id)){graph.select(last.node_id);if(innerWidth<=650)toggleInspector(false);}}
       const applied=await applyGraphActions(r.ui_actions||[]);
       renderReferences(pending,r.memory_references||[]);renderReferences($('brainReceipt'),r.memory_references||[]);
