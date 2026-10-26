@@ -1,0 +1,37 @@
+name: SONIC PC Workspace Read Only
+on:
+  push:
+    branches:
+      - feature/sonic-pc-workspace-readonly-v089-20261026
+  pull_request:
+    paths:
+      - 'web/pc-workspace-v089.js'
+      - 'web/pc-workspace-v089.css'
+      - 'web/index.html'
+      - 'web/app.js'
+      - 'tests/js/pc-workspace-v089.test.cjs'
+      - '.github/workflows/pc-workspace-v089.yml'
+permissions:
+  contents: read
+jobs:
+  pc-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check source and UI controller syntax
+        run: |
+          node --check web/pc-workspace-v089.js
+          node --check web/app.js
+          node --test tests/js/pc-workspace-v089.test.cjs
+      - name: Verify PC browser does not extend Windows adapter permissions
+        run: |
+          grep -q "file.list" web/pc-workspace-v089.js
+          grep -q "file.read" web/pc-workspace-v089.js
+          if grep -E "powershell.exec|process.terminate|file.write|localStorage|innerHTML" web/pc-workspace-v089.js; then
+            echo "Unexpected sensitive capability or unsafe rendering in PC browser"
+            exit 1
+          fi
