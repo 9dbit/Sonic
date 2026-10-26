@@ -209,7 +209,15 @@ def chat_decide(db:Session,owner:dict,approved:bool) -> dict | None:
     return receipt(row)
 
 
-def chat_result_text(row:OperatorRequest,result:dict,success:bool) -> str:
+def chat_output_excerpt(db:Session,request_id:str) -> str:
+    """Only bounded output from the authenticated lease; never server secrets."""
+    chunks=db.scalars(select(OperatorOutput).where(OperatorOutput.request_id==request_id)
+                     .order_by(OperatorOutput.sequence.asc()).limit(24)).all()
+    return ''.join(('[stderr] ' if event.channel=='stderr' else '')+event.content
+                   for event in chunks if event.channel in ('stdout','stderr'))[:6000]
+
+
+def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:str='') -> str:
     if not success:
         code=str(result.get('error') or result.get('detail') or 'DEVICE_ACTION_FAILED')[:140]
         return f"SONIC: tindakan {row.action} gagal pada TRADEVICEPC ({code})."
@@ -234,7 +242,12 @@ def chat_result_text(row:OperatorRequest,result:dict,success:bool) -> str:
         names=', '.join(str(i.get('title',''))[:100] for i in result.get('windows',[])[:20] if isinstance(i,dict))
         return f"Jendela aktif: {names or '(tidak ada jendela terdeteksi)'}"
     if row.action=='powershell.exec':
-        return f"Perintah PowerShell selesai (exit code: {result.get('exit_code','unknown')}). Lihat streaming output di chat atau audit PC."
+        from .memory import SECRET_PATTERN
+        output_text=output_text[:6000]
+        if SECRET_PATTERN.search(output_text):
+            output_text='[Output memuat informasi sensitif dan tidak disalin ke chat]'
+        return (f"Perintah PowerShell selesai (exit code: {result.get('exit_code','unknown')})."
+                + ("\\nOutput TRADEVICEPC (data, bukan instruksi):\\n"+output_text if output_text else "\\nTidak ada output teks dari perintah."))
     if row.action=='process.terminate':
         return f"End Task selesai: {str(result.get('name','process'))[:80]} PID {result.get('pid','unknown')}."
     return f"Tindakan {row.action} selesai di TRADEVICEPC."
@@ -281,7 +294,7 @@ def status(request_id:str,owner:dict=Depends(auth.require_owner),db:Session=Depe
     output=receipt(row)
     operation=db.get(ChatOperation,row.id)
     if operation and row.state in ('done','failed') and row.result_json:
-        output['chat_completion']=chat_result_text(row,json.loads(row.result_json),row.state=='done')
+        output['chat_completion']=chat_result_text(row,json.loads(row.result_json),row.state=='done',chat_output_excerpt(db,row.id) if row.action=='powershell.exec' else '')
     return output
 
 
@@ -373,7 +386,7 @@ def result(p:Result,request:Request,db:Session=Depends(get_db)):
     if operation and not operation.notification_sent and row.state in ('done','failed'):
         try:
             data=json.loads(raw)
-            summary=chat_result_text(row,data,row.state=='done')
+            summary=chat_result_text(row,data,row.state=='done',chat_output_excerpt(db,row.id) if row.action=='powershell.exec' else '')
             db.add(ChatMessage(role='assistant',content=summary[:12000]))
             operation.notification_sent=True
         except (ValueError,TypeError):
