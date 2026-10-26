@@ -7,28 +7,30 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Neural Brain</title>
-  <link rel="stylesheet" href="/assets/style.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/engine-style.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/pc-command-v08.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/integrations-v086.css?v=0.8.9">
-  <script src="/assets/graph-layout.js?v=0.8.9" defer></script>
-  <script src="/assets/graph.js?v=0.8.9" defer></script>
-  <script src="/assets/engine-ui.js?v=0.8.9" defer></script>
-  <script src="/assets/voice.js?v=0.8.9" defer></script>
-  <script src="/assets/wake-v05.js?v=0.8.9" defer></script>
-  <script src="/assets/motion-math.js?v=0.8.9" defer></script>
-  <script src="/assets/motion-core.js?v=0.8.9" defer></script>
-  <script src="/assets/persona-studio.js?v=0.8.9" defer></script>
-  <link rel="stylesheet" href="/assets/workspace.css?v=0.8.9">
-  <link rel="stylesheet" href="/assets/pc-workspace-v089.css?v=0.8.9">
-  <script src="/assets/workspace.js?v=0.8.9" defer></script>
-  <script src="/assets/pc-workspace-v089.js?v=0.8.9" defer></script>
-  <script src="/assets/app.js?v=0.8.9" defer></script>
-  <script src="/assets/pc-command-v08.js?v=0.8.9" defer></script>
+  <link rel="stylesheet" href="/assets/style.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/engine-style.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/pc-command-v08.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/integrations-v086.css?v=0.9.0">
+  <script src="/assets/graph-layout.js?v=0.9.0" defer></script>
+  <script src="/assets/graph.js?v=0.9.0" defer></script>
+  <script src="/assets/engine-ui.js?v=0.9.0" defer></script>
+  <script src="/assets/voice.js?v=0.9.0" defer></script>
+  <script src="/assets/wake-v05.js?v=0.9.0" defer></script>
+  <script src="/assets/motion-math.js?v=0.9.0" defer></script>
+  <script src="/assets/motion-core.js?v=0.9.0" defer></script>
+  <script src="/assets/persona-studio.js?v=0.9.0" defer></script>
+  <link rel="stylesheet" href="/assets/workspace.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/pc-workspace-v089.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/window-manager-v090.css?v=0.9.0">
+  <script src="/assets/workspace.js?v=0.9.0" defer></script>
+  <script src="/assets/pc-workspace-v089.js?v=0.9.0" defer></script>
+  <script src="/assets/app.js?v=0.9.0" defer></script>
+  <script src="/assets/pc-command-v08.js?v=0.9.0" defer></script>
+  <script src="/assets/window-manager-v090.js?v=0.9.0" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -64,7 +66,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.8.9</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.9.0</b></span><h1 id="pageTitle">Neural Brain</h1></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
@@ -155,6 +157,25 @@
           <div id="taskManagerDetails"></div>
         </section>
 
+        <section id="pcWindowControl" class="pc-window-manager" aria-label="Windows application controller">
+          <h4>Window Control <span class="eyebrow">V0.9 / Owner approval</span></h4>
+          <p class="pc-window-copy">Buka, fokus, atau tutup window aplikasi yang diizinkan pada TRADEVICEPC. Tidak ada akses shell arbitrer, penutupan paksa, atau order trading.</p>
+          <div class="pc-window-toolbar">
+            <label>Target aplikasi
+              <select id="pcWindowApp" aria-label="Aplikasi Window Control">
+                <option value="notepad">Notepad</option>
+                <option value="paint">Microsoft Paint</option>
+                <option value="metatrader5">MetaTrader 5</option>
+              </select>
+            </label>
+            <button type="button" data-window-action="window.open" disabled>Buka</button>
+            <button type="button" data-window-action="window.focus" disabled>Fokus</button>
+            <button type="button" data-window-action="window.close" disabled>Tutup</button>
+            <button type="button" data-window-refresh>Periksa koneksi</button>
+          </div>
+          <p class="pc-window-notice">MetaTrader 5: penutupan terminal dapat menghentikan EA dan otomasi lokal. Posisi broker tidak otomatis ditutup. SONIC tidak akan memaksa aplikasi keluar jika muncul dialog konfirmasi.</p>
+          <p id="pcWindowStatus" role="status" aria-live="polite">Memeriksa kemampuan companion.</p>
+        </section>
         <section id="pcCommandCenter" class="operator-panel pc-command-center" aria-label="SONIC PC Command Center">
           <div class="pc-command-heading">
             <div><span class="eyebrow">TRADEVICEPC / V0.8</span><h3>PC Command Center</h3>
@@ -232,6 +253,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.8.9</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.9.0</small></form></div>
 </body>
 </html>
