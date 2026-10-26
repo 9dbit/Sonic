@@ -158,7 +158,7 @@ def voice_status(owner: dict = Depends(auth.require_owner), db: Session = Depend
             'provider_live_verified': False, 'verification_note': 'A real microphone session must be tested on the device.',
             **limits(), 'sessions_started_today_utc': used,
             'active_session': {'id': current.id, 'state': current.state, 'expires_at': current.expires_at.isoformat()+'Z'} if current else None,
-            'memory_policy': 'Every voice memory needs on-screen confirmation. Read-only tools otherwise.',
+            'memory_policy': 'Memory saves need explicit confirmation. Safe Windows folder actions can be queued from authenticated voice; sensitive actions need in-chat consent.',
             'privacy': 'Microphone audio is sent to OpenAI only during a started session. SONIC does not store audio or SDP.'}
 
 
