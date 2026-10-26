@@ -31,8 +31,8 @@ Screen background 100% black, charcoal Inspector cards, no decorative borders/gl
 
 ## QA
 
-- 258 Python tests pass, 1 skipped; 22 JavaScript tests pass before the final read-only chat-context addition.
-- Chromium browser tests for desktop 1440x900 and iPhone-size 390x844: exactly one Integration node, four adapters, correct verified status, real status refresh, no horizontal overflow, no JS errors, no change to existing Neural Brain motion.
+- 260 Python tests pass, 1 skipped; 22 JavaScript tests pass on the final integration release.
+- Chromium browser tests for desktop 1440x900 and iPhone-size 390x844: exactly one Integration node, four adapters, correct verified status, real status refresh, no horizontal overflow, no JS errors, no change to existing Neural Brain motion. Neural Brain motion regression (desktop/mobile) passed with 5,880 cyan-blue particles and no glow.
 - Owner/production sign-in is not used in these synthetic tests. Verify live staging `/api/health` and `/api/integrations` after Railway deploy.
 
 ## Next: functional adapter connection, not just a visual catalog
