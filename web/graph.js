@@ -4,7 +4,7 @@
  */
 (() => {
   'use strict';
-  const PALETTE = {system:'#d9e7ec',memory:'#489ffa',topic:'#f1bd36',tool:'#dc58b1',device:'#35d5ad'};
+  const PALETTE = {system:'#d9e7ec',memory:'#489ffa',topic:'#f1bd36',tool:'#dc58b1',device:'#35d5ad',integration:'#1787ff'};
   const hex = s => [1,3,5].map(i=>parseInt(s.slice(i,i+2),16)/255);
   const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
   const seed = s => {let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;};
@@ -75,6 +75,7 @@
         if(this.positions.has(n.id))return [...this.positions.get(n.id)];
         const r=random(seed(n.id));let x=(r()-.5)*radius*2,y=(r()-.5)*radius*1.7,z=(r()-.5)*radius*1.5;
         if(n.category==='tool')x+=radius*.8;
+        if(n.category==='integration'){x=radius*.33;y=-radius*.14;z=8;}
         if(n.category==='memory')x-=radius*.35;
         if(n.id==='system:sonic'){x=0;y=0;z=0;}
         return [x,y,z];});
@@ -156,7 +157,7 @@
       if(this.gl){this.gl.clearColor(0,0,0,0);this.gl.clear(this.gl.COLOR_BUFFER_BIT);}
       const visible=this.nodes.filter(n=>this.filters.has(n.category));
       const projected=new Map();
-      for(const n of visible){const p=this.project(this.positions.get(n.id));p.r=clamp((6+Math.sqrt(n.degree||0)*2)*(n.category==='system'?1.2:1)*p.k,3,28);p.node=n;projected.set(n.id,p);}
+      for(const n of visible){const p=this.project(this.positions.get(n.id));p.r=clamp((6+Math.sqrt(n.degree||0)*2)*(n.category==='integration'?1.65:n.category==='system'?1.2:1)*p.k,3,28);p.node=n;projected.set(n.id,p);}
       const active=id=>!this.highlight||this.highlight.has(id);
       const lines=[];const vertex=(arr,p,c,a,size)=>arr.push(p.x/w*2-1,1-p.y/h*2,0,...c,a,size);
       const drawSegment=(a,b,c,alpha)=>{if(this.gl){vertex(lines,a,c,alpha,1);vertex(lines,b,c,alpha,1);}else{ctx.strokeStyle=`rgba(${c.map(x=>Math.round(x*255)).join(',')},${alpha})`;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}};
@@ -172,10 +173,10 @@
       for(const p of ordered){const n=p.node,on=active(n.id),c=hex(n.color),alpha=on?.96:.13;
         if(n.id===this.selected){ctx.strokeStyle='#156bff';ctx.lineWidth=1;ctx.beginPath();ctx.arc(p.x,p.y,p.r+5,0,Math.PI*2);ctx.stroke();}
         if(this.gl)vertex(dots,p,c,alpha,Math.min(this.maxPoint,p.r*2*this.dpr));
-        else{const grad=ctx.createRadialGradient(p.x-p.r*.3,p.y-p.r*.3,p.r*.05,p.x,p.y,p.r);grad.addColorStop(0,on?'#d5ebed':n.color);grad.addColorStop(.3,n.color);grad.addColorStop(1,'#13252d');ctx.globalAlpha=alpha;ctx.fillStyle=grad;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+        else{const grad=ctx.createRadialGradient(p.x-p.r*.3,p.y-p.r*.3,p.r*.05,p.x,p.y,p.r);grad.addColorStop(0,n.category==='integration'?'#6ad9ff':on?'#d5ebed':n.color);grad.addColorStop(.3,n.color);grad.addColorStop(1,n.category==='integration'?'#0b3275':'#13252d');ctx.globalAlpha=alpha;ctx.fillStyle=grad;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
       }
       if(this.gl&&dots.length)this.drawGL(dots,true);
-      const labels=ordered.filter(p=>active(p.node.id)).sort((a,b)=>(b.node.id===this.selected?9999:b.node.degree)-(a.node.id===this.selected?9999:a.node.degree)).slice(0,visible.length<45?45:24);
+      const labels=ordered.filter(p=>active(p.node.id)).sort((a,b)=>(b.node.id===this.selected?9999:b.node.category==='integration'?7000:b.node.degree)-(a.node.id===this.selected?9999:a.node.category==='integration'?7000:a.node.degree)).slice(0,visible.length<45?45:24);
       const occupied=[];
       for(const p of labels){const n=p.node;if(p.x<15||p.x>w-15||p.y<10||p.y>h-15)continue;
         ctx.font=(n.id===this.selected?'600 12px':'10px')+' -apple-system,Segoe UI,sans-serif';ctx.textAlign='center';ctx.fillStyle=n.id===this.selected?'#ffffff':'#4da3ff';
@@ -183,7 +184,7 @@
         let place=null;for(const y of [p.y+p.r+15,p.y-p.r-7]){const rect={l:p.x-tw/2-4,r:p.x+tw/2+4,t:y-11,b:y+4};
           if(rect.l<4||rect.r>w-4)continue;
           if(!occupied.some(o=>rect.l<o.r&&rect.r>o.l&&rect.t<o.b&&rect.b>o.t)){place={rect,y};break;}}
-        if(!place&&n.id!==this.selected)continue;
+        if(!place&&n.id!==this.selected&&n.category!=='integration')continue;
         place=place||{rect:{l:p.x-tw/2,r:p.x+tw/2,t:p.y+p.r+4,b:p.y+p.r+19},y:p.y+p.r+15};occupied.push(place.rect);
         ctx.fillText(label,p.x,place.y);
       }
