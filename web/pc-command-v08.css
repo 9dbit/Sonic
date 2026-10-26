@@ -59,3 +59,31 @@
 
 /* Neural particle sphere belongs to Neural Brain, not the PC Command Center. */
 body:has(#brainPanel.hidden) .sonic-motion-float{display:none!important}
+
+/* V0.8.2 chat-first approval stays inside the current conversation. */
+.chat-inline-approval {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  padding:13px 0 3px;
+  align-items:center;
+}
+#chatFeed .chat-inline-approval button,
+#brainAnswer .chat-inline-approval button {
+  border:0!important;
+  border-radius:999px!important;
+  padding:9px 19px!important;
+  min-height:36px;
+  background:#156bff!important;
+  color:#ffffff!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  font-weight:600;
+}
+#chatFeed .chat-inline-approval .chat-reject-button {
+  background:#292929!important;
+  color:#ff9f2f!important;
+}
+#chatFeed .chat-inline-approval button:disabled {
+  opacity:.55;
+}
