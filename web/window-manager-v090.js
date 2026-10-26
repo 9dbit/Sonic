@@ -24,6 +24,7 @@
       this.show('Periksa koneksi companion sebelum mengakses window.');
     }
     show(message){this.status.textContent=message;}
+    clear(){this.enabled=false;this.apps=[];this.busy=false;this.show('Login diperlukan untuk Window Control.');this.updateButtons();}
     updateButtons(){
       for(const b of this.root.querySelectorAll('[data-window-action]')){
         const action=b.dataset.windowAction;
