@@ -135,7 +135,14 @@ def test_voice_confirmation_in_same_session(client,provider,monkeypatch):
     assert preview.status_code==200
     assert preview.json()['operator_proposals'][0]['action']=='powershell.exec'
     assert next_job(client) is None
-    yes=utter(client,h,sid,'item_yes','setuju')
+    spoken=utter(client,h,sid,'item_yes','setuju')
+    assert spoken.status_code==200
+    assert spoken.json()['operator_jobs']==[]
+    assert spoken.json()['route']=='voice_approval_review'
+    assert next_job(client) is None
+    yes=client.post(f'/api/voice/sessions/{sid}/dispatch',
+        json={'item_id':'item_owner_button','transcript':'setuju','origin':'approval_button'},
+        headers=h)
     assert yes.status_code==200
     assert yes.json()['operator_jobs'][0]['action']=='powershell.exec'
     job=next_job(client)
