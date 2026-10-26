@@ -174,6 +174,7 @@ with local_server(settings=settings) as (url,owner), sync_playwright() as p:
         expect(page.locator('#chatFeed')).to_contain_text('PowerShell selesai',timeout=12000)
         assert page.locator('#devicesPanel').is_hidden()
 
+        page.screenshot(path=str(OUT/f'chat-actions-{label}.png'),full_page=False)
         assert not errors,errors
         result.append({'viewport':label,'readiness':True,'approval':True,
                        'streamed':True,'cancelled':True,'end_task_rejected':True,
