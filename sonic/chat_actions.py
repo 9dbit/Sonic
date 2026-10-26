@@ -43,7 +43,7 @@ def classify(text: str) -> ChatAction | None:
     """Classify ONLY explicit owner-origin current-turn commands, not questions."""
     if not isinstance(text,str) or not 1<=len(text)<=3500:
         return None
-    s=PREFIX.sub('',text.strip()).strip()
+    s=PREFIX.sub('',text.strip()).strip().rstrip('.!?').strip()
     if BAD_CONTEXT.search(s):
         return None
 
@@ -62,6 +62,26 @@ def classify(text: str) -> ChatAction | None:
         payload=clean_request('process.terminate',{
             'pid':int(m.group('pid')),'expected_name':m.group('name').strip()})
         return ChatAction('review','process.terminate',payload)
+
+    # The Windows Desktop is a distinct, explicitly named safe target.
+    # Never silently redirect a "desktop" request to D:\Sonic\work.
+    desktop=re.fullmatch(
+        r'(?:(?:tolong|please|coba)\s+)?(?:buat(?:kan)?|bikin|create)\s+'
+        r'(?:(?:sebuah|satu|a|new)\s+)?(?:folder|direktori|directory)\s+'
+        r'(?:(?:baru|new)\s+)?(?:(?:bernama|named|nama(?:nya)?)\s*[:=]?\s*)?'
+        r'(?P<name>.+?)\s+(?:di|pada|on|in)\s+'
+        r'(?:desktop|dekstop|desktopku|desktop\s+saya)'
+        r'(?:\s+(?:TRADEVICEPC|TRADEVICE\s+PC|THREADVICE\s+PC|THREADVICEPC|PC|'
+        r'komputer(?:\s+saya)?|windows(?:\s+pc)?))?\s*',s,re.I|re.S)
+    if desktop:
+        name=_strip_scope(desktop.group('name'))
+        if not name or '/' in name or '\\' in name:
+            return None
+        clean=clean_workspace_folder(name)
+        return ChatAction('automatic','desktop.mkdir',{'name':clean})
+    if re.search(r'\b(?:desktop|dekstop|desktopku)\b',s,re.I) and re.match(
+        r'(?:(?:tolong|please|coba)\s+)?(?:buat(?:kan)?|bikin|create)\s+',s,re.I):
+        return None
 
     m=re.fullmatch(r'(?:(?:tolong|please|coba)\s+)?(?:buat(?:kan)?|bikin|create)\s+'
                    r'(?:(?:sebuah|satu|a|new)\s+)?(?:folder|direktori|directory)\s+'
