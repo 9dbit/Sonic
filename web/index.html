@@ -7,23 +7,26 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Neural Brain</title>
-  <link rel="stylesheet" href="/assets/style.css?v=0.8.7">
-  <link rel="stylesheet" href="/assets/engine-style.css?v=0.8.7">
-  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.8.7">
-  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.8.7">
-  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.8.7">
-  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.8.7">
-  <link rel="stylesheet" href="/assets/pc-command-v08.css?v=0.8.7">
-  <link rel="stylesheet" href="/assets/integrations-v086.css?v=0.8.7">
-  <script src="/assets/graph.js?v=0.8.7" defer></script>
-  <script src="/assets/engine-ui.js?v=0.8.7" defer></script>
-  <script src="/assets/voice.js?v=0.8.7" defer></script>
-  <script src="/assets/wake-v05.js?v=0.8.7" defer></script>
-  <script src="/assets/motion-math.js?v=0.8.7" defer></script>
-  <script src="/assets/motion-core.js?v=0.8.7" defer></script>
-  <script src="/assets/persona-studio.js?v=0.8.7" defer></script>
-  <script src="/assets/app.js?v=0.8.7" defer></script>
-  <script src="/assets/pc-command-v08.js?v=0.8.7" defer></script>
+  <link rel="stylesheet" href="/assets/style.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/engine-style.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/presence-v05.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/motion-v06.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/persona-v06.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/sonic-theme-v072.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/pc-command-v08.css?v=0.8.8">
+  <link rel="stylesheet" href="/assets/integrations-v086.css?v=0.8.8">
+  <script src="/assets/graph-layout.js?v=0.8.8" defer></script>
+  <script src="/assets/graph.js?v=0.8.8" defer></script>
+  <script src="/assets/engine-ui.js?v=0.8.8" defer></script>
+  <script src="/assets/voice.js?v=0.8.8" defer></script>
+  <script src="/assets/wake-v05.js?v=0.8.8" defer></script>
+  <script src="/assets/motion-math.js?v=0.8.8" defer></script>
+  <script src="/assets/motion-core.js?v=0.8.8" defer></script>
+  <script src="/assets/persona-studio.js?v=0.8.8" defer></script>
+  <link rel="stylesheet" href="/assets/workspace.css?v=0.8.8">
+  <script src="/assets/workspace.js?v=0.8.8" defer></script>
+  <script src="/assets/app.js?v=0.8.8" defer></script>
+  <script src="/assets/pc-command-v08.js?v=0.8.8" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -50,6 +53,7 @@
       <nav class="sidebar-content">
         <button class="nav active" data-tab="brain" aria-label="Neural Brain"><svg><use href="#i-brain"/></svg><span>Neural</span></button>
         <button class="nav" data-tab="chat" aria-label="Chat"><svg><use href="#i-chat"/></svg><span>Chat</span></button>
+        <button class="nav" data-tab="workspace" aria-label="Workspace"><svg><use href="#i-memory"/></svg><span>Workspace</span></button>
         <button class="nav" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span>Memory</span></button>
         <button class="nav" data-tab="devices" aria-label="Devices"><svg><use href="#i-device"/></svg><span>Devices</span></button>
         <button class="nav" data-tab="setup" aria-label="Setup"><svg><use href="#i-settings"/></svg><span>Setup</span></button>
@@ -58,7 +62,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.8.7</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.8.8</b></span><h1 id="pageTitle">Neural Brain</h1></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
@@ -86,7 +90,7 @@
           <div id="graphFilters" class="filter-panel glass"><div class="side-heading"><h2>FILTER</h2><button id="closeFilters" class="mobile-control plain" aria-label="Close filters"><svg><use href="#i-close"/></svg></button></div><div id="filterList"></div><p id="graphLimit" class="small-note"></p></div>
           <div class="assistant-core" id="assistantCore" data-state="idle">
             <div id="sonicMotionAnchor" aria-hidden="true"></div>
-            <div class="core-state"><i></i><span id="activityLabel">READY</span></div><span id="coreModel" class="model-label">Model checking</span>
+            <div class="core-state"><i></i><span id="activityLabel">READY</span></div><span id="coreModel" class="model-label">Model checking</span><small class="motion-gesture-hint">Double tap · mulai mikrofon</small>
           </div>
         </aside>
         <div id="graphEmpty" class="graph-empty hidden"><span class="eyebrow">START WITH ONE THOUGHT</span><h2>Belum ada memory tersimpan.</h2><p>Ucapkan atau tulis &ldquo;Ingat bahwa ...&rdquo;.<br>Catatanmu akan menjadi node di sini.</p></div>
@@ -100,6 +104,14 @@
       <section class="panel chat-panel hidden" id="chatPanel">
         <div id="chatFeed" class="chat-feed" aria-live="polite"><div class="hero" id="hero"><div class="hero-mark">S</div><span class="eyebrow">YOUR SPACE. YOUR INTELLIGENCE.</span><h2>What can I do for you?</h2><p>Percakapan, memory, dan pengetahuan dalam satu ruang.</p><button id="goToBrain" class="outline-button">Explore Neural Brain &#8599;</button></div></div>
         <div class="compose-wrap"><form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><p class="disclaimer">Perintah PC aman diproses di chat atau voice; operasi sensitif memerlukan persetujuan dalam percakapan.</p></div>
+      </section>
+      <section class="panel workspace-panel hidden" id="workspacePanel" aria-label="Workspace SONIC">
+        <div class="ws-heading"><div><span class="eyebrow">YOUR FILES &amp; NOTES</span><h2>Workspace</h2><p>Folder dan catatan dalam satu ruang. Ketik, dikte, atau panggil SONIC.</p></div><div class="ws-actions"><button id="wsNewFolder" type="button" class="ws-button">+ Folder</button><button id="wsNewNote" type="button" class="ws-button primary">+ Catatan</button></div></div>
+        <div class="ws-layout">
+          <aside class="ws-sidebar" aria-label="Folder workspace"><h3>LOKASI</h3><button id="wsCloud" type="button" class="active">SONIC Cloud</button><div id="wsTree" class="ws-tree"></div><button type="button" disabled>TRADEVICEPC<span class="ws-pending">File manager belum terhubung</span></button><button type="button" disabled>Google Drive<span class="ws-pending">Belum dihubungkan</span></button><button id="wsTrash" type="button">Trash</button></aside>
+          <div class="ws-browser"><div class="ws-toolbar"><input id="wsSearch" class="ws-search" type="search" maxlength="100" placeholder="Cari nama file atau folder…" aria-label="Cari file dan folder"><button id="wsRefresh" type="button" aria-label="Refresh workspace">↻</button></div><nav id="wsBreadcrumbs" class="ws-breadcrumbs" aria-label="Lokasi folder"></nav><div id="wsList" class="ws-list" aria-live="polite"></div></div>
+          <aside id="wsPreview" class="ws-preview hidden" aria-label="Editor catatan"><div class="ws-preview-head"><h3 id="wsPreviewName"></h3><button id="wsClosePreview" type="button" class="ws-button" aria-label="Tutup editor">←</button></div><p id="wsPreviewPath" class="ws-preview-path"></p><textarea id="wsEditor" class="ws-editor" maxlength="100000" spellcheck="false" aria-label="Isi catatan" placeholder="Mulai menulis…"></textarea><p id="wsFolderInfo" class="ws-folder-info hidden"></p><span id="wsSaveState" class="ws-save-state" role="status"></span><div class="ws-editor-actions"><button id="wsSave" type="button">Simpan</button><button id="wsDictate" type="button">Dikte</button><button id="wsRead" type="button">Bacakan</button><button id="wsReload" type="button">Muat ulang</button></div><div class="ws-editor-actions"><button id="wsRename" type="button">Ganti nama</button><button id="wsMove" type="button">Pindahkan</button><button id="wsDelete" type="button">Ke Trash</button><button id="wsRestore" type="button" class="hidden">Pulihkan</button></div></aside>
+        </div><p id="wsStatus" class="ws-status" role="status"></p><div class="ws-voice-help"><strong>COBA DENGAN SUARA</strong><br>“Buka workspace” · “Buat folder Proyek” · “Buat catatan Rapat” · “Cari file Rapat”<br>Pilih catatan, lalu “Tambahkan ke catatan …”, “Simpan catatan”, atau “Bacakan catatan ini”.</div>
       </section>
       <section class="panel info-panel hidden" id="memoryPanel">
         <div class="section-head"><div><span class="eyebrow">PERSISTENT KNOWLEDGE</span><h2>Memory Vault</h2><p>Catatan yang kamu simpan. Bukan seluruh riwayat percakapan.</p></div><span id="memoryTotal" class="number-badge">0</span></div>
@@ -182,6 +194,7 @@
     <div class="button-row"><button id="pcApprovalCancel" type="button" class="plain">Reject</button><button id="pcApprovalConfirm" type="button">Approve once</button></div>
   </dialog>
   <dialog id="operatorApproval" class="operator-review"><h3>Approve this PC operation?</h3><p>Review the exact request. No action runs until approval, and approval expires shortly.</p><pre id="operatorApprovalText"></pre><div class="button-row"><button id="operatorCancel" type="button">Cancel</button><button id="operatorConfirm" type="button">Approve once</button></div></dialog>
+  <dialog id="wsDialog" class="ws-dialog" aria-labelledby="wsDialogTitle"><form id="wsForm"><h3 id="wsDialogTitle"></h3><p id="wsDialogHint"></p><label id="wsNameLabel">Nama<input id="wsName" maxlength="100" autocomplete="off" required></label><label id="wsMoveLabel" class="hidden">Folder tujuan<select id="wsMoveTarget"></select></label><p id="wsDialogError" class="ws-dialog-error" role="alert"></p><div class="ws-actions"><button id="wsDialogCancel" type="button" class="ws-button">Batal</button><button id="wsDialogSubmit" type="submit" class="ws-button primary">Simpan</button></div></form></dialog>
   <dialog id="voiceConsent" class="voice-dialog">
     <form id="voiceConsentForm">
       <div class="dialog-heading"><span class="eyebrow">SONIC / REALTIME VOICE</span><button id="cancelVoice" type="button" class="plain" aria-label="Close voice setup"><svg><use href="#i-close"/></svg></button></div>
@@ -193,6 +206,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.8.7</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.8.8</small></form></div>
 </body>
 </html>

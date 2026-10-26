@@ -27,4 +27,14 @@
 .sonic-motion-float canvas{pointer-events:none}
 .sonic-motion-float:not(.focused){z-index:13}
 .sonic-motion-float.focused{z-index:39}
+#sonicFocusShade{position:fixed;inset:0;z-index:37;background:#000;opacity:0;pointer-events:none;transition:opacity 550ms ease}
+body.sonic-focused #sonicFocusShade{opacity:1;pointer-events:auto}
+.sonic-focus-controls{position:fixed;z-index:43;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(90vw,460px);text-align:center;color:#a7abb4;font-size:11px}
+.sonic-focus-controls[hidden]{display:none}
+.sonic-focus-controls button{border:0;border-radius:12px;padding:12px 18px;background:#156bff;color:#fff;cursor:pointer}
+.motion-gesture-hint{display:block;margin-top:8px;font-size:9px;color:#7d9ebf}
+body.sonic-focused .voice-session-bar{position:fixed;top:max(16px,env(safe-area-inset-top));right:16px;z-index:44!important}
+body.sonic-focused .voice-session-bar.compact .voice-bar-controls{display:flex!important}
+body.sonic-focused .notice{position:fixed;z-index:48!important}
+@media(prefers-reduced-motion:reduce){#sonicFocusShade{transition:none}}
 @media(max-width:650px){.sonic-motion-float.under-panel:not(.focused){z-index:3;pointer-events:none}}

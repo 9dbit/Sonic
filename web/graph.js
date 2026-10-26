@@ -7,8 +7,6 @@
   const PALETTE = {system:'#d9e7ec',memory:'#489ffa',topic:'#f1bd36',tool:'#dc58b1',device:'#35d5ad',integration:'#1787ff'};
   const hex = s => [1,3,5].map(i=>parseInt(s.slice(i,i+2),16)/255);
   const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
-  const seed = s => {let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;};
-  const random = s => () => {s^=s<<13;s^=s>>>17;s^=s<<5;return (s>>>0)/4294967296;};
   function shortestPath(start,end,edges,visible){
     const adjacency=new Map();
     for(const e of edges){if(visible&&(!visible.has(e.source)||!visible.has(e.target)))continue;
@@ -69,35 +67,11 @@
       this.stage.dataset.nodes=String(this.nodes.length);this.stage.dataset.edges=String(this.edges.length);
     }
     layout(){
-      const rng=random(141),count=this.nodes.length,radius=70+Math.sqrt(count)*16;
-      if(!count){this.positions.clear();return;}
-      const positions=this.nodes.map((n,i)=>{
-        if(this.positions.has(n.id))return [...this.positions.get(n.id)];
-        const r=random(seed(n.id));let x=(r()-.5)*radius*2,y=(r()-.5)*radius*1.7,z=(r()-.5)*radius*1.5;
-        if(n.category==='tool')x+=radius*.8;
-        if(n.category==='integration'){x=radius*.33;y=-radius*.14;z=8;}
-        if(n.category==='memory')x-=radius*.35;
-        if(n.id==='system:sonic'){x=0;y=0;z=0;}
-        return [x,y,z];});
-      const index=new Map(this.nodes.map((n,i)=>[n.id,i]));
-      const edges=this.edges.map(e=>[index.get(e.source),index.get(e.target),e.kind]);
-      // Bounded repulsion; sampling prevents quadratic cost on large vaults.
-      const samples=Math.min(count,90),iterations=this.initialized?24:90;
-      for(let step=0;step<iterations;step++){
-        const forces=positions.map(()=>[0,0,0]);
-        for(let i=0;i<count;i++)for(let k=0;k<samples;k++){
-          const j=count<=90?k:Math.floor(rng()*count);if(i===j)continue;
-          const d=positions[i].map((v,a)=>v-positions[j][a]);const d2=d.reduce((a,v)=>a+v*v,0)+70;
-          const force=Math.min(2.3,1000/d2)/Math.sqrt(d2);
-          for(let a=0;a<3;a++)forces[i][a]+=d[a]*force;
-        }
-        for(const [i,j,kind] of edges){const delta=positions[j].map((v,a)=>v-positions[i][a]);const len=Math.hypot(...delta)||1;
-          const ideal=kind==='lexical'?66:kind==='owner_link'?80:110;const strength=(len-ideal)*.012/len;
-          for(let a=0;a<3;a++){forces[i][a]+=delta[a]*strength;forces[j][a]-=delta[a]*strength;}}
-        for(let i=0;i<count;i++)for(let a=0;a<3;a++)positions[i][a]+=clamp(forces[i][a]-positions[i][a]*.001,-5,5);
-      }
-      this.positions=new Map(this.nodes.map((n,i)=>[n.id,positions[i]]));
+      const layout=window.SonicGraphLayout.grouped(this.nodes);
+      this.positions=layout.positions;this.groups=layout.groups;
+      this.stage.dataset.layout='category-groups';
     }
+
     fit(){
       this.target=[0,0,0];this.pan=[0,0];this.yaw=-.15;this.pitch=.08;
       const points=this.nodes.filter(n=>this.filters.has(n.category)).map(n=>this.positions.get(n.id));
@@ -140,7 +114,7 @@
           this.distance=tw.fromDistance+(tw.toDistance-tw.fromDistance)*e;
           this.dirty=true;if(progress>=1)this.cameraTween=null;
         }
-        if(this.autoRotate&&this.is3D&&!this.reduced&&!this.pointers.size&&!this.cameraTween&&time>this.orbitPauseUntil){this.yaw+=.002;this.dirty=true;}
+        if(this.autoRotate&&this.is3D&&!this.reduced&&!this.pointers.size&&!this.cameraTween&&time>this.orbitPauseUntil){this.yaw=Math.sin(time*.00005)*.22;this.dirty=true;}
         if(this.dirty){this.render();this.dirty=false;}this.lastFrame=time;}
       if(this.dirty||this.cameraTween||(this.autoRotate&&!this.reduced))this.frame=requestAnimationFrame(t=>this.tick(t));
     }
@@ -162,8 +136,9 @@
       const lines=[];const vertex=(arr,p,c,a,size)=>arr.push(p.x/w*2-1,1-p.y/h*2,0,...c,a,size);
       const drawSegment=(a,b,c,alpha)=>{if(this.gl){vertex(lines,a,c,alpha,1);vertex(lines,b,c,alpha,1);}else{ctx.strokeStyle=`rgba(${c.map(x=>Math.round(x*255)).join(',')},${alpha})`;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}};
       for(const e of this.edges){const a=projected.get(e.source),b=projected.get(e.target);if(!a||!b)continue;
-        const both=active(e.source)&&active(e.target),alpha=both?(this.highlight?.66:.30):.05;
-        const c=e.kind==='owner_link'?[.92,.72,.28]:[.22,.69,.61];
+        const both=active(e.source)&&active(e.target),alpha=both?(this.highlight?.66:a.node.category===b.node.category?.25:.08):.035;
+        const same=a.node.category===b.node.category;
+        const c=same?hex(a.node.color):[.32,.39,.48];
         if(e.kind==='lexical'){const distance=Math.hypot(a.x-b.x,a.y-b.y),parts=Math.max(2,Math.ceil(distance/8));
           for(let i=0;i<parts;i+=2){let t=i/parts,u=Math.min(1,(i+1)/parts);drawSegment({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t},{x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u},c,alpha);}}
         else drawSegment(a,b,c,alpha);
@@ -178,15 +153,31 @@
       if(this.gl&&dots.length)this.drawGL(dots,true);
       const labels=ordered.filter(p=>active(p.node.id)).sort((a,b)=>(b.node.id===this.selected?9999:b.node.category==='integration'?7000:b.node.degree)-(a.node.id===this.selected?9999:a.node.category==='integration'?7000:a.node.degree)).slice(0,visible.length<45?45:24);
       const occupied=[];
+      const labelCounts=new Map();
+      for(const group of this.groups||[]){
+        if(!this.filters.has(group.category))continue;
+        const members=ordered.filter(p=>p.node.category===group.category);if(!members.length)continue;
+        const left=Math.min(...members.map(p=>p.x-p.r)),right=Math.max(...members.map(p=>p.x+p.r));
+        const top=Math.min(...members.map(p=>p.y-p.r)),bottom=Math.max(...members.map(p=>p.y+p.r));
+        const x=(left+right)/2,y=top-20,label=group.label+' · '+group.count;
+        ctx.font='600 10px -apple-system,Segoe UI,sans-serif';ctx.textAlign='center';ctx.fillStyle=PALETTE[group.category]||'#8193a7';
+        const half=ctx.measureText(label).width/2;
+        if(x-half<4||x+half>w-4||y<14||y>h-15)continue;
+        ctx.fillText(label,x,y);occupied.push({l:x-half-5,r:x+half+5,t:y-12,b:y+5});
+        ctx.strokeStyle=(PALETTE[group.category]||'#8193a7')+'28';ctx.lineWidth=1;
+        ctx.beginPath();ctx.ellipse(x,(top+bottom)/2,Math.max(27,(right-left)/2+15),Math.max(27,(bottom-top)/2+15),0,0,Math.PI*2);ctx.stroke();
+      }
       for(const p of labels){const n=p.node;if(p.x<15||p.x>w-15||p.y<10||p.y>h-15)continue;
-        ctx.font=(n.id===this.selected?'600 12px':'10px')+' -apple-system,Segoe UI,sans-serif';ctx.textAlign='center';ctx.fillStyle=n.id===this.selected?'#ffffff':'#4da3ff';
-        const label=n.label.length>31?n.label.slice(0,29)+'...':n.label,tw=ctx.measureText(label).width;
+        if(w<650&&(labelCounts.get(n.category)||0)>=3&&n.id!==this.selected)continue;
+        ctx.font=(n.id===this.selected?'600 12px':'10px')+' -apple-system,Segoe UI,sans-serif';ctx.textAlign='center';ctx.fillStyle=n.id===this.selected?'#ffffff':n.color;
+        const maxLabel=w<650?18:31,label=n.label.length>maxLabel?n.label.slice(0,maxLabel-2)+'…':n.label,tw=ctx.measureText(label).width;
         let place=null;for(const y of [p.y+p.r+15,p.y-p.r-7]){const rect={l:p.x-tw/2-4,r:p.x+tw/2+4,t:y-11,b:y+4};
           if(rect.l<4||rect.r>w-4)continue;
           if(!occupied.some(o=>rect.l<o.r&&rect.r>o.l&&rect.t<o.b&&rect.b>o.t)){place={rect,y};break;}}
         if(!place&&n.id!==this.selected&&n.category!=='integration')continue;
         place=place||{rect:{l:p.x-tw/2,r:p.x+tw/2,t:p.y+p.r+4,b:p.y+p.r+19},y:p.y+p.r+15};occupied.push(place.rect);
         ctx.fillText(label,p.x,place.y);
+        labelCounts.set(n.category,(labelCounts.get(n.category)||0)+1);
       }
       this.projected=projected;this.stage.dataset.renderedNodes=String(visible.length);this.stage.dataset.engine=this.engine;
       this.callbacks.onRender?.({engine:this.engine,nodes:visible.length});

@@ -7,6 +7,7 @@
       this.stream=null;this.audio=null;this.sessionId=null;this.seen=new Set();this.toolChain=Promise.resolve();
       this.activeResponse=false;this.pendingTools=0;this.continueNeeded=false;this.inputSpeaking=false;this.muted=false;
       this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;this.turnChain=Promise.resolve();this.verifiedSpeech=[];this.transcriptsSeen=new Set();
+      this.inputContexts=new Map();
     }
     get active(){return this.state!=='idle';}
     setState(state){this.state=state;this.options.onState?.(state);}
@@ -16,6 +17,7 @@
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){throw Error('Realtime voice memerlukan HTTPS dan browser dengan WebRTC.');}
       const generation=++this.generation;this.setState('connecting');this.toolChain=Promise.resolve();this.seen.clear();this.pendingTools=0;this.continueNeeded=false;this.muted=false;this.requestStarted=false;
       this.sessionId=crypto.randomUUID();this.turnChain=Promise.resolve();this.verifiedSpeech=[];this.transcriptsSeen.clear();const sessionId=this.sessionId;
+      this.inputContexts.clear();
       try{
         const media=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
         if(generation!==this.generation){media.getTracks().forEach(t=>t.stop());return;}
@@ -47,7 +49,9 @@
     }
     event(event,generation){
       switch(event.type){
-        case 'input_audio_buffer.speech_started':this.inputSpeaking=true;this.speaking=false;this.setState(this.muted?'muted':'listening');break;
+        case 'input_audio_buffer.speech_started':
+          if(typeof event.item_id==='string'){this.inputContexts.set(event.item_id,this.options.onInputStart?.()||null);if(this.inputContexts.size>200)this.inputContexts.delete(this.inputContexts.keys().next().value);}
+          this.inputSpeaking=true;this.speaking=false;this.setState(this.muted?'muted':'listening');break;
         case 'input_audio_buffer.speech_stopped':this.inputSpeaking=false;if(!this.muted)this.setState('thinking');this.continueResponse();break;
         case 'response.created':this.activeResponse=true;if(!this.inputSpeaking&&!this.muted)this.setState('thinking');break;
         case 'response.done':this.activeResponse=false;this.continueResponse();if(!this.speaking&&!this.muted&&!this.pendingTools)this.setState('listening');break;
@@ -60,11 +64,12 @@
             if(itemId&&this.transcriptsSeen.has(itemId))break;
             if(itemId)this.transcriptsSeen.add(itemId);
             if(this.transcriptsSeen.size>200)this.transcriptsSeen.clear();
+            const inputContext=this.inputContexts.get(itemId)||null;this.inputContexts.delete(itemId);
             this.turnChain=this.turnChain.then(async()=>{
               let routing={handled:false};
               try{
                 routing=await this.options.onTranscript?.('user',transcript,
-                  {sessionId:this.sessionId,itemId}) || {handled:false};
+                  {sessionId:this.sessionId,itemId,inputContext}) || {handled:false};
               }catch(err){
                 this.options.onError?.('Rute suara gagal: '+(err?.message||'unknown'));
                 routing={handled:true,reply:'Penerimaan perintah belum terkonfirmasi. Periksa aktivitas tugas sebelum mencoba lagi.'};
@@ -162,6 +167,7 @@
       if(this.pc){this.pc.onconnectionstatechange=null;this.pc.ontrack=null;this.pc.close();this.pc=null;}
       if(this.audio){this.audio.pause();this.audio.srcObject=null;this.audio.remove();this.audio=null;}
       this.sessionId=null;this.requestStarted=false;this.pendingTools=0;this.continueNeeded=false;this.activeResponse=false;this.speaking=false;this.inputSpeaking=false;this.verifiedSpeech=[];this.transcriptsSeen.clear();
+      this.inputContexts.clear();
       this.setState('idle');this.options.onStopped?.(reason);
       if(id&&started)await this.closeRemote(id);
     }
