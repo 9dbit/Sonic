@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Literal
 from .device_contract import clean_workspace_folder, clean_request
 
-ACK_PATTERN=re.compile(r'^(?:setuju|saya setuju|ya[, ]+jalankan|iya[, ]+jalankan|oke[, ]+jalankan|ok[, ]+jalankan|'
+ACK_PATTERN=re.compile(r'^(?:setuju|saya setuju|oke[,\.\s]+setuju[,.\s]+jalankan\s+(?:pakai|lewat)\s+powershell|oke[,\.\s]+setuju|ya[, ]+jalankan|iya[, ]+jalankan|oke[, ]+jalankan|ok[, ]+jalankan|'
                        r'silakan jalankan|konfirmasi|approve(?: once)?|confirm|yes[, ]+run|lanjutkan perintah)$',re.I)
 CANCEL_PATTERN=re.compile(r'^(?:batal|batalkan|jangan jalankan|tidak setuju|cancel|reject|no[, ]+cancel)$',re.I)
 BAD_CONTEXT=re.compile(r'\b(?:jangan|tidak usah|nggak usah|bukan|contoh|misalnya|contohnya|hypothetical|'
