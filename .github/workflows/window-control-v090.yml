@@ -1,0 +1,75 @@
+name: SONIC Window Control V0.9.0
+
+on:
+  push:
+    branches:
+      - feature/sonic-window-control-v090-20261026
+  pull_request:
+    paths:
+      - 'sonic/**'
+      - 'scripts/windows_*'
+      - 'scripts/e2e_window_v090.py'
+      - 'scripts/Install-Sonic-Companion.ps1'
+      - 'web/**'
+      - 'tests/test_window_control_v090.py'
+      - 'tests/test_windows_window_backend_v090.py'
+      - '.github/workflows/window-control-v090.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  cloud-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test dependencies and browser
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Validate compilation and dedicated security tests
+        run: |
+          python -m compileall -q sonic scripts
+          python -m pytest -q tests/test_window_control_v090.py tests/test_windows_window_backend_v090.py
+          node --check web/window-manager-v090.js
+          node --check web/pc-command-v08.js
+          node --check web/app.js
+      - name: Synthetic Windows companion owner approval on Chromium
+        run: python scripts/e2e_window_v090.py
+      - name: Preserve synthetic screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-v090-window-acceptance
+          path: artifacts/window-v090/
+          if-no-files-found: warn
+          retention-days: 7
+
+  windows-contract:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Windows unit-test dependencies
+        run: python -m pip install pytest psutil
+      - name: Verify Windows-only helper with synthetic windows (no real GUI operations)
+        run: |
+          python -m compileall -q scripts
+          python -m pytest -q tests/test_windows_window_backend_v090.py
+      - name: Verify installer PowerShell syntax only
+        shell: pwsh
+        run: |
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path scripts/Install-Sonic-Companion.ps1),[ref]$tokens,[ref]$errors)|Out-Null
+          if($errors.Count -gt 0){ $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }
