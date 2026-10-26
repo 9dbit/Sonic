@@ -9,7 +9,7 @@
     'system','registry','smss.exe','csrss.exe','wininit.exe','services.exe',
     'lsass.exe','winlogon.exe','svchost.exe','dwm.exe','msmpeng.exe',
     'securityhealthservice.exe','python.exe','pythonw.exe',
-    'powershell.exe','pwsh.exe','terminal64.exe','metatrader5.exe'
+    'powershell.exe','pwsh.exe','terminal64.exe','terminal.exe','metatrader5.exe'
   ]);
   const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
   const format = (v,suffix='') => Number.isFinite(v)
