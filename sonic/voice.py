@@ -147,9 +147,40 @@ async def dispatch_voice_action(
     """Owner-origin transcribed speech, once per provider item id."""
     owned_session(db,session_id,owner,active=True)
     spoken=payload.transcript.strip()
-    from .chat_actions import classify,confirmation_intent,looks_like_pc_action
+    from .chat_actions import classify,confirmation_intent,looks_like_pc_action,pc_status_followup
     from .chat_audit import is_chat_log_request
     from .operator import direct_device_command,direct_capability_question
+    if pc_status_followup(spoken):
+        # Read the actual Windows agent result of the most recent action
+        # accepted during THIS owner-authenticated Realtime session.
+        from .db import OperatorRequest
+        from .operator import chat_result_text, chat_output_excerpt
+        recent=db.scalars(select(VoiceActionDispatch).where(
+            VoiceActionDispatch.session_id==session_id,
+            VoiceActionDispatch.state=='done').order_by(
+            VoiceActionDispatch.created_at.desc()).limit(8)).all()
+        for entry in recent:
+            try:
+                event=json.loads(entry.result_json)
+            except (ValueError,TypeError):
+                continue
+            jobs=event.get('operator_jobs') or []
+            for item in reversed(jobs):
+                row=db.get(OperatorRequest,item.get('id',''))
+                if row is None or row.owner_sid!=auth.sha256(owner['sid']):
+                    continue
+                if row.state in ('done','failed'):
+                    data=json.loads(row.result_json) if row.result_json else {}
+                    summary=chat_result_text(row,data,row.state=='done',
+                        chat_output_excerpt(db,row.id) if row.action=='powershell.exec' else '')
+                else:
+                    summary=f'Perintah {row.action} belum selesai. Status Windows Agent: {row.state}.'
+                return {'handled':True,'route':'voice_pc_status',
+                        'reply':summary,'operator_jobs':[],
+                        'operator_proposals':[]}
+        return {'handled':True,'route':'voice_pc_status',
+                'reply':'Belum ada pekerjaan PC terverifikasi dalam sesi suara ini. Sebutkan lagi perintah lengkap yang ingin dijalankan.',
+                'operator_jobs':[],'operator_proposals':[]}
     confirmation=confirmation_intent(spoken)
     if payload.origin=='approval_button' and not confirmation:
         raise HTTPException(422,'APPROVAL_BUTTON_MUST_REFERENCE_EXISTING_PROPOSAL')
