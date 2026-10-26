@@ -20,6 +20,68 @@ from .device_contract import ACTIONS, RECIPES, clean_metrics, clean_request
 router=APIRouter()
 
 
+@router.post('/api/device/diagnostics/recent')
+def recent_voice_and_chat_diagnostics(request:Request,db:Session=Depends(get_db)):
+    """Private, device-authenticated, read-only aggregate diagnosis.
+
+    No user chat text, transcripts, credentials, folder names or session IDs
+    leave this endpoint. Used to correlate voice acceptance with real PC jobs.
+    """
+    auth.require_device(request)
+    from collections import Counter
+    from .db import VoiceSession, VoiceActionDispatch, EngineRun
+    sessions=db.scalars(select(VoiceSession).order_by(
+        VoiceSession.created_at.desc()).limit(30)).all()
+    attempts=db.scalars(select(VoiceActionDispatch).order_by(
+        VoiceActionDispatch.created_at.desc()).limit(120)).all()
+    jobs=db.scalars(select(OperatorRequest).order_by(
+        OperatorRequest.created_at.desc()).limit(100)).all()
+    messages=db.scalars(select(ChatMessage).order_by(
+        ChatMessage.id.desc()).limit(150)).all()
+    runs=db.scalars(select(EngineRun).order_by(
+        EngineRun.created_at.desc()).limit(100)).all()
+    attempt_rows=[]
+    for attempt in attempts[:40]:
+        try:
+            receipt=json.loads(attempt.result_json)
+            route=str(receipt.get('route','unknown'))[:45]
+            jobs_created=[str(v.get('action','unknown'))[:40]
+                for v in receipt.get('operator_jobs',[]) if isinstance(v,dict)]
+        except (ValueError,TypeError,AttributeError):
+            route='not_finalized';jobs_created=[]
+        attempt_rows.append({
+            'timestamp':attempt.created_at.isoformat()+'Z',
+            'dispatch_state':attempt.state,'engine_route':route,
+            'actions_queued':jobs_created})
+    user=[m for m in messages if m.role=='user']
+    responses=[m for m in messages if m.role=='assistant']
+    return {
+        'window':'latest_rows_not_a_time_filtered_window',
+        'voice_sessions_recent':len(sessions),
+        'voice_session_states':dict(Counter(s.state for s in sessions)),
+        'voice_action_dispatches_recent':len(attempts),
+        'voice_dispatch_routes':dict(Counter(x['engine_route'] for x in attempt_rows)),
+        'voice_dispatch_recent':attempt_rows[:25],
+        'chat_history_last_150':{
+            'user_messages':len(user),'assistant_messages':len(responses),
+            'user_folder_mentions':sum(bool(re.search(r'\b(?:folder|direktori|mkdir)\b',m.content,re.I)) for m in user),
+            'assistant_device_refusals':sum(bool(re.search(r'(?:tidak bisa|belum bisa|kendala teknis).{0,120}(?:folder|pc|komputer|powershell)',m.content,re.I|re.S)) for m in responses),
+            'assistant_verified_folder_receipts':sum('Folder Desktop berhasil dibuat' in m.content for m in responses)
+        },
+        'operator_last_100':{
+            'total':len(jobs),
+            'actions':dict(Counter(m.action for m in jobs)),
+            'states':dict(Counter(m.state for m in jobs)),
+            'recent':[{'at':m.created_at.isoformat()+'Z','action':m.action,
+                       'state':m.state} for m in jobs[:20]]
+        },
+        'engine_run_last_100':{
+            'routes':dict(Counter((m.channel,m.route,m.status) for m in runs
+                if m.channel in ('chat','voice_tool'))).__str__()[:2800]
+        }
+    }
+
+
 def device_metrics(db:Session) -> dict:
     did=setting('SONIC_DEVICE_ID','TRADEVICEPC')
     d=db.get(Device,did); row=db.get(DeviceTelemetry,did)
