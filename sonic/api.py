@@ -20,7 +20,7 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.8.5'
+VERSION = '0.8.6'
 
 
 @asynccontextmanager
@@ -272,6 +272,7 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
 
 from .activation import router as activation_router
 from .knowledge import router as knowledge_router
+from .integrations import router as integrations_router
 from .operator import router as operator_router
 from .speech import router as speech_router
 from .persona import router as persona_router
@@ -281,6 +282,7 @@ app.include_router(engine_router)
 from .voice import router as voice_router
 app.include_router(voice_router)
 app.include_router(knowledge_router)
+app.include_router(integrations_router)
 app.include_router(operator_router)
 app.include_router(speech_router)
 app.include_router(persona_router)
