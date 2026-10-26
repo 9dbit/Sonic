@@ -66,3 +66,55 @@ def workspace_path(root: Path, raw: str, exists: bool=True) -> Path:
     if resolved!=root and root not in resolved.parents:
         raise PermissionError('WORKSPACE_ONLY')
     return resolved
+
+
+def desktop_folder_root() -> Path:
+    """Resolve the logged-in Windows user's actual Desktop, including OneDrive redirection.
+
+    Do not create missing Desktop roots and never use a guessed public or
+    administrator Desktop; the Scheduled Task must run as the interactive owner.
+    """
+    import os
+    if os.name != 'nt':
+        raise PermissionError('WINDOWS_DESKTOP_ONLY')
+    import ctypes
+    import uuid
+    class GUID(ctypes.Structure):
+        _fields_=[('Data1',ctypes.c_ulong),('Data2',ctypes.c_ushort),
+                  ('Data3',ctypes.c_ushort),('Data4',ctypes.c_ubyte*8)]
+    guid=GUID.from_buffer_copy(uuid.UUID('B4BFCC3A-DB2C-424C-B029-7FE99A87C641').bytes_le)
+    location=ctypes.c_wchar_p()
+    result=ctypes.windll.shell32.SHGetKnownFolderPath(
+        ctypes.byref(guid),0,None,ctypes.byref(location))
+    if result != 0 or not location.value:
+        raise PermissionError('WINDOWS_DESKTOP_NOT_RESOLVED')
+    try:
+        desktop=Path(location.value).resolve(strict=True)
+    finally:
+        ctypes.windll.ole32.CoTaskMemFree(ctypes.cast(location,ctypes.c_void_p))
+    home=Path.home().resolve(strict=True)
+    if not desktop.is_dir() or home not in desktop.parents:
+        raise PermissionError('DESKTOP_OUTSIDE_OWNER_PROFILE')
+    return desktop
+
+
+def create_desktop_folder(name: str, desktop_root: Path | None = None) -> dict:
+    """Create exactly one folder under the owner's verified Desktop."""
+    safe=validate_relative_folder(name)
+    if '/' in safe:
+        raise PermissionError('DESKTOP_SINGLE_FOLDER_ONLY')
+    desktop=(Path(desktop_root).resolve(strict=True) if desktop_root is not None
+             else desktop_folder_root())
+    if not desktop.is_dir():
+        raise PermissionError('DESKTOP_NOT_A_DIRECTORY')
+    target=desktop/safe
+    if target.is_symlink():
+        raise PermissionError('DESKTOP_SYMLINK_BLOCKED')
+    existed=target.exists()
+    if existed and not target.is_dir():
+        raise PermissionError('DESKTOP_TARGET_IS_FILE')
+    target.mkdir(exist_ok=True)
+    if target.resolve(strict=True).parent != desktop:
+        raise PermissionError('DESKTOP_TARGET_ESCAPE')
+    return {'created':not existed,'exists':True,'name':safe,
+            'path':str(target.resolve(strict=True)),'scope':'owner_desktop'}
