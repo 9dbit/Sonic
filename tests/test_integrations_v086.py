@@ -104,3 +104,29 @@ def test_private_registry_does_not_leak_secrets_or_claim_chatgpt_oauth(client):
     assert '"id":"rdc"' in body and '"id":"google-drive"' in body
     assert '"not_connected"' in body
     assert 'ChatGPT' in body
+
+
+def test_open_integration_from_chat_uses_real_graph_node(client):
+    h=login(client)
+    r=client.post('/api/chat',json={'message':'SONIC, buka Integration'},headers=h)
+    assert r.status_code==200,r.text
+    data=r.json()
+    assert data['engine']['route']=='graph_command'
+    assert data['ui_actions']==[{'type':'graph.focus','node_id':'integration:hub'}]
+    assert not data['operator_jobs']
+
+
+def test_realtime_context_sees_state_but_cannot_execute_integrations():
+    from sonic.voice import session_config
+    snapshot={'device_id':'TRADEVICEPC','connected':True,
+              'integration_status':[
+                  {'id':'windows-native','connected':True,'state':'online'},
+                  {'id':'rdc','connected':False,'state':'not_connected'}]}
+    config=session_config(device_context=snapshot)
+    text=config['instructions']
+    assert 'integration_adapters' in text
+    assert '"rdc"' in text
+    assert '"not_connected"' in text
+    assert 'do NOT grant SONIC access' in text
+    assert not any(tool.get('name') in ('rdc.execute','google_drive.write','notepad.type')
+                   for tool in config['tools'])
