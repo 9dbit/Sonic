@@ -119,7 +119,7 @@ with local_server() as (url, token), sync_playwright() as playwright:
             "orangeOfflineText", "textWhite",
         ]:
             assert sample[key], (label, key, sample)
-        assert "0.8.6" in sample["version"], sample
+        assert page.request.get(url+'/api/health').json()['version'] in sample['version'], sample
         page.screenshot(path=str(OUTPUT / f"sonic-v072-{label}.png"), full_page=False)
         orb = page.locator("#sonicMotionFloat")
         orb.click(force=True)

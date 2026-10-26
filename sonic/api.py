@@ -20,7 +20,7 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.8.6'
+VERSION = '0.8.7'
 
 
 @asynccontextmanager
@@ -46,6 +46,8 @@ class LoginForm(BaseModel):
 class ChatForm(BaseModel):
     message: str = Field(min_length=1, max_length=3500)
     selected_node_id: str | None = Field(default=None, max_length=120)
+    request_id: str | None = Field(default=None, min_length=1, max_length=128, pattern=r'^[A-Za-z0-9_-]+$')
+    approval_request_id: str | None = Field(default=None, min_length=36, max_length=36)
 
 
 class MemoryForm(BaseModel):
@@ -144,7 +146,8 @@ async def chat(payload: ChatForm, owner: dict = Depends(auth.require_owner_write
     if not text:
         raise HTTPException(422, "Message required")
     from .engine import execute_chat
-    return await execute_chat(db, text, payload.selected_node_id, owner)
+    return await execute_chat(db, text, payload.selected_node_id, owner, request_id=payload.request_id,
+                              approval_request_id=payload.approval_request_id)
 
 
 

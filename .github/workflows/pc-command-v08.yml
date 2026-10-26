@@ -9,6 +9,7 @@ on:
       - feature/sonic-voice-command-v084-20261026
       - fix/sonic-voice-dispatch-audit-v085-20261026
       - feature/sonic-integration-brain-v086-20261026
+      - feature/sonic-execution-engine-v087-20261026
   pull_request:
     paths:
       - 'sonic/**'
@@ -50,6 +51,8 @@ jobs:
         run: python scripts/e2e_voice_desktop_v083.py
       - name: Integration particle, executor registry and mobile browser QA
         run: python scripts/e2e_integrations_v086.py
+      - name: Durable execution engine, lost-response retry and result evidence
+        run: python scripts/e2e_execution_v087.py
       - name: Neural Brain and dark theme regression
         run: python scripts/e2e_motion_v072.py
       - name: Upload browser evidence
@@ -62,6 +65,7 @@ jobs:
             artifacts/motion-v072/
             artifacts/voice-desktop-v083/
             artifacts/integrations-v086/
+            artifacts/execution-v087/
           if-no-files-found: warn
           retention-days: 7
 

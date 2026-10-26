@@ -11,10 +11,11 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from . import auth
 from .config import setting
-from .db import Device, DeviceTelemetry, OperatorRequest, OperatorOutput, OwnerSession, ChatMessage, ChatOperation, get_db, utcnow
+from .db import Device, DeviceTelemetry, OperatorRequest, OperatorOutput, OwnerSession, ChatMessage, ChatOperation, ExecutionTask, get_db, utcnow
 from .device_contract import ACTIONS, RECIPES, clean_metrics, clean_request
 
 router=APIRouter()
@@ -94,8 +95,8 @@ def device_metrics(db:Session) -> dict:
             'sampled_at':row.updated_at.isoformat()+'Z' if row else None,
             'metrics':json.loads(row.metrics_json) if available else {},
             'agent_version':row.agent_version if row else '',
-            'capabilities':json.loads(row.capabilities_json) if fresh and row else [],
-            'gui_targets':json.loads(row.targets_json) if fresh and row else [],
+            'capabilities':json.loads(row.capabilities_json) if available else [],
+            'gui_targets':json.loads(row.targets_json) if available else [],
             'source':'authenticated_companion_heartbeat','read_at':utcnow().isoformat()+'Z',
             'notice':('Fresh authenticated Windows Task Manager telemetry' if available else 'No fresh Windows telemetry; no values are estimated.')}
 
@@ -217,15 +218,21 @@ def receipt(row):
 AUTO_SAFE_ACTIONS=frozenset({'desktop.mkdir','file.mkdir','file.list','file.read','process.list','window.list'})
 
 def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:int,auto:bool) -> dict:
+    from .execution import choose_adapter, find_replay
+    identity=db.info.get('execution_identity')
+    if identity:
+        replay=find_replay(db,identity)
+        if replay:
+            db.info['execution_task_id']=replay.id
+            return receipt(db.get(OperatorRequest,replay.id))
     try:
-        safe=clean_request(action,payload)
+        adapter,safe=choose_adapter(db,action,payload)
     except (ValueError,TypeError) as exc:
         raise HTTPException(422,str(exc)) from None
     if auto and action not in AUTO_SAFE_ACTIONS:
         raise HTTPException(403,'OPERATION_REQUIRES_CHAT_APPROVAL')
     if not auto and action not in {'powershell.exec','process.terminate'}:
         raise HTTPException(403,'CHAT_REVIEW_ACTION_NOT_SUPPORTED')
-    ensure_capability(db,action)
     sid=auth.sha256(owner['sid'])
     active=db.scalar(select(func.count()).select_from(OperatorRequest).where(
         OperatorRequest.owner_sid==sid,
@@ -248,26 +255,54 @@ def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:i
         expires_at=utcnow()+timedelta(seconds=180 if auto else 120))
     db.add(row)
     db.add(ChatOperation(request_id=rid,source_message_id=source_message_id))
-    db.commit()
+    if identity:
+        db.add(ExecutionTask(id=rid,**identity,run_id=db.info['execution_run_id'],adapter_id=adapter.id))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        replay=find_replay(db,identity) if identity else None
+        if not replay:
+            raise
+        db.info['execution_task_id']=replay.id
+        return receipt(db.get(OperatorRequest,replay.id))
+    db.info['execution_task_id']=rid if identity else None
     return receipt(row)
 
 
-def chat_decide(db:Session,owner:dict,approved:bool) -> dict | None:
+def chat_decide(db:Session,owner:dict,approved:bool,request_id:str|None=None) -> dict | None:
     sid=auth.sha256(owner['sid'])
-    pending=db.scalars(select(OperatorRequest).join(
-        ChatOperation,ChatOperation.request_id==OperatorRequest.id).where(
-        OperatorRequest.owner_sid==sid,OperatorRequest.state=='pending',
-        OperatorRequest.expires_at>utcnow()).order_by(
-        OperatorRequest.created_at.desc()).limit(2)).all()
+    if request_id:
+        row=owner_row(db,request_id,owner)
+        if db.get(ChatOperation,row.id) is None:
+            raise HTTPException(404,'Chat proposal not found')
+        if row.state!='pending' or row.expires_at<=utcnow():
+            raise HTTPException(409,'Persetujuan ini sudah tidak berlaku. Perintah lain tidak disetujui.')
+        pending=[row]
+    else:
+        pending=db.scalars(select(OperatorRequest).join(
+            ChatOperation,ChatOperation.request_id==OperatorRequest.id).where(
+            OperatorRequest.owner_sid==sid,OperatorRequest.state=='pending',
+            OperatorRequest.expires_at>utcnow()).order_by(
+            OperatorRequest.created_at.desc()).limit(2)).all()
     if not pending:return None
     if len(pending)>1:raise HTTPException(409,'Ada beberapa proposal. Batalkan salah satunya dulu.')
     row=pending[0]
+    # Compare-and-set prevents a concurrent Stop or another approval from
+    # reviving this exact proposal after the owner has cancelled it.
     if approved:
         ensure_capability(db,row.action)
-        row.state='queued'
-        row.expires_at=utcnow()+timedelta(seconds=180 if row.action=='powershell.exec' else 90)
+        values={'state':'queued','expires_at':utcnow()+timedelta(seconds=180 if row.action=='powershell.exec' else 90)}
     else:
-        row.state='cancelled'
+        values={'state':'cancelled'}
+    changed=db.execute(update(OperatorRequest).where(OperatorRequest.id==row.id,
+        OperatorRequest.state=='pending',OperatorRequest.expires_at>utcnow()).values(**values))
+    if not changed.rowcount:
+        db.rollback()
+        raise HTTPException(409,'Proposal is no longer awaiting approval')
+    db.refresh(row)
+    from .execution import update_run
+    update_run(db,row)
     db.commit()
     return receipt(row)
 
@@ -282,6 +317,8 @@ def chat_output_excerpt(db:Session,request_id:str) -> str:
 
 def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:str='') -> str:
     if not success:
+        if result.get('error')=='RESULT_VERIFICATION_FAILED':
+            return 'Hasil folder dari TRADEVICEPC belum dapat diverifikasi: nama, lokasi, atau bukti keberadaannya tidak sesuai. Tugas ditandai gagal.'
         code=str(result.get('error') or result.get('detail') or 'DEVICE_ACTION_FAILED')[:140]
         return f"SONIC: tindakan {row.action} gagal pada TRADEVICEPC ({code})."
     if row.action=='desktop.mkdir':
@@ -356,9 +393,12 @@ def confirm(request_id:str,p:Approval,owner:dict=Depends(auth.require_owner_writ
 @router.get('/api/operator/requests/{request_id}')
 def status(request_id:str,owner:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
     row=owner_row(db,request_id,owner)
-    if row.state in ('pending','queued','leased') and row.expires_at<=utcnow():
-        row.state='expired';db.commit()
+    from .execution import phase, task_snapshot
+    phase(db,row)
     output=receipt(row)
+    task=db.get(ExecutionTask,row.id)
+    if task:
+        output['task']=task_snapshot(db,task)
     operation=db.get(ChatOperation,row.id)
     if operation and row.state in ('done','failed') and row.result_json:
         output['chat_completion']=chat_result_text(row,json.loads(row.result_json),row.state=='done',chat_output_excerpt(db,row.id) if row.action=='powershell.exec' else '')
@@ -387,7 +427,13 @@ def stream(request_id:str,after:int=0,owner:dict=Depends(auth.require_owner),db:
 @router.delete('/api/operator/requests/{request_id}')
 def cancel(request_id:str,owner:dict=Depends(auth.require_owner_write),db:Session=Depends(get_db)):
     row=owner_row(db,request_id,owner)
-    if row.state in ('pending','queued','leased'):row.state='cancelled';db.commit()
+    if row.state in ('pending','queued','leased'):
+        db.execute(update(OperatorRequest).where(OperatorRequest.id==row.id,
+            OperatorRequest.state.in_(('pending','queued','leased'))).values(state='cancelled'))
+        db.refresh(row)
+        from .execution import update_run
+        update_run(db,row)
+        db.commit()
     return {'state':row.state,'notice':'Cancellation may not undo an action already underway'}
 
 
@@ -442,13 +488,30 @@ def device_stream(event:OutputEvent,request:Request,db:Session=Depends(get_db)):
 
 @router.post('/api/device/operator/result')
 def result(p:Result,request:Request,db:Session=Depends(get_db)):
-    auth.require_device(request);row=valid_lease(db,p)
+    auth.require_device(request)
+    # Serialize terminal result acceptance, cancellation and duplicate reports.
+    db.scalar(select(OperatorRequest).where(OperatorRequest.id==p.request_id).with_for_update())
+    row=valid_lease(db,p)
     if row.state in ('done','failed'):return {'accepted':True,'duplicate':True}
     if row.state not in ('leased','cancelled','expired'):raise HTTPException(409,'Request no longer leased')
     raw=json.dumps(p.result,ensure_ascii=False)
     if len(raw.encode())>32768:raise HTTPException(413,'Result exceeds 32KB limit')
+    from .execution import NATIVE, update_run
+    task=db.get(ExecutionTask,row.id)
+    success=p.success
+    if task:
+        evidence=NATIVE.verify(row.action,json.loads(row.payload_json),p.result,p.success)
+        task.verification_json=json.dumps(evidence)
+        if evidence['status']=='unverified':
+            success=False
+            raw=json.dumps({'error':'RESULT_VERIFICATION_FAILED','verification_error':evidence['code']})
+    # Late results remain available as evidence, but cannot revive expired or
+    # cancelled work or claim that a cancellation undid an already-started job.
+    if row.state=='leased' and row.expires_at<=utcnow():
+        row.state='expired'
     row.result_json=raw
-    if row.state=='leased':row.state='done' if p.success else 'failed'
+    if row.state=='leased':row.state='done' if success else 'failed'
+    update_run(db,row)
     operation=db.get(ChatOperation,row.id)
     if operation and not operation.notification_sent and row.state in ('done','failed'):
         try:
