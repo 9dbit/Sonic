@@ -152,5 +152,16 @@ def test_unowned_or_expired_voice_cannot_enqueue_desktop(client,provider):
     assert client.post(url,json=body,headers=h_other).status_code==404
     with session_factory()() as db:
         row=db.get(VoiceSession,sid);row.expires_at=utcnow()-timedelta(seconds=1);db.commit()
-    assert client.post(url,json=body,headers=h).status_code in (404,409)
+    assert client.post(url,json=body,headers=h).status_code in (403,404,409)
+    assert next_job(client) is None
+
+
+def test_expired_active_owner_voice_session_rejected(client,provider):
+    h=login(client);heartbeat(client);sid=start(client,h)
+    with session_factory()() as db:
+        row=db.get(VoiceSession,sid)
+        row.expires_at=utcnow()-timedelta(seconds=1)
+        db.commit()
+    r=utter(client,h,sid,'item_expired','buat folder Today di desktop')
+    assert r.status_code==409
     assert next_job(client) is None
