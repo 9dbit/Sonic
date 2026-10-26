@@ -97,6 +97,19 @@ with local_server() as (url, token), sync_playwright() as playwright:
             blueLabel:style('.top-title .eyebrow').color==='rgb(77, 163, 255)',
             orangeOfflineText:style('.pill.offline').color==='rgb(255, 159, 47)',
             textWhite:style('body').color==='rgb(255, 255, 255)',
+            // R1 is an intentional visual revision; keep all particle quality
+            // assertions while validating its own documented design contract.
+            shellR1:document.body.classList.contains('sonic-shell-v100'),
+            bodyNight:style('body').backgroundColor==='rgb(3, 6, 11)',
+            graphNight:style('#brainPanel').backgroundColor==='rgb(5, 10, 18)' &&
+                       style('#brainPanel').backgroundImage.includes('radial-gradient'),
+            panelFramed:parseFloat(style('.brain-side').borderTopWidth)>=1,
+            brandedSVG:document.querySelector('.brand-symbol')?.naturalWidth>0,
+            shellContrast:style('body').color==='rgb(241, 247, 255)',
+            navResponsive:innerWidth<=720
+              ? style('.sidebar').position==='fixed'
+              : parseFloat(style('.sidebar').width)>=200 || (innerWidth<=1020 &&
+                  parseFloat(style('.sidebar').width)>=70),
             version:document.querySelector('.top-title .eyebrow').textContent,
             canvasSize:[c.width,c.height]
           };
@@ -112,13 +125,22 @@ with local_server() as (url, token), sync_playwright() as playwright:
         assert sample["orangePixels"] == 0, sample
         assert sample["whitePixels"] == 0, sample
         assert sample["avgFrameMs"] < 120, sample
-        for key in [
-            "noGlow", "canvasTransparent", "bodyBlack", "graphBlack",
-            "headerGrey", "panelGrey", "panelBorderless",
-            "solidBlueButton", "activeNavSolid", "blueLabel",
-            "orangeOfflineText", "textWhite",
-        ]:
+        for key in ["noGlow", "canvasTransparent"]:
             assert sample[key], (label, key, sample)
+        if sample["shellR1"]:
+            # Design evolution must not be misclassified as an animation
+            # regression. Its own colors, panel hierarchy and responsive nav
+            # must still be checked with exact expected values.
+            for key in ["bodyNight","graphNight","panelFramed","brandedSVG",
+                        "shellContrast","navResponsive"]:
+                assert sample[key], (label, key, sample)
+        else:
+            for key in [
+                "bodyBlack", "graphBlack", "headerGrey", "panelGrey",
+                "panelBorderless", "solidBlueButton", "activeNavSolid",
+                "blueLabel", "orangeOfflineText", "textWhite",
+            ]:
+                assert sample[key], (label, key, sample)
         assert page.request.get(url+'/api/health').json()['version'] in sample['version'], sample
         page.screenshot(path=str(OUTPUT / f"sonic-v072-{label}.png"), full_page=False)
         orb = page.locator("#sonicMotionFloat")
@@ -132,7 +154,8 @@ with local_server() as (url, token), sync_playwright() as playwright:
         page.evaluate("window.sonicMotion.handleCommand('SONIC, kembali ke tempat semula')")
         assert page.evaluate("window.sonicMotion.focused") is False
         page.locator('.nav[data-tab="chat"]').click()
-        assert page.evaluate("getComputedStyle(document.querySelector('#chatPanel')).backgroundColor") == "rgb(0, 0, 0)"
+        chat_background=page.evaluate("getComputedStyle(document.querySelector('#chatPanel')).backgroundColor")
+        assert chat_background==("rgb(6, 11, 19)" if sample["shellR1"] else "rgb(0, 0, 0)"),chat_background
         page.locator('.nav[data-tab="devices"]').click()
         expect(page.locator("#taskManagerPanel")).to_be_visible()
         assert not page_errors, page_errors

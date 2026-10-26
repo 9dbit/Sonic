@@ -1,0 +1,55 @@
+name: SONIC Command Deck UI R1
+
+on:
+  push:
+    branches:
+      - design/sonic-command-deck-v100-20261027
+  pull_request:
+    paths:
+      - 'web/index.html'
+      - 'web/sonic-shell-v100.css'
+      - 'web/sonic-shell-v100.js'
+      - 'web/assets/sonic-mark.svg'
+      - 'scripts/e2e_shell_v100.py'
+      - '.github/workflows/sonic-command-deck-v100.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ui-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install localhost UI test dependencies
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Syntax and unchanged motion engine safety
+        run: |
+          node --check web/sonic-shell-v100.js
+          node --check web/motion-core.js
+          node --check web/graph.js
+          python -m compileall -q scripts/e2e_shell_v100.py
+          test -s web/sonic-mark.svg
+          if grep -E 'innerHTML|localStorage|fetch\(|WebSocket|navigator.mediaDevices' web/sonic-shell-v100.js; then
+            echo 'UI-only controller must not access private data or media'
+            exit 1
+          fi
+      - name: Five-viewport live localhost visual + interaction acceptance
+        run: python scripts/e2e_shell_v100.py
+      - name: Publish disposable browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-command-deck-ui-r1
+          path: artifacts/sonic-command-deck-r1/
+          if-no-files-found: warn
+          retention-days: 7

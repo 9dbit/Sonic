@@ -1,0 +1,981 @@
+/*
+ * SONIC COMMAND DECK / Interface R1
+ * Visual-only override layered AFTER the pre-existing design system.
+ * No changes to graph physics, particle renderer, auth or command contracts.
+ * Precise responsive navigation, muted blue/cyan highlights, black glass.
+ */
+:root{
+  color-scheme:dark;
+  --base:#03060b;
+  --panel:#090f19;
+  --line:rgba(108,161,211,.15);
+  --text:#f2f7ff;
+  --muted:#8da2b8;
+  --accent:#61d7f6;
+  --blue:#3385f6;
+  --sonic-blue:#3385f6;
+  --sonic-blue2:#61d7f6;
+  --sonic-ui:#0b111d;
+  --sonic-ui-raised:#111b2a;
+}
+html,body.sonic-shell-v100,.sonic-shell-v100 .app{
+  background:#03060b!important;
+  color:#f1f7ff!important;
+}
+body.sonic-shell-v100{
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:14px;
+  letter-spacing:-.01em;
+}
+/* Do not isolate .app: voice controls live inside it while the original
+   sonicFocusShade is appended to body. Isolation would trap voice Mute/Stop
+   behind the shade despite their deliberately higher z-index. */
+.sonic-shell-v100 .app{isolation:auto}
+.sonic-shell-v100 .app :is(button,a,input,textarea,select,[tabindex]):focus-visible,
+.sonic-shell-v100 :is(.login-overlay,.voice-dialog,.operator-review) :is(button,input):focus-visible{
+  outline:2px solid #7ce4ff!important;
+  outline-offset:3px!important;
+}
+.sonic-shell-v100 .app .eyebrow{color:#79b8d8!important;letter-spacing:.18em;font-size:10px;font-weight:700}
+.sonic-shell-v100 .app .eyebrow b{color:#5a7188!important;margin-left:7px;font-weight:600}
+.sonic-shell-v100 .app .small-note,
+.sonic-shell-v100 .app .disclaimer{
+  color:#879eb4!important;
+}
+.sonic-shell-v100 .app .pill{
+  background:rgba(17,29,45,.85)!important;
+  border:1px solid rgba(101,143,186,.16)!important;
+  color:#a9c0d5!important;
+  border-radius:999px!important;
+  letter-spacing:.015em;
+  box-shadow:none!important;
+  padding:9px 12px;
+}
+.sonic-shell-v100 .app .pill.online{color:#80e6ca!important}
+.sonic-shell-v100 .app .pill.offline{color:#ffae80!important}
+.sonic-shell-v100 .app .pill.online:before{background:#6bdfc0!important}
+.sonic-shell-v100 .app .pill.offline:before{background:#ec9b72!important}
+
+/* === Structural rhythm: a proper command-deck shell === */
+.sonic-shell-v100 .sidebar{
+  width:228px!important;
+  flex:none;
+  align-items:stretch;
+  padding:26px 18px 20px!important;
+  background:linear-gradient(155deg,#0c1525 0%,#080e18 43%,#050910 100%)!important;
+  border-right:1px solid rgba(116,176,225,.12)!important;
+  box-shadow:none!important;
+  position:relative;
+  z-index:10;
+}
+.sonic-shell-v100 .sidebar:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:1px;
+  background:linear-gradient(180deg,rgba(80,216,255,.35),transparent 43%,rgba(39,92,217,.3));
+  pointer-events:none;
+}
+.sonic-shell-v100 .sidebar-brand{padding:0 4px 0}
+.sonic-shell-v100 .sidebar .brand{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+  text-align:left;
+  text-decoration:none;
+  color:#f5fbff!important;
+  border-radius:12px!important;
+  background:none!important;
+  box-shadow:none!important;
+  letter-spacing:normal;
+}
+.sonic-shell-v100 .brand-symbol{
+  display:block;
+  width:44px;
+  height:44px;
+  border-radius:13px;
+  flex:none;
+  box-shadow:0 0 29px rgba(48,126,236,.13);
+}
+.sonic-shell-v100 .brand-words{display:flex;flex-direction:column;gap:5px;line-height:1}
+.sonic-shell-v100 .brand-words strong{
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:.20em;
+  color:#fff;
+  line-height:1;
+}
+.sonic-shell-v100 .brand-words small{
+  font-size:8px;
+  color:#65a4c8;
+  letter-spacing:.20em;
+  font-weight:650;
+  white-space:nowrap;
+}
+.sonic-shell-v100 .sidebar-caption{
+  display:flex;justify-content:space-between;align-items:center;gap:5px;
+  margin:53px 10px 17px;
+  padding:0 0 13px;
+  border-bottom:1px solid rgba(110,152,195,.16);
+  color:#637d96;
+  font-size:9px;font-weight:700;letter-spacing:.18em;
+}
+.sonic-shell-v100 .sidebar-caption small{font:inherit;color:#3e6684}
+.sonic-shell-v100 .sidebar-content{
+  width:100%;
+  margin:0!important;
+  gap:5px!important;
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+}
+.sonic-shell-v100 .app .nav{
+  width:100%;
+  min-height:47px;
+  display:flex;
+  flex-direction:row;
+  justify-content:flex-start;
+  align-items:center;
+  gap:14px;
+  padding:11px 15px!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:#8098ad!important;
+  border-radius:12px!important;
+  text-align:left;
+  font-size:12px!important;
+  font-weight:550;
+  letter-spacing:.005em;
+  box-shadow:none!important;
+  position:relative;
+  transition:background .2s ease,color .2s ease!important;
+}
+.sonic-shell-v100 .nav svg{
+  width:19px;height:19px;stroke-width:1.7;opacity:.9;
+  color:inherit!important;
+}
+.sonic-shell-v100 .app .nav:hover{
+  background:rgba(54,96,155,.13)!important;
+  color:#d6eaf9!important;
+}
+.sonic-shell-v100 .app .nav.active{
+  background:linear-gradient(94deg,rgba(42,112,200,.25),rgba(29,62,112,.13))!important;
+  border:1px solid rgba(74,161,229,.2)!important;
+  color:#eaf7ff!important;
+  box-shadow:inset 0 1px rgba(170,221,255,.035)!important;
+}
+.sonic-shell-v100 .nav.active:before{
+  content:"";
+  position:absolute;
+  left:0;top:11px;bottom:11px;
+  width:3px;border-radius:0 4px 4px 0;
+  background:#6fe0ff;
+  box-shadow:0 0 14px rgba(57,197,255,.38);
+}
+.sonic-shell-v100 .app .nav.active svg{color:#6fe0ff!important}
+.sonic-shell-v100 .sidebar-footer{
+  margin-top:auto;padding:14px 6px 0;
+  border-top:1px solid rgba(117,154,196,.12);
+  display:flex;flex-direction:column;gap:14px;
+}
+.sonic-shell-v100 .sidebar-footnote{
+  display:flex;gap:9px;align-items:center;
+  color:#60788e;
+  letter-spacing:.11em;
+  font:600 9px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+.sonic-shell-v100 .sidebar-footnote-dot{
+  width:6px;height:6px;border-radius:50%;
+  border:1px solid rgba(126,200,230,.7);
+  box-shadow:0 0 12px rgba(67,185,247,.27);
+}
+.sonic-shell-v100 .sidebar .logout{
+  display:flex;
+  align-items:center;
+  width:100%;
+  gap:13px;
+  border:1px solid rgba(122,157,194,.12)!important;
+  color:#93a8c0!important;
+  background:rgba(22,31,44,.45)!important;
+  border-radius:11px!important;
+  padding:12px 13px!important;
+  font-size:12px;
+  text-align:left;
+  box-shadow:none!important;
+}
+.sonic-shell-v100 .sidebar .logout:hover{background:rgba(55,91,135,.25)!important;color:#f1f8ff!important}
+.sonic-shell-v100 .sidebar .logout svg{width:18px;height:18px}
+.sonic-shell-v100 .content{
+  background:linear-gradient(165deg,#050a12,#03060b 52%);
+  min-width:0;
+}
+.sonic-shell-v100 .topbar{
+  height:94px!important;
+  min-height:94px;
+  padding:0 28px 0 34px!important;
+  background:rgba(5,10,17,.96)!important;
+  border-bottom:1px solid rgba(110,160,208,.12)!important;
+  box-shadow:none!important;
+  gap:16px;
+}
+.sonic-shell-v100 .topbar-intro{display:flex;align-items:baseline;gap:30px;min-width:0;flex:1}
+.sonic-shell-v100 .top-title{min-width:0}
+.sonic-shell-v100 .top-title h1{
+  font-size:23px;
+  font-weight:690;
+  line-height:1.2;
+  letter-spacing:-.045em;
+  color:#f8fbff;
+  margin:7px 0 0;
+  white-space:nowrap;
+}
+.sonic-shell-v100 .top-subtitle{
+  color:#6e849b;
+  font-size:11px;
+  margin:0 0 1px;
+  white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+  max-width:340px;
+}
+.sonic-shell-v100 .top-right{gap:8px!important;flex-shrink:0}
+.sonic-shell-v100 .app button.wake-pill:not(.nav):not(.plain):not(.logout){
+  background:rgba(18,32,49,.95)!important;
+  border:1px solid rgba(89,155,220,.18)!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  padding:10px 14px!important;
+  font-size:11px;
+  color:#b8cfe2!important;
+}
+.sonic-shell-v100 .app button.wake-pill[aria-pressed=true]:not(.nav):not(.plain):not(.logout){
+  color:#75e8dd!important;
+  border-color:rgba(80,225,205,.44)!important;
+}
+.sonic-shell-v100 .app button.talk-button:not(.nav):not(.plain):not(.logout){
+  background:linear-gradient(125deg,#287dea,#1456cd)!important;
+  border:1px solid rgba(162,212,255,.20)!important;
+  border-radius:999px!important;
+  color:#fff!important;
+  padding:11px 16px!important;
+  font-weight:690;
+  letter-spacing:.005em;
+  box-shadow:0 5px 22px rgba(20,88,215,.20)!important;
+}
+.sonic-shell-v100 .talk-button svg{width:16px;height:16px}
+
+/* Shared panel architecture with spacious alignment and subtle depth. */
+.sonic-shell-v100 .panel:not(.hidden){
+  min-width:0;
+}
+.sonic-shell-v100 .brain-panel,
+.sonic-shell-v100 .chat-panel,
+.sonic-shell-v100 .workspace-panel,
+.sonic-shell-v100 .info-panel{
+  margin:17px 19px 19px;
+  border:1px solid rgba(100,150,200,.14)!important;
+  border-radius:23px!important;
+  box-shadow:0 24px 65px rgba(0,0,0,.23)!important;
+  min-width:0;
+}
+.sonic-shell-v100 .brain-panel{
+  background:
+    radial-gradient(ellipse 48% 60% at 54% 44%,rgba(20,65,120,.30),transparent 78%),
+    radial-gradient(ellipse 30% 50% at 85% 52%,rgba(11,37,84,.17),transparent 79%),
+    repeating-linear-gradient(0deg,rgba(101,148,198,.038) 0,rgba(101,148,198,.038) 1px,transparent 1px,transparent 39px),
+    repeating-linear-gradient(90deg,rgba(101,148,198,.035) 0,rgba(101,148,198,.035) 1px,transparent 1px,transparent 39px),
+    #050a12!important;
+  overflow:hidden;
+}
+.sonic-shell-v100 .brain-panel:after{
+  content:"";position:absolute;z-index:1;inset:0;
+  pointer-events:none;border-radius:inherit;
+  box-shadow:inset 0 1px rgba(128,186,237,.10),inset 0 0 80px rgba(1,5,12,.18);
+}
+.sonic-shell-v100 .graph-stage{z-index:0;background:transparent!important}
+.sonic-shell-v100 .graph-stage canvas{filter:none!important;box-shadow:none!important}
+.sonic-shell-v100 .neural-field-label{
+  position:absolute;z-index:2;top:83px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:10px;
+  pointer-events:none;white-space:nowrap;
+  color:#5f94b8;
+  font:650 9px ui-monospace,SFMono-Regular,Consolas,monospace;
+  letter-spacing:.20em;
+}
+.sonic-shell-v100 .neural-field-glyph{font-size:14px;color:#62e0ff}
+.sonic-shell-v100 .neural-field-line{width:21px;height:1px;background:rgba(92,183,242,.33)}
+.sonic-shell-v100 .neural-field-index{color:#496783}
+.sonic-shell-v100 .graph-toolbar{
+  z-index:9;top:21px;left:52%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:3px;
+  padding:6px!important;
+  background:rgba(9,17,29,.93)!important;
+  border:1px solid rgba(111,169,214,.20)!important;
+  border-radius:16px!important;
+  box-shadow:0 18px 42px #0008!important;
+  backdrop-filter:blur(20px);
+}
+.sonic-shell-v100 .app .graph-toolbar button:not(.nav):not(.plain):not(.logout){
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:#8fa8c0!important;
+  box-shadow:none!important;
+  border-radius:11px!important;
+  padding:9px 11px!important;
+  font-weight:600;
+  letter-spacing:.01em;
+}
+.sonic-shell-v100 .app .graph-toolbar button[aria-pressed=true]:not(.nav):not(.plain):not(.logout){
+  background:rgba(35,90,157,.36)!important;
+  color:#bceaff!important;
+  border-color:rgba(73,142,207,.22)!important;
+}
+.sonic-shell-v100 .app .graph-toolbar button:not(:disabled):hover:not(.nav):not(.plain):not(.logout){
+  background:rgba(37,80,135,.26)!important;color:#fff!important;
+}
+.sonic-shell-v100 .brain-side{
+  z-index:8;top:22px;bottom:22px;left:22px;width:271px;
+  border-radius:18px!important;
+  padding:21px 18px;
+  background:linear-gradient(170deg,rgba(14,24,40,.94),rgba(8,15,26,.88))!important;
+  border:1px solid rgba(115,173,220,.17)!important;
+  box-shadow:0 24px 60px rgba(0,0,0,.31)!important;
+  backdrop-filter:blur(24px);
+}
+.sonic-shell-v100 .side-heading h2{
+  color:#c4ddf0!important;
+  font-size:10px;letter-spacing:.19em;
+}
+.sonic-shell-v100 .side-heading p{color:#7190a9!important;font-size:10px;line-height:1.7}
+.sonic-shell-v100 .graph-search{
+  padding:11px 12px!important;
+  border:1px solid rgba(100,154,209,.18)!important;
+  background:rgba(7,13,22,.86)!important;
+  border-radius:11px!important;box-shadow:none!important;
+}
+.sonic-shell-v100 .graph-search input{color:#eaf5ff!important;font-size:12px}
+.sonic-shell-v100 .section-label{
+  color:#628dab!important;
+  margin:21px 0 11px;
+  font-size:9px!important;
+}
+.sonic-shell-v100 .node-inspector{
+  border-radius:12px;
+  background:rgba(6,12,20,.69)!important;
+  border:1px solid rgba(99,149,198,.15)!important;
+  padding:15px;
+}
+.sonic-shell-v100 .node-inspector h3{color:#f4f9ff;font-size:13px}
+.sonic-shell-v100 .node-inspector p{color:#9bb1c5!important;font-size:11px}
+.sonic-shell-v100 .depth-controls{margin-top:16px;gap:6px}
+.sonic-shell-v100 .app .depth-controls button:not(.nav):not(.logout){
+  background:#142035!important;border:1px solid rgba(88,135,182,.15)!important;
+  color:#9eb7cc!important;border-radius:8px!important;
+}
+.sonic-shell-v100 .app .depth-controls button.active:not(.nav):not(.logout){
+  background:#2566b6!important;color:#fff!important;border-color:rgba(110,204,248,.34)!important;
+}
+.sonic-shell-v100 .app .hub-list button,
+.sonic-shell-v100 .app .search-results button{
+  background:transparent!important;color:#a9bfd3!important;
+  border-radius:9px!important;padding:10px 8px;
+}
+.sonic-shell-v100 .app .hub-list button:hover,
+.sonic-shell-v100 .app .search-results button:hover{background:#15263b!important;color:#fff!important}
+.sonic-shell-v100 .brain-side>.small-note{color:#69839a!important;font-size:9px;line-height:1.7}
+.sonic-shell-v100 .brain-right{z-index:7;right:23px;top:22px;width:190px}
+.sonic-shell-v100 .filter-panel{
+  padding:20px 17px;
+  border-radius:18px!important;
+  background:linear-gradient(165deg,rgba(14,24,40,.91),rgba(9,15,27,.87))!important;
+  border:1px solid rgba(110,166,216,.15)!important;
+  backdrop-filter:blur(24px);
+  box-shadow:0 17px 49px rgba(0,0,0,.22)!important;
+}
+.sonic-shell-v100 .filter-panel h2{font-size:10px;color:#c1daf0;letter-spacing:.17em}
+.sonic-shell-v100 .filter-row{color:#9bb2c7;font-size:11px;margin-top:13px}
+.sonic-shell-v100 .assistant-core{position:relative;margin-top:34px}
+.sonic-shell-v100 .assistant-core:before{
+  content:"";position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+  width:202px;height:202px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(25,104,202,.11),rgba(7,30,75,.065) 42%,transparent 70%);
+  border:1px solid rgba(97,190,239,.055);
+}
+.sonic-shell-v100 #sonicMotionAnchor{position:relative;z-index:1}
+.sonic-shell-v100 .core-state{position:relative;z-index:2;letter-spacing:.16em;font-size:10px;color:#98b9cd!important}
+.sonic-shell-v100 .core-state i{background:#56caff!important;box-shadow:0 0 12px rgba(77,190,255,.32)!important}
+.sonic-shell-v100 .model-label{
+  position:relative;z-index:2;
+  background:rgba(8,16,29,.75);
+  color:#7998af;font-size:9px;letter-spacing:.05em;
+  border:1px solid rgba(87,143,207,.15)!important;
+  padding:7px 10px;
+}
+.sonic-shell-v100 .motion-gesture-hint{
+  color:#7395b1!important;line-height:1.6;letter-spacing:.005em;font-size:10px;margin-top:12px;
+}
+.sonic-shell-v100 .brain-console{
+  z-index:10;
+  left:calc(50% + 25px);bottom:20px;
+  width:min(640px,calc(100% - 545px));
+}
+.sonic-shell-v100 .composer{
+  border:1px solid rgba(109,172,223,.19)!important;
+  background:rgba(11,19,32,.95)!important;
+  box-shadow:0 18px 60px rgba(0,0,0,.37),inset 0 1px rgba(146,208,253,.05)!important;
+  border-radius:18px!important;
+  backdrop-filter:blur(24px);
+  padding:12px 13px;
+}
+.sonic-shell-v100 .composer textarea{
+  font-size:13px;
+  color:#f0f8ff;
+  padding:9px 9px;
+  line-height:1.65;
+}
+.sonic-shell-v100 .composer textarea::placeholder{color:#7189a1}
+.sonic-shell-v100 .app .composer .icon-button:not(.nav):not(.plain):not(.logout),
+.sonic-shell-v100 .app .composer .voice-button:not(.nav):not(.plain):not(.logout){
+  background:transparent!important;border:1px solid transparent!important;
+  color:#809db7!important;box-shadow:none!important;
+  border-radius:10px!important;
+}
+.sonic-shell-v100 .app .composer .icon-button:not(:disabled):hover:not(.nav):not(.plain):not(.logout),
+.sonic-shell-v100 .app .composer .voice-button:not(:disabled):hover:not(.nav):not(.plain):not(.logout){
+  background:rgba(46,102,169,.25)!important;color:#fff!important;
+}
+.sonic-shell-v100 .app .composer .send-button:not(.nav):not(.plain):not(.logout){
+  background:linear-gradient(130deg,#298dfe,#1453cd)!important;
+  border:1px solid rgba(164,214,255,.18)!important;
+  border-radius:12px!important;
+  color:#fff!important;
+  box-shadow:0 7px 22px rgba(24,105,223,.16)!important;
+}
+.sonic-shell-v100 .brain-answer{
+  padding:16px 18px;
+  border:1px solid rgba(90,179,233,.25)!important;
+  background:rgba(7,16,27,.95)!important;
+  border-radius:15px!important;
+}
+.sonic-shell-v100 .brain-answer p{color:#d5e5f2;font-size:12px}
+.sonic-shell-v100 .graph-hint{font-size:9px;color:#52728e!important;margin-top:11px;letter-spacing:.04em}
+.sonic-shell-v100 .graph-engine{left:316px;bottom:18px;color:#46627b!important;font-size:9px}
+.sonic-shell-v100 .graph-empty{
+  left:50%;top:46%;max-width:370px;
+  padding:28px 32px;
+  background:rgba(4,10,18,.5)!important;
+  border-radius:20px;
+}
+.sonic-shell-v100 .graph-empty h2{color:#d5eaff;font-weight:600;font-size:20px}
+
+/* === Conversation === */
+.sonic-shell-v100 .chat-panel{
+  background:radial-gradient(ellipse at 50% 40%,rgba(15,52,92,.20),transparent 62%),#060b13!important;
+  overflow:hidden;
+}
+.sonic-shell-v100 .chat-feed{padding:32px clamp(25px,9%,150px);gap:23px}
+.sonic-shell-v100 .hero{max-width:650px}
+.sonic-shell-v100 .hero-mark{
+  width:94px;height:94px;border:0!important;border-radius:26px!important;
+  background:transparent!important;
+  margin:0 auto 26px;
+  display:grid;place-items:center;
+  box-shadow:0 0 52px rgba(55,133,231,.12)!important;
+}
+.sonic-shell-v100 .hero-mark img{width:92px;height:92px;display:block}
+.sonic-shell-v100 .hero .eyebrow{color:#74b6d7!important;font-size:10px}
+.sonic-shell-v100 .hero h2{
+  color:#f8fbff;font-size:clamp(32px,4vw,53px);
+  font-weight:720;letter-spacing:-.062em;line-height:1.13;
+  margin:17px 0 14px;
+}
+.sonic-shell-v100 .hero h2 span{
+  color:#69cfff;
+  background:linear-gradient(110deg,#9ceafa 20%,#4fa6e9 60%,#4571dc);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.sonic-shell-v100 .hero p{font-size:13px;color:#8fa9c0!important;line-height:1.9;max-width:440px;margin:0 auto}
+.sonic-shell-v100 .hero-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin:24px auto 0}
+.sonic-shell-v100 .app .hero-actions button.outline-button:not(.nav):not(.plain):not(.logout){
+  background:rgba(22,41,65,.7)!important;
+  color:#c0e2f6!important;
+  border:1px solid rgba(88,157,214,.22)!important;
+  padding:11px 15px!important;
+  border-radius:12px!important;
+  box-shadow:none!important;
+  font-size:11px;white-space:nowrap;margin:0;
+}
+.sonic-shell-v100 .app .hero-actions button.outline-button:first-child:not(.nav):not(.plain):not(.logout){
+  background:linear-gradient(125deg,#277cdf,#1754b9)!important;color:#fff!important;
+}
+.sonic-shell-v100 .hero-footnote{
+  color:#4f708a!important;
+  font:600 9px ui-monospace,monospace!important;
+  letter-spacing:.24em;margin-top:31px!important;
+}
+.sonic-shell-v100 .message{gap:10px;width:min(100%,860px)}
+.sonic-shell-v100 .message .speaker{color:#75b5d8!important;font-size:10px;font-weight:710}
+.sonic-shell-v100 .message .body{color:#e9f2fb;font-size:14px;line-height:1.85}
+.sonic-shell-v100 .message.user .body{
+  background:#132238!important;
+  border:1px solid rgba(96,151,213,.20)!important;
+  border-radius:17px!important;
+  padding:15px 19px;max-width:84%;
+}
+.sonic-shell-v100 .compose-wrap{width:min(900px,100%);padding:15px 25px 20px}
+.sonic-shell-v100 .disclaimer{font-size:10px;color:#638099!important;margin-top:12px}
+
+/* === Workspace, memory and operations === */
+.sonic-shell-v100 .workspace-panel,
+.sonic-shell-v100 .info-panel{
+  background:linear-gradient(150deg,#0a111d,#080d16 70%)!important;
+  padding:30px clamp(20px,4vw,54px)!important;
+  scrollbar-width:thin;
+  scrollbar-color:#2a415c transparent;
+}
+.sonic-shell-v100 .workspace-panel{overflow:auto}
+.sonic-shell-v100 .section-head{margin:0 0 23px;gap:16px}
+.sonic-shell-v100 .section-head h2,
+.sonic-shell-v100 .ws-heading h2{
+  font-size:32px!important;font-weight:730;letter-spacing:-.05em;color:#f7fbff;
+}
+.sonic-shell-v100 .section-head p,
+.sonic-shell-v100 .ws-heading p{
+  color:#92a9bf!important;font-size:13px!important;
+}
+.sonic-shell-v100 .ws-heading{margin-bottom:20px}
+.sonic-shell-v100 .ws-layout{gap:15px}
+.sonic-shell-v100 .ws-sidebar,
+.sonic-shell-v100 .ws-browser,
+.sonic-shell-v100 .ws-preview,
+.sonic-shell-v100 .ws-pc-area{
+  border:1px solid rgba(100,153,201,.16)!important;
+  background:#0c1522!important;
+  border-radius:17px!important;
+  box-shadow:none!important;
+}
+.sonic-shell-v100 .ws-root-tabs{margin-bottom:19px}
+.sonic-shell-v100 .app .ws-root-tab:not(.nav):not(.plain):not(.logout){
+  color:#a4bcd0!important;
+  background:#101e30!important;border:1px solid rgba(104,157,211,.17)!important;
+  box-shadow:none!important;
+  border-radius:999px!important;
+  padding:10px 16px!important;
+}
+.sonic-shell-v100 .app .ws-root-tab.active:not(.nav):not(.plain):not(.logout){
+  color:#e1f3ff!important;background:#173e6d!important;border-color:rgba(74,174,236,.32)!important;
+}
+.sonic-shell-v100 .app button:not(.nav):not(.plain):not(.logout){
+  transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;
+}
+.sonic-shell-v100 .app .ws-sidebar button,
+.sonic-shell-v100 .app .ws-toolbar button,
+.sonic-shell-v100 .app .ws-actions button,
+.sonic-shell-v100 .app .ws-editor-actions button,
+.sonic-shell-v100 .app .device-controls button,
+.sonic-shell-v100 .app .pc-window-toolbar button,
+.sonic-shell-v100 .app .pc-console-actions button{
+  border-radius:11px!important;
+}
+.sonic-shell-v100 .memory-form input,
+.sonic-shell-v100 .app .ws-toolbar input,
+.sonic-shell-v100 .app .operator-panel input,
+.sonic-shell-v100 .app .operator-panel select{
+  background:#080f1b!important;border:1px solid rgba(92,147,196,.17)!important;
+  color:#f0f8ff!important;border-radius:11px!important;
+  box-shadow:none!important;
+}
+.sonic-shell-v100 .memory-item,
+.sonic-shell-v100 .device-card,
+.sonic-shell-v100 .operator-panel,
+.sonic-shell-v100 .device-telemetry,
+.sonic-shell-v100 .pc-window-manager{
+  background:linear-gradient(155deg,#101b2c,#0d1725)!important;
+  border:1px solid rgba(99,154,199,.14)!important;
+  border-radius:17px!important;
+  box-shadow:none!important;
+}
+.sonic-shell-v100 .card-list{gap:12px}
+.sonic-shell-v100 .memory-item,.sonic-shell-v100 .device-card{padding:19px 21px}
+.sonic-shell-v100 .number-badge{color:#68c4ef!important;font-size:42px;background:transparent!important}
+.sonic-shell-v100 #devicesPanel{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-content:start;gap:15px}
+.sonic-shell-v100 #devicesPanel>.section-head{grid-column:1/-1}
+.sonic-shell-v100 #devicesPanel>.device-card{grid-column:1}
+.sonic-shell-v100 #devicesPanel>.device-controls{grid-column:2;margin:0;align-self:center;justify-content:flex-end}
+.sonic-shell-v100 #devicesPanel>#companionUpgradeHint,
+.sonic-shell-v100 #devicesPanel>#pcWindowControl,
+.sonic-shell-v100 #devicesPanel>#pcCommandCenter,
+.sonic-shell-v100 #devicesPanel>#operatorPanel,
+.sonic-shell-v100 #devicesPanel>.device-output,
+.sonic-shell-v100 #devicesPanel>.small-note{grid-column:1/-1}
+.sonic-shell-v100 #devicesPanel>#deviceTelemetry{grid-column:1}
+.sonic-shell-v100 #devicesPanel>#taskManagerPanel{grid-column:2;margin:0}
+.sonic-shell-v100 .pc-command-center{max-width:unset!important;margin:7px 0 0!important;padding:21px!important;background:#0d1725!important}
+.sonic-shell-v100 .pc-command-heading h3{color:#f3f9ff;font-size:23px}
+.sonic-shell-v100 .pc-performance,
+.sonic-shell-v100 .pc-process-panel,
+.sonic-shell-v100 .pc-console,
+.sonic-shell-v100 .pc-audit{
+  background:#0a121f!important;
+  border:1px solid rgba(86,140,189,.14)!important;
+  border-radius:14px!important;
+}
+.sonic-shell-v100 .pc-process-row{background:#0f1a29!important;border-radius:9px}
+.sonic-shell-v100 .pc-command-center #pcTrend,
+.sonic-shell-v100 .pc-console textarea{background:#060b13!important;border:1px solid rgba(94,143,196,.14)!important}
+.sonic-shell-v100 .pc-console #pcOutput{background:#060b13!important;border:1px solid rgba(94,143,196,.14)!important}
+.sonic-shell-v100 .pc-window-manager{margin-top:8px}
+.sonic-shell-v100 .app .pc-window-toolbar button:not(.nav):not(.plain):not(.logout){
+  background:#173a67!important;border:1px solid rgba(102,174,234,.18)!important;
+  box-shadow:none!important;
+}
+.sonic-shell-v100 .app .pc-window-toolbar button[data-window-action="window.close"]:not(.nav):not(.plain):not(.logout){
+  background:#27303e!important;border-color:rgba(196,153,122,.24)!important;
+}
+.sonic-shell-v100 .pc-window-toolbar select{background:#080f1c;border:1px solid rgba(101,147,199,.18)}
+.sonic-shell-v100 #setupPanel>.section-head{margin-bottom:23px}
+.sonic-shell-v100 #setupList{margin:0 0 22px}
+.sonic-shell-v100 .setup-help{border-color:rgba(92,142,187,.15);color:#91a9bf}
+.sonic-shell-v100 .app .operator-panel button:not(.nav):not(.plain):not(.logout),
+.sonic-shell-v100 .app .device-controls button:not(.nav):not(.plain):not(.logout){
+  background:#163b69!important;border:1px solid rgba(109,174,233,.13)!important;
+  box-shadow:none!important;color:#e5f3ff!important;
+}
+
+/* Accessible voice and approval layers, untouched event/permission logic. */
+.sonic-shell-v100 .voice-session-bar{
+  background:rgba(10,21,36,.98)!important;
+  border:1px solid rgba(93,171,232,.24)!important;
+  box-shadow:0 14px 47px rgba(0,0,0,.55)!important;
+  border-radius:16px!important;
+}
+.sonic-shell-v100 .voice-dialog,
+.sonic-shell-v100 .operator-review,
+.sonic-shell-v100 .ws-dialog{
+  background:#0e1725!important;
+  border:1px solid rgba(110,173,220,.20)!important;
+  box-shadow:0 28px 110px rgba(0,0,0,.7)!important;
+  border-radius:20px!important;color:#f3faff!important;
+}
+.sonic-shell-v100 .voice-dialog::backdrop,
+.sonic-shell-v100 .operator-review::backdrop,
+.sonic-shell-v100 .ws-dialog::backdrop{background:rgba(0,4,12,.84);backdrop-filter:blur(8px)}
+.sonic-shell-v100 .notice{
+  background:#152339!important;border:1px solid rgba(247,170,106,.33)!important;
+  border-radius:12px!important;color:#ffd0ad!important;
+  box-shadow:0 14px 40px #0009!important;
+  z-index:50;
+}
+.sonic-shell-v100 .app .sonic-popup{background:#0f1d30!important;border:1px solid rgba(102,174,234,.21)!important}
+.sonic-shell-v100 #wakeIndicator{background:#0d2338!important;border:1px solid rgba(98,163,227,.25)!important}
+.sonic-shell-v100 .login-overlay{
+  background:
+    radial-gradient(circle at 50% 24%,rgba(18,69,140,.31),transparent 47%),
+    radial-gradient(circle at 15% 87%,rgba(13,55,99,.15),transparent 52%),
+    #03060bf7!important;
+  backdrop-filter:blur(30px)!important;
+}
+.sonic-shell-v100 .login-card{
+  background:linear-gradient(145deg,rgba(17,29,46,.98),rgba(8,14,26,.98))!important;
+  border:1px solid rgba(110,175,228,.23)!important;
+  border-radius:25px!important;
+  padding:42px!important;
+  box-shadow:0 40px 110px rgba(0,0,0,.65),inset 0 1px rgba(149,218,254,.06)!important;
+}
+.sonic-shell-v100 .login-orb{
+  display:grid;place-items:center;width:76px;height:76px;margin:0 0 8px;
+  border:none!important;background:transparent!important;border-radius:22px!important;
+}
+.sonic-shell-v100 .login-orb img{display:block;width:74px;height:74px}
+.sonic-shell-v100 .login-card h2{font-size:35px;color:#f4faff;line-height:1.15;font-weight:730;letter-spacing:-.055em}
+.sonic-shell-v100 .login-card h2 .gradient-heading{
+  background:linear-gradient(90deg,#8feeff,#439deb,#5f80f4);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.sonic-shell-v100 .login-card p{color:#97aec3!important;font-size:12px}
+.sonic-shell-v100 .login-card label{color:#afc5d9}
+.sonic-shell-v100 .login-card input{
+  color:#f1faff;background:#090f1b!important;
+  border:1px solid rgba(102,160,214,.23)!important;border-radius:12px!important;
+}
+.sonic-shell-v100 .login-card button{
+  background:linear-gradient(125deg,#237bec,#174cb9)!important;
+  color:white!important;
+  border:1px solid rgba(127,192,243,.24)!important;
+  box-shadow:0 7px 30px rgba(30,105,224,.16)!important;
+  border-radius:12px!important;padding:14px 18px!important;
+  font-weight:700;letter-spacing:.01em;
+}
+.sonic-shell-v100 .login-card small{color:#557f9f!important}
+.sonic-shell-v100 .app button:disabled{opacity:.43!important}
+
+/* === Intermediate widths: retain content and avoid inspector overlap. === */
+@media(min-width:1600px){
+ .sonic-shell-v100 .sidebar{width:252px!important;padding:29px 22px 22px!important}
+ .sonic-shell-v100 .brain-side{width:296px}
+ .sonic-shell-v100 .brain-right{width:211px}
+ .sonic-shell-v100 .brain-console{width:min(690px,calc(100% - 620px))}
+ .sonic-shell-v100 .graph-engine{left:341px}
+}
+@media(max-width:1350px){
+ .sonic-shell-v100 .sidebar{width:204px!important;padding:24px 14px 19px!important}
+ .sonic-shell-v100 .topbar{padding:0 23px!important}
+ .sonic-shell-v100 .top-subtitle{display:none}
+ .sonic-shell-v100 .brain-side{width:241px;left:16px;padding:17px 14px}
+ .sonic-shell-v100 .brain-right{width:167px;right:16px}
+ .sonic-shell-v100 .graph-toolbar{left:54%}
+ .sonic-shell-v100 .brain-console{width:min(550px,calc(100% - 460px));left:calc(50% + 20px)}
+ .sonic-shell-v100 .graph-engine{left:274px}
+}
+@media(max-width:1020px){
+ .sonic-shell-v100 .sidebar{width:76px!important;align-items:center;padding:19px 8px!important}
+ .sonic-shell-v100 .sidebar .brand{justify-content:center}
+ .sonic-shell-v100 .brand-symbol{width:43px;height:43px}
+ .sonic-shell-v100 .brand-words,.sonic-shell-v100 .sidebar-caption,.sonic-shell-v100 .sidebar-footnote,.sonic-shell-v100 .sidebar .logout span{display:none}
+ .sonic-shell-v100 .sidebar-content{gap:9px!important;margin-top:47px!important}
+ .sonic-shell-v100 .app .nav{min-height:53px;justify-content:center;padding:11px!important}
+ .sonic-shell-v100 .nav span{display:none}
+ .sonic-shell-v100 .sidebar-footer{width:100%;align-items:center;padding:14px 0 0}
+ .sonic-shell-v100 .sidebar .logout{justify-content:center;width:48px;height:48px;padding:12px!important}
+ .sonic-shell-v100 .brain-panel,.sonic-shell-v100 .chat-panel,.sonic-shell-v100 .workspace-panel,.sonic-shell-v100 .info-panel{margin:12px}
+ .sonic-shell-v100 .brain-side{bottom:184px;max-height:calc(100% - 190px);width:232px}
+ .sonic-shell-v100 .brain-console{bottom:18px;left:50%;width:min(640px,calc(100% - 55px));transform:translateX(-50%)}
+ .sonic-shell-v100 .brain-right{right:15px;width:143px}
+ .sonic-shell-v100 .neural-field-label{top:77px}
+ .sonic-shell-v100 .graph-engine{display:none}
+ .sonic-shell-v100 #devicesPanel{grid-template-columns:1fr}
+ .sonic-shell-v100 #devicesPanel>.device-card,
+ .sonic-shell-v100 #devicesPanel>.device-controls,
+ .sonic-shell-v100 #devicesPanel>#deviceTelemetry,
+ .sonic-shell-v100 #devicesPanel>#taskManagerPanel{grid-column:1}
+ .sonic-shell-v100 #devicesPanel>.device-controls{justify-content:flex-start}
+ .sonic-shell-v100 .brain-side{box-shadow:0 25px 60px #000a!important}
+}
+@media(max-width:720px){
+ .sonic-shell-v100 .app{padding-bottom:calc(75px + var(--safe-bottom))!important}
+ .sonic-shell-v100 .sidebar{
+   width:100%!important;height:calc(75px + var(--safe-bottom))!important;
+   left:0;right:0;bottom:0;top:auto;position:fixed;
+   display:block;align-items:stretch;
+   padding:9px 7px calc(7px + var(--safe-bottom))!important;
+   border-right:0!important;
+   border-top:1px solid rgba(109,171,229,.16)!important;
+   background:rgba(9,16,28,.97)!important;
+   backdrop-filter:blur(22px);
+   z-index:25;
+ }
+ .sonic-shell-v100 .sidebar:before,.sonic-shell-v100 .sidebar-brand,.sonic-shell-v100 .sidebar-footer{display:none!important}
+ .sonic-shell-v100 .sidebar-content{
+   margin:0!important;flex-direction:row;
+   display:flex;width:100%;height:59px;gap:3px!important;
+   justify-content:space-around;
+ }
+ .sonic-shell-v100 .app .nav{
+   min-height:56px;flex:1;max-width:115px;
+   display:flex;flex-direction:column;justify-content:center;
+   gap:5px;padding:7px 2px!important;border-radius:12px!important;
+   font-size:9px!important;line-height:1.1;letter-spacing:-.01em;
+ }
+ .sonic-shell-v100 .nav svg{width:20px;height:20px}
+ .sonic-shell-v100 .nav span{display:block;white-space:nowrap;letter-spacing:-.015em}
+ .sonic-shell-v100 .nav.active:before{left:26%;right:26%;width:auto;height:2px;top:auto;bottom:-5px;border-radius:2px}
+ .sonic-shell-v100 .topbar{
+   height:72px!important;min-height:72px;
+   padding:0 15px!important;gap:5px;
+ }
+ .sonic-shell-v100 .top-title h1{font-size:18px}
+ .sonic-shell-v100 .top-title .eyebrow{font-size:8px;letter-spacing:.13em}
+ .sonic-shell-v100 .top-right{gap:6px!important}
+ .sonic-shell-v100 .app .top-right .pill.muted{display:none!important}
+ .sonic-shell-v100 .app .top-right #devicePill{display:none!important}
+ .sonic-shell-v100 .app button.wake-pill:not(.nav):not(.plain):not(.logout){
+   font-size:10px;padding:9px 10px!important;
+ }
+ .sonic-shell-v100 .app button.talk-button:not(.nav):not(.plain):not(.logout){
+   padding:10px 11px!important;
+   width:39px;height:39px;display:grid;place-items:center;
+ }
+ .sonic-shell-v100 .talk-button span{display:none!important}
+ .sonic-shell-v100 .brain-panel,.sonic-shell-v100 .chat-panel,.sonic-shell-v100 .workspace-panel,.sonic-shell-v100 .info-panel{
+   margin:8px 8px 10px;border-radius:17px!important;
+ }
+ .sonic-shell-v100 .graph-toolbar{
+   left:11px;right:11px;top:12px;transform:none;
+   max-width:none;justify-content:space-between;
+   padding:4px!important;gap:0;border-radius:13px!important;
+ }
+ .sonic-shell-v100 .app .graph-toolbar button:not(.nav):not(.plain):not(.logout){
+   min-height:31px;padding:7px 7px!important;font-size:9px;
+ }
+ .sonic-shell-v100 .graph-toolbar #focusIntegration span{display:none}
+ .sonic-shell-v100 .graph-toolbar #fitGraph span{display:none}
+ .sonic-shell-v100 .neural-field-label{top:66px;font-size:8px;letter-spacing:.11em}
+ .sonic-shell-v100 .neural-field-line{width:13px}
+ .sonic-shell-v100 .brain-side{
+   top:58px;bottom:12px;left:10px;right:10px;width:calc(100% - 20px);
+   max-width:410px;max-height:unset;
+   padding:18px;z-index:35;display:none;
+   background:rgba(9,18,31,.98)!important;
+ }
+ .sonic-shell-v100 .brain-side.open{display:flex}
+ .sonic-shell-v100 .brain-right{top:94px;right:10px;width:112px}
+ .sonic-shell-v100 .filter-panel{display:none}
+ .sonic-shell-v100 .filter-panel.open{
+   display:block;position:fixed;z-index:35;
+   top:143px;right:14px;width:min(260px,calc(100vw - 28px));
+   background:rgba(9,18,31,.98)!important;padding:17px;
+ }
+ .sonic-shell-v100 .assistant-core:before{width:126px;height:126px}
+ .sonic-shell-v100 #sonicMotionAnchor{width:95px;height:95px}
+ .sonic-shell-v100 .core-state{font-size:8px}
+ .sonic-shell-v100 .motion-gesture-hint{font-size:8px}
+ .sonic-shell-v100 .brain-console{
+   left:11px;right:11px;width:auto;bottom:11px;
+   transform:none;max-width:none;
+ }
+ .sonic-shell-v100 .composer{padding:9px 10px;border-radius:14px!important}
+ .sonic-shell-v100 .composer textarea{font-size:16px;line-height:1.5}
+ .sonic-shell-v100 .brain-answer{padding:12px 14px}
+ .sonic-shell-v100 .brain-answer p{max-height:104px}
+ .sonic-shell-v100 .graph-hint{font-size:8px}
+ .sonic-shell-v100 .graph-empty{left:49%;top:43%;width:min(79%,330px);padding:16px 17px}
+ .sonic-shell-v100 .graph-empty h2{font-size:18px}
+ .sonic-shell-v100 .chat-feed{padding:22px 15px}
+ .sonic-shell-v100 .hero{max-width:390px}
+ .sonic-shell-v100 .hero-mark{width:72px;height:72px;margin-bottom:16px}
+ .sonic-shell-v100 .hero-mark img{width:70px;height:70px}
+ .sonic-shell-v100 .hero h2{font-size:34px}
+ .sonic-shell-v100 .hero p{font-size:12px}
+ .sonic-shell-v100 .hero-actions{gap:8px;max-width:335px}
+ .sonic-shell-v100 .app .hero-actions button.outline-button:not(.nav):not(.plain):not(.logout){
+   padding:9px 11px!important;font-size:10px
+ }
+ .sonic-shell-v100 .hero-footnote{font-size:8px!important}
+ .sonic-shell-v100 .compose-wrap{padding:9px 10px 12px}
+ .sonic-shell-v100 .info-panel,.sonic-shell-v100 .workspace-panel{padding:24px 16px!important}
+ .sonic-shell-v100 .section-head h2,.sonic-shell-v100 .ws-heading h2{font-size:27px!important}
+ .sonic-shell-v100 .workspace-panel{overflow:auto}
+ .sonic-shell-v100 #devicesPanel{gap:12px}
+ .sonic-shell-v100 .memory-form{flex-direction:column}
+ .sonic-shell-v100 .login-card{padding:30px 26px!important;border-radius:21px!important}
+ .sonic-shell-v100 .login-card h2{font-size:32px}
+}
+@media(max-width:390px){
+ .sonic-shell-v100 .app .nav{font-size:8px!important;padding:6px 1px!important}
+ .sonic-shell-v100 .topbar{padding:0 11px!important}
+ .sonic-shell-v100 .top-title .eyebrow{letter-spacing:.09em;font-size:7px}
+ .sonic-shell-v100 .app button.wake-pill:not(.nav):not(.plain):not(.logout){padding:8px!important}
+ .sonic-shell-v100 .brain-right{width:96px}
+ .sonic-shell-v100 .neural-field-index{display:none}
+ .sonic-shell-v100 .neural-field-line{display:none}
+}
+@media(max-height:665px) and (max-width:720px){
+ .sonic-shell-v100 .brain-right{top:72px}
+ .sonic-shell-v100 .brain-console{bottom:7px}
+ .sonic-shell-v100 .graph-hint{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .sonic-shell-v100 .app .nav,
+ .sonic-shell-v100 .app button{transition:none!important}
+}
+
+/* Visual QA polish: let the actual neural nodes own center stage. */
+.sonic-shell-v100 .app .hub-list button:not(.nav):not(.plain):not(.logout),
+.sonic-shell-v100 .app .search-results button:not(.nav):not(.plain):not(.logout){
+  background:rgba(15,31,50,.82)!important;
+  color:#afc9de!important;
+  border:1px solid rgba(103,160,205,.13)!important;
+  box-shadow:none!important;
+  border-radius:9px!important;
+  padding:10px 9px!important;
+  min-height:37px;
+  font-weight:540;
+}
+.sonic-shell-v100 .app .hub-list button:not(:disabled):hover:not(.nav):not(.plain):not(.logout),
+.sonic-shell-v100 .app .search-results button:not(:disabled):hover:not(.nav):not(.plain):not(.logout){
+  background:rgba(31,74,117,.48)!important;
+  border-color:rgba(106,201,248,.30)!important;
+  color:#f5fbff!important;
+}
+.sonic-shell-v100 .app .hub-list b{color:#7eabc9!important}
+.sonic-shell-v100 .graph-empty{
+  left:auto!important;
+  right:26px!important;
+  top:auto!important;
+  bottom:53px!important;
+  transform:none!important;
+  width:208px!important;
+  max-width:208px!important;
+  padding:15px 17px!important;
+  text-align:left!important;
+  background:rgba(8,16,28,.86)!important;
+  border:1px solid rgba(86,145,197,.18)!important;
+  backdrop-filter:blur(13px);
+  box-shadow:0 15px 40px #0006!important;
+}
+.sonic-shell-v100 .graph-empty .eyebrow{font-size:8px!important;line-height:1.6}
+.sonic-shell-v100 .graph-empty h2{font-size:15px!important;font-weight:680;line-height:1.35;margin:8px 0!important}
+.sonic-shell-v100 .graph-empty p{font-size:10px!important;line-height:1.55;margin:0;color:#87a9c1!important}
+@media(max-width:1020px){
+  .sonic-shell-v100 .graph-empty{
+    left:50%!important;right:auto!important;top:40%!important;bottom:auto!important;
+    width:min(260px,70%)!important;max-width:260px!important;
+    text-align:center!important;transform:translate(-50%,-50%)!important;
+    padding:13px 16px!important;
+  }
+}
+@media(max-width:720px){
+  .sonic-shell-v100 .graph-empty{top:46%!important;width:min(255px,72%)!important;padding:12px!important}
+  .sonic-shell-v100 .graph-empty h2{font-size:14px!important}
+  .sonic-shell-v100 .graph-empty p{font-size:9px!important}
+}
+
+/* Final visual review: Chat's central hero sits directly on the command deck,
+   without the old flat grey rectangle interrupting the black-space canvas. */
+.sonic-shell-v100 #chatPanel .hero{
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  outline:0!important;
+  padding:16px 0!important;
+  border-radius:0!important;
+}
+/* Short mobile labels preserve original nav aria-label and full text on desktop. */
+@media(max-width:720px){
+  .sonic-shell-v100 .sidebar-content .nav span[data-short]{
+    font-size:0!important;
+    line-height:1!important;
+  }
+  .sonic-shell-v100 .sidebar-content .nav span[data-short]::after{
+    content:attr(data-short);
+    display:block;
+    font-size:10px!important;
+    letter-spacing:0;
+    line-height:1.22;
+    white-space:nowrap;
+    font-weight:610;
+  }
+  /* In an empty Vault, keep the help card below the graph's central nodes
+     and above the fixed composer, instead of masking the particle network. */
+  .sonic-shell-v100 .graph-empty{
+    top:auto!important;
+    bottom:156px!important;
+    left:50%!important;right:auto!important;
+    transform:translateX(-50%)!important;
+    width:min(270px,74%)!important;
+  }
+}
+@media(max-width:390px){
+  .sonic-shell-v100 .sidebar-content .nav span[data-short]::after{font-size:9px!important}
+}
+@media(max-height:690px) and (max-width:720px){
+  .sonic-shell-v100 .graph-empty{
+    bottom:141px!important;
+    max-width:230px!important;
+    padding:9px 12px!important;
+  }
+  .sonic-shell-v100 .graph-empty p{display:none!important}
+}

@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#07111f">
+  <meta name="theme-color" content="#050911">
+  <meta name="description" content="SONIC Intelligence Console: neural knowledge, voice, workspace and authorized devices.">
+  <link rel="icon" type="image/svg+xml" href="/assets/sonic-mark.svg">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>SONIC | Neural Brain</title>
+  <title>SONIC | Intelligence Console</title>
   <link rel="stylesheet" href="/assets/style.css?v=0.9.0">
   <link rel="stylesheet" href="/assets/engine-style.css?v=0.9.0">
   <link rel="stylesheet" href="/assets/presence-v05.css?v=0.9.0">
@@ -26,13 +28,15 @@
   <link rel="stylesheet" href="/assets/workspace.css?v=0.9.0">
   <link rel="stylesheet" href="/assets/pc-workspace-v089.css?v=0.9.0">
   <link rel="stylesheet" href="/assets/window-manager-v090.css?v=0.9.0">
+  <link rel="stylesheet" href="/assets/sonic-shell-v100.css?v=1.0.0">
   <script src="/assets/workspace.js?v=0.9.0" defer></script>
   <script src="/assets/pc-workspace-v089.js?v=0.9.0" defer></script>
   <script src="/assets/app.js?v=0.9.0" defer></script>
   <script src="/assets/pc-command-v08.js?v=0.9.0" defer></script>
   <script src="/assets/window-manager-v090.js?v=0.9.0" defer></script>
+  <script src="/assets/sonic-shell-v100.js?v=1.0.0" defer></script>
 </head>
-<body>
+<body class="sonic-shell-v100">
   <svg class="icon-sprite" aria-hidden="true"><defs>
     <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="5" cy="5" r="1.6"/><circle cx="19" cy="4" r="1.6"/><circle cx="20" cy="18" r="1.6"/><circle cx="5" cy="19" r="1.6"/><path d="M6 6.2 10.5 10.5M13.5 10.7 17.8 5.2M13.3 13.5l5.2 3.8M10.5 13.5 6.3 17.7M7 4.9l10.4-1M20.5 6l-.2 9.7M18.6 19 6.5 19"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H6L3 22V11.5a8.5 8.5 0 0 1 18 0Z"/><path d="M8 11h9m-9 4h5"/></symbol>
@@ -53,24 +57,34 @@
   </defs></svg>
   <div class="app">
     <aside class="sidebar" aria-label="Navigasi utama">
-      <a class="brand" href="/" aria-label="SONIC">S<span>SONIC</span></a>
-      <nav class="sidebar-content">
-        <button class="nav active" data-tab="brain" aria-label="Neural Brain"><svg><use href="#i-brain"/></svg><span>Neural</span></button>
-        <button class="nav" data-tab="chat" aria-label="Chat"><svg><use href="#i-chat"/></svg><span>Chat</span></button>
-        <button class="nav" data-tab="workspace" aria-label="Workspace"><svg><use href="#i-memory"/></svg><span>Workspace</span></button>
-        <button class="nav" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span>Memory</span></button>
-        <button class="nav" data-tab="devices" aria-label="Devices"><svg><use href="#i-device"/></svg><span>Devices</span></button>
-        <button class="nav" data-tab="setup" aria-label="Setup"><svg><use href="#i-settings"/></svg><span>Setup</span></button>
+      <div class="sidebar-brand">
+        <a class="brand" href="/" aria-label="SONIC home">
+          <img class="brand-symbol" src="/assets/sonic-mark.svg" width="48" height="48" alt="">
+          <span class="brand-words"><strong>SONIC</strong><small>INTELLIGENCE OS</small></span>
+        </a>
+      </div>
+      <div class="sidebar-caption"><span>WORKSPACE</span><small>CORE / 01</small></div>
+      <nav class="sidebar-content" aria-label="Main sections">
+        <button class="nav active" data-tab="brain" aria-label="Neural Brain"><svg><use href="#i-brain"/></svg><span data-short="Neural">Neural Brain</span></button>
+        <button class="nav" data-tab="chat" aria-label="Chat"><svg><use href="#i-chat"/></svg><span data-short="Chat">Chat</span></button>
+        <button class="nav" data-tab="workspace" aria-label="Workspace"><svg><use href="#i-memory"/></svg><span data-short="Files">Workspace</span></button>
+        <button class="nav" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span data-short="Memory">Memory Vault</span></button>
+        <button class="nav" data-tab="devices" aria-label="Devices"><svg><use href="#i-device"/></svg><span data-short="Devices">Devices</span></button>
+        <button class="nav" data-tab="setup" aria-label="Setup"><svg><use href="#i-settings"/></svg><span data-short="Setup">Settings</span></button>
       </nav>
-      <button id="logout" class="logout" title="Sign out" aria-label="Sign out"><svg><use href="#i-exit"/></svg></button>
+      <div class="sidebar-footer">
+        <div class="sidebar-footnote"><span class="sidebar-footnote-dot" aria-hidden="true"></span><span>PRIVATE COMMAND SYSTEM</span></div>
+        <button id="logout" class="logout" title="Sign out" aria-label="Sign out"><svg><use href="#i-exit"/></svg><span>Sign out</span></button>
+      </div>
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="top-title"><span class="eyebrow">PERSONAL INTELLIGENCE <b> / 0.9.0</b></span><h1 id="pageTitle">Neural Brain</h1></div>
+        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V0.9.0</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
         <div id="graphStage" class="graph-stage" tabindex="0" aria-label="Graph 3D. Drag untuk memutar, scroll atau pinch untuk zoom. Gunakan Search untuk memilih node dengan keyboard."></div>
+        <div class="neural-field-label" aria-hidden="true"><span class="neural-field-glyph">✧</span><span>NEURAL FABRIC</span><span class="neural-field-line"></span><span class="neural-field-index">3D / INTERACTIVE</span></div>
         <div class="graph-toolbar">
           <button id="toggleInspector" class="mobile-control" aria-expanded="false" aria-label="Search and inspector"><svg><use href="#i-search"/></svg></button>
           <button id="fitGraph" title="Fit all nodes"><svg><use href="#i-fit"/></svg><span>Fit</span></button>
@@ -81,13 +95,13 @@
           <button id="toggleFilters" class="mobile-control" aria-expanded="false" aria-label="Filters"><svg><use href="#i-settings"/></svg></button>
         </div>
         <aside id="graphInspector" class="brain-side glass">
-          <div class="side-heading"><div><h2>YOUR KNOWLEDGE</h2><p id="graphCounts">Loading saved data...</p></div><button id="closeInspector" class="mobile-control plain" aria-label="Close inspector"><svg><use href="#i-close"/></svg></button></div>
+          <div class="side-heading"><div><h2>KNOWLEDGE INDEX</h2><p id="graphCounts">Loading saved data...</p></div><button id="closeInspector" class="mobile-control plain" aria-label="Close inspector"><svg><use href="#i-close"/></svg></button></div>
           <label class="graph-search"><svg><use href="#i-search"/></svg><input id="graphSearch" placeholder="Search the brain..." maxlength="150" aria-label="Search the brain"></label>
           <div id="searchResults" class="search-results" role="list"></div>
-          <div class="eyebrow section-label">INSPECTOR</div>
+          <div class="eyebrow section-label">NODE INSPECTOR</div>
           <div id="nodeInspector" class="node-inspector"><p>Pilih sebuah node untuk melihat isi, sumber, dan koneksinya.</p></div>
           <div class="depth-controls"><span>Depth</span><button data-depth="1" class="active">1</button><button data-depth="2">2</button><button data-depth="3">3</button><button id="clearFocus" class="plain">Reset</button></div>
-          <div class="eyebrow section-label">TOP CONNECTIONS</div><div id="topHubs" class="hub-list"></div>
+          <div class="eyebrow section-label">CONNECTED CLUSTERS</div><div id="topHubs" class="hub-list"></div>
           <p class="small-note">Solid: struktur / relasi tersimpan.<br>Putus-putus: kata yang muncul di catatan.<br>Shift + klik node kedua: telusuri jalur.</p>
         </aside>
         <aside class="brain-right">
@@ -97,7 +111,7 @@
             <div class="core-state"><i></i><span id="activityLabel">READY</span></div><span id="coreModel" class="model-label">Model checking</span><small class="motion-gesture-hint">Double tap · mulai mikrofon</small>
           </div>
         </aside>
-        <div id="graphEmpty" class="graph-empty hidden"><span class="eyebrow">START WITH ONE THOUGHT</span><h2>Belum ada memory tersimpan.</h2><p>Ucapkan atau tulis &ldquo;Ingat bahwa ...&rdquo;.<br>Catatanmu akan menjadi node di sini.</p></div>
+        <div id="graphEmpty" class="graph-empty hidden"><span class="eyebrow">INITIALIZE YOUR KNOWLEDGE</span><h2>Every thought becomes a connection.</h2><p>Ucapkan atau tulis &ldquo;Ingat bahwa ...&rdquo;.<br>Catatanmu akan menjadi node di sini.</p></div>
         <div class="brain-console">
           <div id="brainAnswer" class="brain-answer glass hidden" aria-live="polite"><div class="answer-label"><strong>SONIC</strong><button id="openFullChat" class="plain">Full conversation &#8599;</button></div><p id="brainAnswerText"></p><div id="brainReceipt"></div></div>
           <form id="brainForm" class="composer brain-composer"><label class="sr-only" for="brainMessage">Pesan untuk SONIC</label><textarea id="brainMessage" rows="1" maxlength="3500" placeholder="Ask SONIC... or say &quot;ingat bahwa ...&quot;"></textarea><div class="compose-actions"><div class="compose-left"><button id="brainMic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="brainVoice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="brainCamera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="brainScreen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="brainImage" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="brainSend" class="send-button" aria-label="Send to SONIC"><svg><use href="#i-send"/></svg></button></div></form>
@@ -106,7 +120,7 @@
         <div id="graphEngine" class="graph-engine"></div>
       </section>
       <section class="panel chat-panel hidden" id="chatPanel">
-        <div id="chatFeed" class="chat-feed" aria-live="polite"><div class="hero" id="hero"><div class="hero-mark">S</div><span class="eyebrow">YOUR SPACE. YOUR INTELLIGENCE.</span><h2>What can I do for you?</h2><p>Percakapan, memory, dan pengetahuan dalam satu ruang.</p><button id="goToBrain" class="outline-button">Explore Neural Brain &#8599;</button></div></div>
+        <div id="chatFeed" class="chat-feed" aria-live="polite"><div class="hero" id="hero"><div class="hero-mark"><img src="/assets/sonic-mark.svg" width="80" height="80" alt=""></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Think it. Say it.<br><span>Make it happen.</span></h2><p>Satu ruang untuk percakapan, memory, workspace, dan perangkat yang kamu izinkan.</p><div class="hero-actions"><button id="goToBrain" class="outline-button">Explore Neural Brain <span aria-hidden="true">↗</span></button><button id="goToWorkspace" class="outline-button">Open Workspace <span aria-hidden="true">↗</span></button><button id="goToDevices" class="outline-button">Device Control <span aria-hidden="true">↗</span></button></div><p class="hero-footnote">YOUR INTELLIGENCE. YOUR CONTROL.</p></div></div>
         <div class="compose-wrap"><form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><p class="disclaimer">Perintah PC aman diproses di chat atau voice; operasi sensitif memerlukan persetujuan dalam percakapan.</p></div>
       </section>
       <section class="panel workspace-panel hidden" id="workspacePanel" aria-label="Workspace SONIC">
@@ -253,6 +267,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb">S</div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Your knowledge.<br>Connected.</h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.9.0</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb"><img src="/assets/sonic-mark.svg" width="68" height="68" alt="SONIC logo"></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Intelligence,<br><span class="gradient-heading">in your orbit.</span></h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.9.0</small></form></div>
 </body>
 </html>
