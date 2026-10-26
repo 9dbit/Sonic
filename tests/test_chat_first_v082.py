@@ -173,3 +173,15 @@ def test_file_read_secret_content_never_saved_in_history(client):
     assistant=' '.join(m['content'] for m in history if m['role']=='assistant')
     assert 'very-sensitive-example' not in assistant
     assert 'informasi sensitif' in assistant
+
+
+def test_owner_can_audit_actual_chat_history_without_opening_devices(client):
+    h=login(client);connect(client)
+    assert chat(client,h,'buat folder Audit Folder').status_code==200
+    response=chat(client,h,'SONIC, cek log chat history')
+    assert response.status_code==200,response.text
+    assert response.json()['engine']['route']=='chat_audit'
+    assert 'Audit histori SONIC' in response.json()['reply']
+    assert 'menyebut folder/direktori' in response.json()['reply']
+    assert 'pending' in response.json()['reply']
+    assert client.post('/api/chat',json={'message':'cek log chat history'}).status_code==403
