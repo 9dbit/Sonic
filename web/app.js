@@ -123,7 +123,7 @@
     finally{setWaiting(false);if(innerWidth>650&&currentTab!=='brain')input.focus();}
   }
   // Chat-first PC jobs: never require opening Devices merely to see progress.
-  async function watchChatJob(job,source){
+  async function watchChatJob(job,source,options={}){
     const tag=line('assistant','TRADEVICEPC: queued '+job.action);
     const body=tag.querySelector('.body');
     for(let attempt=0;attempt<105;attempt++){
@@ -138,6 +138,7 @@
             'Perintah dibatalkan atau kedaluwarsa.');
           tag.classList.toggle('error',state.state==='failed');
           brainAnswer(body.textContent,state.state==='failed');
+          options.onDone?.(body.textContent,state.state);
           return;
         }
         body.textContent='TRADEVICEPC: '+job.action+' / '+state.state+'. Hasil akan tampil di sini.';
@@ -153,6 +154,44 @@
     const yes=button('Setujui',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'setuju'});},'chat-approve-button');
     const no=button('Batal',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'batal'});},'chat-reject-button');
     row.append(yes,no);message.append(row);
+  }
+
+  function inlineVoiceApproval(message,sessionId){
+    const row=el('div','chat-inline-approval');
+    const yes=button('Setujui',()=>finishVoiceApproval('setuju'), 'chat-approve-button');
+    const no=button('Batal',()=>finishVoiceApproval('batal'), 'chat-reject-button');
+    async function finishVoiceApproval(text){
+      yes.disabled=true;no.disabled=true;
+      try{
+        const result=await dispatchSpokenPC(sessionId,crypto.randomUUID(),text);
+        if(result?.handled&&liveVoice?.active)liveVoice.verifiedPCReceipt(result.reply);
+      }catch(err){notify('Persetujuan suara gagal: '+err.message);yes.disabled=false;no.disabled=false;}
+    }
+    row.append(yes,no);message.append(row);
+  }
+  async function dispatchSpokenPC(sessionId,itemId,text){
+    if(!sessionId||!/^[A-Za-z0-9_-]{1,150}$/.test(itemId||'')){
+      return {handled:true,reply:'Identitas transkrip suara tidak lengkap. Ulangi perintah setelah sambungan voice tersambung.'};
+    }
+    let result;
+    try{
+      result=await API('/api/voice/sessions/'+encodeURIComponent(sessionId)+'/dispatch',{
+        method:'POST',body:JSON.stringify({item_id:itemId,transcript:String(text).slice(0,1300)})
+      });
+    }catch(err){
+      result={handled:true,reply:'PC action tidak diproses: '+err.message,
+        operator_jobs:[],operator_proposals:[]};
+    }
+    if(!result.handled)return result;
+    const reply=line('assistant',result.reply||'SONIC PC command processing...');
+    brainAnswer(result.reply||'',false);
+    if(result.operator_proposals?.length)inlineVoiceApproval(reply,sessionId);
+    for(const job of (result.operator_jobs||[])){
+      watchChatJob(job,'chat',{onDone:(receipt)=>{
+        if(liveVoice?.active && liveVoice.sessionId===sessionId)liveVoice.verifiedPCReceipt(receipt);
+      }}).catch(err=>notify(err.message));
+    }
+    return result;
   }
   async function loadHistory(){try{const r=await API('/api/history');if(!csrf)return;if(r.messages.length){$('chatFeed').replaceChildren();r.messages.forEach(m=>line(m.role,m.content));const last=[...r.messages].reverse().find(m=>m.role==='assistant');if(last)brainAnswer(last.content);}}catch(error){notify(error.message);}}
   async function loadMemory(){const list=$('memoryList');try{const r=await API('/api/memories?limit=500');if(!csrf)return;list.replaceChildren();$('memoryTotal').textContent=String(r.total);$('memoryStatus').textContent=r.has_more?'Menampilkan 500 catatan terbaru dari '+r.total+'.':'';
@@ -363,7 +402,19 @@
   liveVoice=new window.SonicVoice({api:API,onActions:applyGraphActions,onProposal:showVoiceProposal,onError:notify,
     onState:state=>{window.sonicRealtimeActive=state!=='idle';$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
     onConnected:info=>{$('voiceStateText').textContent='Connecting audio';$('coreModel').textContent=info.model+' / realtime';},
-    onTranscript:(role,text)=>{if(!text.trim())return;if(role==='user'&&handleVoiceSessionCommand(text))return;const item=line(role,text);item.append(el('small','execution-note','Voice transcript / not automatically saved'));if(role==='assistant')brainAnswer(text);},
+    onTranscript:async(role,text,meta={})=>{
+      if(!text.trim())return {handled:false};
+      const item=line(role,text);
+      if(role==='assistant'){
+        item.append(el('small','execution-note','Spoken response / not automatically saved'));
+        brainAnswer(text);return {handled:false};
+      }
+      if(handleVoiceSessionCommand(text))return {handled:true,silent:true};
+      const result=await dispatchSpokenPC(meta.sessionId,meta.itemId,text);
+      item.append(el('small','execution-note',result.handled
+        ?'PC action / stored in SONIC chat history':'Voice transcript / not automatically saved'));
+      return result;
+    },
     onReferences:refs=>renderReferences($('brainReceipt'),refs),
     onTick:seconds=>{$('voiceCountdown').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');},
     onPlaybackBlocked:()=>{$('voiceResume').classList.remove('hidden');notify('Tekan Enable audio untuk mengizinkan suara pada browser ini.');},
