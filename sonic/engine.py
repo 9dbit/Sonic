@@ -19,6 +19,7 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
     from .brain import reply, _record_user, _record_answer
     from .memory import parse_memory_intent
     from .chat_actions import classify, confirmation_intent, looks_like_pc_action, pc_status_followup
+    from .window_policy_v090 import looks_like_window_command, approval_notice
     from .chat_audit import is_chat_log_request, summarize_chat_friction
     from fastapi import HTTPException
     start = time.monotonic()
@@ -69,7 +70,9 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
                     summary='Belum ada tugas PC pada login ini.'
             else:
                 status='needs_clarification'
-                summary='Belum ada perintah yang dijalankan. Sebutkan satu nama folder dan lokasi tujuan yang jelas.'
+                summary=('Belum ada window yang dibuka atau ditutup. Sebutkan satu aplikasi: Notepad, Paint, atau MetaTrader 5.'
+                         if looks_like_window_command(text) else
+                         'Belum ada perintah yang dijalankan. Sebutkan satu nama folder dan lokasi tujuan yang jelas.')
             answer=_record_answer(db,summary)
         elif confirm_intent or chat_action or action_parse_error:
             from .operator import chat_queue, chat_decide
@@ -107,8 +110,10 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
                     else:
                         operator_proposals.append({'id':job['id'],'action':job['action']})
                         preview=json.dumps(chat_action.payload,ensure_ascii=False,indent=2)
-                        answer=_record_answer(db,'Perintah sensitif membutuhkan persetujuan sekali di chat ini. Tidak perlu membuka Devices.\n'
-                              'Action: '+job['action']+'\n'+preview+'\nBalas SETUJU untuk menjalankan atau BATAL untuk membatalkan.')
+                        warning=(approval_notice(job['action'],chat_action.payload['app'])+'\n'
+                                 if job['action'].startswith('window.') else '')
+                        answer=_record_answer(db,warning+'Perintah sensitif membutuhkan persetujuan sekali di chat ini. Tidak perlu membuka Devices.\n'
+                              'Action: '+job['action']+'\n'+preview+'\nBalas SETUJU untuk menjalankan atau BATAL untuk membatalkan. Pada voice, gunakan tombol Setujui.')
                     db.info['engine_steps'].append({'tool':chat_action.action,'status':job['state']})
                 except HTTPException as exc:
                     status='rejected'

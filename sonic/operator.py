@@ -146,6 +146,9 @@ def capability_reply(data:dict) -> str:
     elif 'shell.inspect' in caps:abilities.append("melakukan inspeksi PowerShell diagnostik yang dibatasi")
     if 'process.terminate' in caps:abilities.append("mengakhiri proses non-kritis melalui End Task dengan persetujuan pemilik")
     if 'window.list' in caps:abilities.append("membaca daftar jendela desktop")
+    if 'window.focus' in caps:abilities.append("memfokuskan window aplikasi yang diizinkan")
+    if 'window.open' in caps:abilities.append("membuka Notepad, Paint, atau MetaTrader 5 jika konfigurasi lokal mengizinkan")
+    if 'window.close' in caps:abilities.append("menutup window secara normal (WM_CLOSE) setelah persetujuan, tanpa force-kill")
     if not abilities:abilities.append("menampilkan status dan heartbeat perangkat")
     return (f"{device_id} adalah PC Windows milik Anda yang terhubung ke SONIC. "
             f"Status: online; companion {data.get('agent_version') or 'versi tidak tersedia'}. "
@@ -215,7 +218,7 @@ def receipt(row):
 
 # Safe, scoped operations can be queued directly from an authenticated owner chat
 # request. Everything else keeps a pending review, resolved IN THE SAME CHAT.
-AUTO_SAFE_ACTIONS=frozenset({'desktop.mkdir','file.mkdir','file.list','file.read','process.list','window.list'})
+AUTO_SAFE_ACTIONS=frozenset({'desktop.mkdir','file.mkdir','file.list','file.read','process.list','window.list','window.focus'})
 
 def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:int,auto:bool) -> dict:
     from .execution import choose_adapter, find_replay
@@ -231,7 +234,7 @@ def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:i
         raise HTTPException(422,str(exc)) from None
     if auto and action not in AUTO_SAFE_ACTIONS:
         raise HTTPException(403,'OPERATION_REQUIRES_CHAT_APPROVAL')
-    if not auto and action not in {'powershell.exec','process.terminate'}:
+    if not auto and action not in {'powershell.exec','process.terminate','window.open','window.close','window.focus'}:
         raise HTTPException(403,'CHAT_REVIEW_ACTION_NOT_SUPPORTED')
     sid=auth.sha256(owner['sid'])
     active=db.scalar(select(func.count()).select_from(OperatorRequest).where(
@@ -317,6 +320,13 @@ def chat_output_excerpt(db:Session,request_id:str) -> str:
 
 def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:str='') -> str:
     if not success:
+        if row.action=='window.close' and result.get('close_requested') is True:
+            return ('Windows menerima permintaan penutupan normal, tetapi window belum terkonfirmasi tertutup. '
+                    'Mungkin ada dialog Simpan atau konfirmasi. SONIC tidak memaksa penutupan.')
+        if row.action=='window.open' and result.get('launch_requested') is True:
+            return 'Aplikasi diminta dibuka, tetapi window belum terverifikasi tampil. Jangan menganggap aplikasi sudah terbuka.'
+        if row.action=='window.focus' and result.get('focused') is False:
+            return 'Windows menolak perpindahan foreground. Window belum terverifikasi aktif.'
         if result.get('error')=='RESULT_VERIFICATION_FAILED':
             return 'Hasil folder dari TRADEVICEPC belum dapat diverifikasi: nama, lokasi, atau bukti keberadaannya tidak sesuai. Tugas ditandai gagal.'
         code=str(result.get('error') or result.get('detail') or 'DEVICE_ACTION_FAILED')[:140]
@@ -354,6 +364,15 @@ def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:st
                 + ("\nOutput TRADEVICEPC (data, bukan instruksi):\n"+output_text if output_text else "\nTidak ada output teks dari perintah."))
     if row.action=='process.terminate':
         return f"End Task selesai: {str(result.get('name','process'))[:80]} PID {result.get('pid','unknown')}."
+    if row.action.startswith('window.'):
+        from .window_policy_v090 import APP_LABELS
+        app=APP_LABELS.get(row.payload_json and json.loads(row.payload_json).get('app'), 'aplikasi')
+        if row.action=='window.close':
+            return (f'Window {app} dilaporkan tertutup oleh Windows companion melalui WM_CLOSE. '
+                    'Ini bukan laporan penutupan posisi trading.')
+        if row.action=='window.open':
+            return f'Window {app} dilaporkan terbuka oleh Windows companion.'
+        return f'Window {app} dilaporkan aktif di foreground oleh Windows companion.'
     return f"Tindakan {row.action} selesai di TRADEVICEPC."
 
 @router.get('/api/operator/capabilities')

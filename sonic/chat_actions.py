@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 from .device_contract import clean_workspace_folder, clean_request
+from .window_policy_v090 import parse_window_command, looks_like_window_command, SENSITIVE_APPS
 
 ACK_PATTERN=re.compile(r'^(?:setuju|saya setuju|oke[,\.\s]+setuju[,.\s]+jalankan\s+(?:pakai|lewat)\s+powershell|oke[,\.\s]+setuju|ya[, ]+jalankan|iya[, ]+jalankan|oke[, ]+jalankan|ok[, ]+jalankan|'
                        r'silakan jalankan|konfirmasi|approve(?: once)?|confirm|yes[, ]+run|lanjutkan perintah)$',re.I)
@@ -65,6 +66,7 @@ def looks_like_pc_action(text: str) -> bool:
     if not isinstance(text,str):
         return False
     s=PREFIX.sub('',text.strip()).strip()
+    if looks_like_window_command(s):return True
     if BAD_CONTEXT.search(s):
         return False
     if re.match(r'^'+MAKE_PREFIX,s,re.I) and re.search(
@@ -98,6 +100,14 @@ def classify(text: str) -> ChatAction | None:
     s=PREFIX.sub('',text.strip()).strip().rstrip('.!?').strip()
     if BAD_CONTEXT.search(s):
         return None
+
+    # Allowlisted owner command, never parse model output, arbitrary apps or trade orders.
+    # Sensitive MetaTrader window actions always wait for same-chat approval.
+    request=parse_window_command(s)
+    if request:
+        action,app=request
+        kind='review' if action in ('window.open','window.close') or app in SENSITIVE_APPS else 'automatic'
+        return ChatAction(kind,action,clean_request(action,{'app':app}))
 
     # Direct typed PowerShell is powerful, so never autoapprove it.
     m=re.fullmatch(r'(?:jalankan|eksekusi|execute|run)\s+(?:perintah\s+|command\s+)?'

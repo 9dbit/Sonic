@@ -24,7 +24,7 @@ CRITICAL_PROCESSES = frozenset({
     'services.exe', 'lsass.exe', 'winlogon.exe', 'svchost.exe',
     'dwm.exe', 'msmpeng.exe', 'securityhealthservice.exe',
     'python.exe', 'pythonw.exe', 'powershell.exe', 'pwsh.exe',
-    'terminal64.exe', 'metatrader5.exe'
+    'terminal64.exe', 'terminal.exe', 'metatrader5.exe'
 })
 SENSITIVE_ENV_PARTS = ('SONIC_', 'TOKEN', 'PASSWORD', 'SECRET', 'DATABASE_URL',
                        'OPENAI_', 'RAILWAY_', 'GITHUB_', 'AWS_', 'CLOUDFLARE_')

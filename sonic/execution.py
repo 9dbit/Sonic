@@ -48,6 +48,17 @@ class NativeWindowsAdapter:
     def verify(self, action: str, payload: dict, result: dict, success: bool) -> dict:
         if not success:
             return {'status': 'failed', 'code': 'DEVICE_ACTION_FAILED'}
+        if action in ('window.open','window.close','window.focus'):
+            expected={'window.open':('opened','FIND_OR_LAUNCH'),
+                      'window.close':('closed','WM_CLOSE'),
+                      'window.focus':('focused','SET_FOREGROUND')}[action]
+            if (result.get('app') != payload['app']
+                    or result.get(expected[0]) is not True
+                    or result.get('method') != expected[1]):
+                return {'status':'unverified','code':'WINDOW_RESULT_TARGET_OR_METHOD_MISMATCH'}
+            return {'status':'agent_reported','code':'WINDOW_ACTION_DEVICE_RECEIPT',
+                    'app':payload['app'],'method':expected[1],
+                    'independent_readback':False}
         if action not in ('desktop.mkdir', 'file.mkdir'):
             # A successful process exit is not independent proof of arbitrary
             # PowerShell side effects. Preserve that distinction in the UI.
