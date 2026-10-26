@@ -57,7 +57,7 @@ def direct_device_command(text:str) -> bool:
 # Model instructions alone must never be the only way to know our device identity.
 def direct_capability_question(text:str) -> bool:
     s=text.casefold()
-    device=bool(re.search(r'\\b(?:tradevicepc|tradevice|komputer|computer|pc|sonic)\\b',s))
+    device=bool(re.search(r'\b(?:tradevicepc|tradevice|komputer|computer|pc|sonic)\b',s))
     intent=bool(re.search(r'apa yang (?:kita |sonic )?bisa|bisa (?:lakukan|apa)|kemampuan|capabilit|fitur.*(?:pc|komputer)|what can (?:you|sonic|we) do|kontrol.*(?:pc|komputer)',s))
     return device and intent
 
