@@ -165,3 +165,19 @@ def test_expired_active_owner_voice_session_rejected(client,provider):
     r=utter(client,h,sid,'item_expired','buat folder Today di desktop')
     assert r.status_code==409
     assert next_job(client) is None
+
+
+def test_voice_model_can_read_registered_pc_and_actual_history(client,provider):
+    from tests.test_voice_v04 import call
+    h=login(client);heartbeat(client);sid=start(client,h)
+    capabilities=call(client,h,sid,'pc_capabilities',{},'cap_read')
+    assert capabilities.status_code==200,capabilities.text
+    out=capabilities.json()['output']
+    assert out['connected'] is True
+    assert out['device_id']=='TRADEVICEPC'
+    assert 'desktop.mkdir' in out['capabilities']
+    assert out['can_act_via_voice'] is True
+    audit=call(client,h,sid,'chat_history_audit',{},'audit_read')
+    assert audit.status_code==200,audit.text
+    assert 'Audit histori SONIC' in audit.json()['output']['summary']
+    assert call(client,h,sid,'pc_capabilities',{'command':'rm -rf /'},'bad_cap').json()['output']=={'error':'INVALID_TOOL_ARGUMENTS'}
