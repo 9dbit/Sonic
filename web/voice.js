@@ -6,7 +6,7 @@
       this.options=options;this.state='idle';this.generation=0;this.pc=null;this.dc=null;
       this.stream=null;this.audio=null;this.sessionId=null;this.seen=new Set();this.toolChain=Promise.resolve();
       this.activeResponse=false;this.pendingTools=0;this.continueNeeded=false;this.inputSpeaking=false;this.muted=false;
-      this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;
+      this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;this.turnChain=Promise.resolve();
     }
     get active(){return this.state!=='idle';}
     setState(state){this.state=state;this.options.onState?.(state);}
@@ -15,7 +15,7 @@
       if(this.active)return;
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){throw Error('Realtime voice memerlukan HTTPS dan browser dengan WebRTC.');}
       const generation=++this.generation;this.setState('connecting');this.toolChain=Promise.resolve();this.seen.clear();this.pendingTools=0;this.continueNeeded=false;this.muted=false;this.requestStarted=false;
-      this.sessionId=crypto.randomUUID();const sessionId=this.sessionId;
+      this.sessionId=crypto.randomUUID();this.turnChain=Promise.resolve();const sessionId=this.sessionId;
       try{
         const media=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
         if(generation!==this.generation){media.getTracks().forEach(t=>t.stop());return;}
@@ -53,7 +53,34 @@
         case 'response.done':this.activeResponse=false;this.continueResponse();if(!this.speaking&&!this.muted&&!this.pendingTools)this.setState('listening');break;
         case 'output_audio_buffer.started':this.speaking=true;this.setState('speaking');break;
         case 'output_audio_buffer.stopped':case 'output_audio_buffer.cleared':this.speaking=false;this.setState(this.muted?'muted':'listening');break;
-        case 'conversation.item.input_audio_transcription.completed':if(typeof event.transcript==='string')this.options.onTranscript?.('user',event.transcript.slice(0,5000));break;
+        case 'conversation.item.input_audio_transcription.completed':
+          if(typeof event.transcript==='string'&&event.transcript.trim()){
+            const transcript=event.transcript.slice(0,1300);
+            const itemId=typeof event.item_id==='string'?event.item_id:'';
+            this.turnChain=this.turnChain.then(async()=>{
+              let routing={handled:false};
+              try{
+                routing=await this.options.onTranscript?.('user',transcript,
+                  {sessionId:this.sessionId,itemId}) || {handled:false};
+              }catch(err){this.options.onError?.('Rute suara gagal: '+(err?.message||'unknown'));}
+              if(generation!==this.generation || !this.active)return;
+              if(routing?.silent)return;
+              if(routing?.handled){
+                // A verified application receipt, never a fabricated model action.
+                this.send({type:'conversation.item.create',item:{
+                  type:'message',role:'user',content:[{type:'input_text',
+                    text:'VERIFIED_SONIC_ACTION_ROUTE (application result, not an additional owner command): '+
+                         JSON.stringify({status:routing.processing?'processing':'accepted',
+                           reply:String(routing.reply||'').slice(0,1200)})}]
+                }});
+              }
+              // The provider is explicitly configured create_response=false.
+              // Only the browser resumes the voice answer after authorization.
+              this.continueNeeded=true;
+              this.continueResponse();
+            }).catch(err=>this.options.onError?.(String(err)));
+          }
+          break;
         case 'response.output_audio_transcript.done':if(typeof event.transcript==='string')this.options.onTranscript?.('assistant',event.transcript.slice(0,12000));break;
         case 'response.function_call_arguments.done':this.toolEvent(event,generation);break;
         case 'error':this.options.onError?.('OpenAI voice: '+String(event.error?.code||'session_error'));if(['invalid_api_key','insufficient_quota','session_expired'].includes(event.error?.code))this.stop('provider_error');break;
@@ -82,6 +109,7 @@
       }).catch(()=>{}).finally(()=>{if(generation===this.generation){this.pendingTools=Math.max(0,this.pendingTools-1);this.continueResponse();}});
     }
     continueResponse(){if(this.continueNeeded&&!this.pendingTools&&!this.activeResponse&&!this.inputSpeaking&&this.active){this.continueNeeded=false;this.activeResponse=true;this.send({type:'response.create'});}}
+    verifiedPCReceipt(text){if(!this.active)return;this.send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'VERIFIED_SONIC_DEVICE_RESULT (read-only receipt from the Windows agent): '+String(text).slice(0,1600)}]}});this.continueNeeded=true;this.continueResponse();}
     memoryReceipt(receipt){this.send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'SAVED_MEMORY_RECEIPT from the SONIC application: '+JSON.stringify(receipt)}]}});this.continueNeeded=true;this.continueResponse();}
     mute(){if(!this.stream)return;this.muted=!this.muted;for(const t of this.stream.getAudioTracks())t.enabled=!this.muted;if(this.muted)this.send({type:'input_audio_buffer.clear'});this.setState(this.muted?'muted':'listening');}
     async resumeAudio(){if(this.audio){await this.audio.play();this.options.onPlaybackResumed?.();}}
