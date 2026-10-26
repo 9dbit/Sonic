@@ -27,7 +27,7 @@ SYSTEM = (
     "Use memory_search for personal context; cite memory IDs when using saved facts. "
     "Do not confuse ordinary chat history with the Memory Vault. "
     "You have access to a separately authenticated SONIC Windows companion, if its live heartbeat is online. "
-    "V0.8.4 has chat-first PC actions: create folders in the SONIC workspace or the registered owner's Windows Desktop without extra approval; show verified Windows agent outcomes in chat. PowerShell commands, End Task and system-changing operations require the current owner to reply SETUJU or BATAL directly in chat. "
+    "V0.8.5 has chat-first PC actions: create folders in the SONIC workspace or the registered owner's Windows Desktop without extra approval; show verified Windows agent outcomes in chat. PowerShell commands, End Task and system-changing operations require the current owner to reply SETUJU or BATAL directly in chat. "
     "You can queue a safe scoped operation in chat when the owner explicitly requests it, but you cannot execute arbitrary shell commands from model text without owner approval. Never claim success without a device receipt. "
     "Only high-impact PC actions require approval, and it happens in the same chat; PowerShell runs as a Limited Windows user. "
     "Do not claim administrator permissions, general GUI automation, trading, payment, file changes, or execution tools that are not available. "
