@@ -1,0 +1,20 @@
+/* SONIC Window Control V0.9.0 • black, restrained blue, responsive. */
+.pc-window-manager{margin-top:16px;padding:18px;border:0!important;border-radius:17px;background:#222!important;color:#f6f9ff}
+.pc-window-manager h4{font-size:15px;font-weight:670;letter-spacing:-.01em;margin:0 0 6px}
+.pc-window-manager .pc-window-copy{font-size:12px;line-height:1.55;color:#aeb8c5;max-width:760px;margin:0 0 13px}
+.pc-window-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:9px}
+.pc-window-toolbar label{display:flex;flex-direction:column;gap:6px;min-width:160px;font-size:11px;color:#bdc9da}
+.pc-window-toolbar select{color:#fff;background:#0d111a;border:1px solid #303949;padding:10px 12px;border-radius:13px;min-height:40px;font:inherit;font-size:12px}
+.pc-window-toolbar button{min-height:40px;border:0!important;border-radius:999px!important;background:#155cdb!important;color:#fff!important;padding:10px 15px;font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.pc-window-toolbar button[data-window-action="window.close"]{background:#30343e!important;border:1px solid #59606a!important}
+.pc-window-toolbar button[data-window-refresh]{background:#30343e!important}
+.pc-window-toolbar button:disabled{opacity:.35;cursor:not-allowed}
+.pc-window-manager .pc-window-notice{font-size:11px;color:#ffbd77;line-height:1.55;margin:12px 0 0}
+.pc-window-manager #pcWindowStatus{font-size:11px;color:#8dadcb;min-height:16px;margin:12px 0 0;line-height:1.5}
+@media(max-width:650px){
+ .pc-window-manager{padding:14px;border-radius:13px}
+ .pc-window-toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .pc-window-toolbar label{grid-column:1/-1;min-width:0}
+ .pc-window-toolbar button{padding:10px 4px;font-size:10px}
+ .pc-window-toolbar [data-window-refresh]{grid-column:1/-1}
+}
