@@ -65,8 +65,9 @@ def test_fixed_provider_session_contract(client,provider):
     config=json.loads(payload['files']['session'][1])
     assert config['model']=='gpt-realtime'
     assert config['audio']['input']['turn_detection']['interrupt_response'] is True
+    assert config['audio']['input']['turn_detection']['create_response'] is False
     names={t['name'] for t in config['tools']}
-    assert names=={'graph_search','graph_focus','graph_neighbors','graph_reset','memory_search','memory_prepare','device_metrics'}
+    assert names=={'graph_search','graph_focus','graph_neighbors','graph_reset','memory_search','memory_prepare','device_metrics','pc_capabilities','chat_history_audit'}
     assert 'memory_save' not in names
     assert client.get('/api/voice/status').json()['active_session']['id']==sid
     status=client.post(f'/api/voice/sessions/{sid}/stop',json={},headers=h).json()
