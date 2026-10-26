@@ -3,7 +3,7 @@ import math
 import re
 from typing import Any
 
-ACTIONS = frozenset({'file.mkdir', 'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect', 'powershell.exec', 'process.terminate'})
+ACTIONS = frozenset({'desktop.mkdir', 'file.mkdir', 'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect', 'powershell.exec', 'process.terminate'})
 RECIPES = {
     'clock': 'Get-Date -Format o',
     'memory': 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress',
@@ -97,7 +97,7 @@ def clean_request(action: str, payload: dict) -> dict:
         raise ValueError('ACTION_NOT_ALLOWED')
     fields = {'shell.run': {'recipe'}, 'file.read': {'path'}, 'mouse.click': {'window', 'x', 'y'},
               'keyboard.type': {'window', 'text'}, 'keyboard.key': {'window', 'key'},
-              'file.list': {'path'}, 'file.mkdir': {'path'}, 'process.list': set(), 'window.list': set(), 'shell.inspect': {'command'},
+              'file.list': {'path'}, 'file.mkdir': {'path'}, 'desktop.mkdir': {'name'}, 'process.list': set(), 'window.list': set(), 'shell.inspect': {'command'},
               'powershell.exec': {'command','timeout_seconds'}, 'process.terminate': {'pid','expected_name'}}[action]
     if set(payload) != fields:
         raise ValueError('INVALID_ARGUMENTS')
@@ -114,6 +114,11 @@ def clean_request(action: str, payload: dict) -> dict:
             raise ValueError('INVALID_PROCESS_TARGET')
     if action=='file.mkdir':
         return {'path':clean_workspace_folder(payload['path'])}
+    if action=='desktop.mkdir':
+        name=clean_workspace_folder(payload['name'])
+        if '/' in name:
+            raise ValueError('DESKTOP_SINGLE_FOLDER_ONLY')
+        return {'name':name}
     if action in ('file.read','file.list'):
         path = payload['path']
         if not isinstance(path, str) or not 1 <= len(path) <= 500 or '\0' in path or path.startswith(('\\\\', '//')):
