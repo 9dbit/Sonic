@@ -77,7 +77,7 @@ def recent_voice_and_chat_diagnostics(request:Request,db:Session=Depends(get_db)
         },
         'engine_run_last_100':{
             'routes':dict(Counter((m.channel,m.route,m.status) for m in runs
-                if m.channel in ('chat','voice_tool'))).__str__()[:2800]
+                if m.channel in ('chat','voice','voice_tool'))).__str__()[:2800]
         }
     }
 
