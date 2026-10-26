@@ -106,11 +106,13 @@
   }
   function brainAnswer(text,error=false,events=[]){$('brainAnswer').classList.remove('hidden');$('brainAnswer').classList.toggle('error',error);$('brainAnswerText').textContent=text;$('brainReceipt').replaceChildren();events.forEach(e=>appendReceipt($('brainReceipt'),e));}
   function setWaiting(value){waiting=value;$('send').disabled=value;$('brainSend').disabled=value;}
-  async function send(source,options={}){if(liveVoice?.active){notify('Stop sesi suara sebelum mengirim chat teks.');return;}const input=$(source==='brain'?'brainMessage':'message'),text=input.value.trim();if(!text||waiting)return;
+  async function send(source,options={}){if(liveVoice?.active){notify('Stop sesi suara sebelum mengirim chat teks.');return;}const input=$(source==='brain'?'brainMessage':'message'),text=String(options.overrideText??input.value).trim();if(!text||waiting)return;
     if(window.sonicMotion?.handleCommand(text)){input.value='';notify('SONIC Motion Core kembali ke posisi semula.');return;}
-    setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
+    setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');if(!options.overrideText)input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
     try{const r=await API('/api/chat',{method:'POST',body:JSON.stringify({message:text,selected_node_id:graph.selected||null})});pending.querySelector('.body').textContent=r.reply;const events=r.memory_events||[];
-      events.forEach(e=>appendReceipt(pending,e));brainAnswer(r.reply,false,events);activityState('idle');
+      events.forEach(e=>appendReceipt(pending,e));
+      if((r.operator_proposals||[]).length)inlineChatApproval(pending,source);
+      for(const job of (r.operator_jobs||[]))watchChatJob(job,source).catch(err=>notify(err.message));brainAnswer(r.reply,false,events);activityState('idle');
       if(events.some(e=>e.saved)){await refreshGraph();if(currentTab==='memory')await loadMemory();const last=events.at(-1);if(last?.node_id&&graph.lookup.has(last.node_id)){graph.select(last.node_id);if(innerWidth<=650)toggleInspector(false);}}
       const applied=await applyGraphActions(r.ui_actions||[]);
       renderReferences(pending,r.memory_references||[]);renderReferences($('brainReceipt'),r.memory_references||[]);
@@ -118,6 +120,38 @@
       speak(r.reply,{force:!!options.readAloud});
     }catch(error){pending.classList.add('error');pending.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');}
     finally{setWaiting(false);if(innerWidth>650&&currentTab!=='brain')input.focus();}
+  }
+  // Chat-first PC jobs: never require opening Devices merely to see progress.
+  async function watchChatJob(job,source){
+    const tag=line('assistant','TRADEVICEPC: queued '+job.action);
+    const body=tag.querySelector('.body');
+    for(let attempt=0;attempt<105;attempt++){
+      await new Promise(done=>setTimeout(done,1700));
+      if(!csrf)return;
+      try{
+        const state=await API('/api/operator/requests/'+encodeURIComponent(job.id));
+        if(['done','failed','cancelled','expired'].includes(state.state)){
+          body.textContent=state.chat_completion||(
+            state.state==='done'?'Perintah telah selesai di TRADEVICEPC.':
+            state.state==='failed'?'Perintah gagal di Windows Agent.':
+            'Perintah dibatalkan atau kedaluwarsa.');
+          tag.classList.toggle('error',state.state==='failed');
+          brainAnswer(body.textContent,state.state==='failed');
+          return;
+        }
+        body.textContent='TRADEVICEPC: '+job.action+' / '+state.state+'. Hasil akan tampil di sini.';
+      }catch(error){
+        if(error.status===401||error.status===404)return;
+        body.textContent='Memeriksa TRADEVICEPC: '+error.message;
+      }
+    }
+    body.textContent='Pemeriksaan waktu nyata berhenti. Perintah masih dapat dilihat di histori chat setelah agent memberi hasil.';
+  }
+  function inlineChatApproval(message,source){
+    const row=el('div','chat-inline-approval');
+    const yes=button('Setujui',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'setuju'});},'chat-approve-button');
+    const no=button('Batal',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'batal'});},'chat-reject-button');
+    row.append(yes,no);message.append(row);
   }
   async function loadHistory(){try{const r=await API('/api/history');if(!csrf)return;if(r.messages.length){$('chatFeed').replaceChildren();r.messages.forEach(m=>line(m.role,m.content));const last=[...r.messages].reverse().find(m=>m.role==='assistant');if(last)brainAnswer(last.content);}}catch(error){notify(error.message);}}
   async function loadMemory(){const list=$('memoryList');try{const r=await API('/api/memories?limit=500');if(!csrf)return;list.replaceChildren();$('memoryTotal').textContent=String(r.total);$('memoryStatus').textContent=r.has_more?'Menampilkan 500 catatan terbaru dari '+r.total+'.':'';
