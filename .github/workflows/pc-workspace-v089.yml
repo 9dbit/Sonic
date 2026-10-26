@@ -10,18 +10,26 @@ on:
       - 'web/index.html'
       - 'web/app.js'
       - 'tests/js/pc-workspace-v089.test.cjs'
+      - 'scripts/e2e_pc_workspace_v089.py'
       - '.github/workflows/pc-workspace-v089.yml'
 permissions:
   contents: read
 jobs:
   pc-workspace:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser regression dependencies
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
       - name: Check source and UI controller syntax
         run: |
           node --check web/pc-workspace-v089.js
@@ -35,3 +43,11 @@ jobs:
             echo "Unexpected sensitive capability or unsafe rendering in PC browser"
             exit 1
           fi
+      - name: Synthetic Windows receipts in real desktop/mobile browser
+        run: python scripts/e2e_pc_workspace_v089.py
+      - name: Upload sanitized synthetic UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-pc-workspace-v089
+          path: artifacts/pc-workspace-v089/
