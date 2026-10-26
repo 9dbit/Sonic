@@ -4,9 +4,11 @@
   const subtitles={
     'Neural Brain':'A living map of your connected knowledge.',
     'Chat':'Your intelligence, in one conversation.',
+    'Command Center':'Your intelligence, in one conversation.',
     'Workspace':'Files, notes and authorized device storage.',
     'Memory Vault':'What you choose to remember, always inspectable.',
     'Devices':'Connected hardware and approved operations.',
+    'Device Hub':'Connected hardware and approved operations.',
     'SONIC Setup':'System readiness, voice and personalized settings.',
     'Setup':'System readiness, voice and personalized settings.'
   };
