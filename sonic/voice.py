@@ -485,6 +485,11 @@ def execute_voice_tool(session_id: str, payload: VoiceToolInput, owner: dict = D
     owned_session(db, session_id, owner, active=True, lock=True)
     allowed = {'graph_search', 'graph_focus', 'graph_neighbors', 'graph_reset', 'memory_search', 'memory_prepare', 'device_metrics', 'pc_capabilities', 'chat_history_audit'}
     if payload.name not in allowed:
+        # Diagnose unsupported model tool calls without storing arguments, text,
+        # provider tokens or anything from microphone content.
+        db.add(EngineRun(id=str(uuid4()),channel='voice_tool',route='blocked_tool',
+            status='rejected',steps_json=json.dumps([{'tool':payload.name}]),duration_ms=0))
+        db.commit()
         raise HTTPException(403, 'This tool is not permitted in voice sessions')
     serialized = json.dumps({'name': payload.name, 'arguments': payload.arguments}, sort_keys=True, separators=(',', ':'))
     if len(serialized) > 4096:
