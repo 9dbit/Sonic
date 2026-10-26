@@ -19,7 +19,7 @@ def test_brain_knows_own_pc():
     assert 'V0.8' in SYSTEM
     assert 'You have no shell access' not in SYSTEM
     assert 'pc_capabilities' in {x['name'] for x in TOOLS}
-    assert 'owner-reviewed' in SYSTEM
+    assert 'high-impact PC actions require approval' in SYSTEM
 
 def test_chat_capability_reply_uses_actual_heartbeat(client):
     h=login(client)
