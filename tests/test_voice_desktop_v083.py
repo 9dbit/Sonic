@@ -181,3 +181,10 @@ def test_voice_model_can_read_registered_pc_and_actual_history(client,provider):
     assert audit.status_code==200,audit.text
     assert 'Audit histori SONIC' in audit.json()['output']['summary']
     assert call(client,h,sid,'pc_capabilities',{'command':'rm -rf /'},'bad_cap').json()['output']=={'error':'INVALID_TOOL_ARGUMENTS'}
+
+
+def test_word_desktop_inside_workspace_folder_name_is_not_destination():
+    result=classify('buat folder "Chat QA desktop" di TRADEVICEPC')
+    assert result is not None
+    assert result.action=='file.mkdir'
+    assert result.payload=={'path':'Chat QA desktop'}
