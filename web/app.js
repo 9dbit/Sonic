@@ -23,7 +23,7 @@
   function notify(message){clearTimeout(toastTimer);$('notice').textContent=String(message);$('notice').classList.remove('hidden');toastTimer=setTimeout(()=>$('notice').classList.add('hidden'),7000);}
   function activityState(next){activity=next;window.sonicMotion?.setState(next);$('assistantCore').dataset.state=next;$('activityLabel').textContent=({idle:'READY',thinking:'THINKING',saving:'SAVED',listening:'LISTENING',speaking:'SPEAKING',error:'UNAVAILABLE'})[next]||'READY';}
   function clearPrivateUI(){
-    window.sonicMotion?.returnHome();window.sonicWorkspace?.clear();
+    window.sonicMotion?.returnHome();window.sonicWorkspace?.clear();window.sonicPCWorkspace?.clear();
     $('executionTasks').replaceChildren();watchingJobs.clear();
     wake?.stop();liveVoice?.stop('session_expired');speechAudio?.pause();$('voiceProposalHost').replaceChildren();
     graph.setVisible(false);graph.nodes=[];graph.edges=[];graph.lookup.clear();graph.positions.clear();graph.projected?.clear();graph.selected=null;graph.path=[];graph.highlight=null;graph.initialized=false;
@@ -39,7 +39,7 @@
     return body;
   }
   function setTab(tab){if(!tabs[tab])return;currentTab=tab;for(const [name,id] of Object.entries(tabs))$(id).classList.toggle('hidden',name!==tab);
-    if(window.sonicWorkspace){window.sonicWorkspace.visible=tab==='workspace';if(tab==='workspace')window.sonicWorkspace.refresh().catch(e=>notify(e.message));}
+    if(window.sonicWorkspace){window.sonicWorkspace.visible=tab==='workspace';if(tab==='workspace'&&window.sonicPCWorkspace?.mode!=='pc')window.sonicWorkspace.refresh().catch(e=>notify(e.message));}
     document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
     $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&!!csrf);
     if(!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadTasks();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
@@ -511,6 +511,7 @@
     onStopped:()=>{$('voiceProposalHost').replaceChildren();$('voiceResume').classList.add('hidden');if(csrf)loadSetup();if(wake?.enabled&&!document.hidden)wake.resume();}
   });
   window.sonicWorkspace=new window.SonicWorkspace({api:API,notify,open:()=>setTab('workspace'),read:text=>{if(liveVoice.active)liveVoice.verifiedPCReceipt(text);else speak(text,{force:true});}});
+  window.sonicPCWorkspace=new window.SonicPCWorkspace({api:API,notify,cloud:window.sonicWorkspace});
   window.addEventListener('sonic:persona-applied',async event=>{
     // Future TTS and text chats already use the saved server persona.
     // Realtime voice output cannot be switched in the middle of a session.
