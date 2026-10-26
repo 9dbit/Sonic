@@ -16,26 +16,32 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
     from .brain import reply, _record_user, _record_answer
     from .memory import parse_memory_intent
     from .chat_actions import classify, confirmation_intent
+    from .chat_audit import is_chat_log_request, summarize_chat_friction
     from fastapi import HTTPException
     start = time.monotonic()
     run_id = str(uuid4())
     db.info.update(ui_actions=[], memory_events=[], memory_references=[], engine_steps=[], selected_node_id=selected_node_id)
     from .operator import direct_device_command, direct_capability_question, capability_reply, device_metrics, metrics_reply
-    confirm_intent=confirmation_intent(text)
+    audit_intent=is_chat_log_request(text)
+    confirm_intent=None if audit_intent else confirmation_intent(text)
     chat_action=None
     action_parse_error=None
-    if not confirm_intent:
+    if not confirm_intent and not audit_intent:
         try:chat_action=classify(text)
         except ValueError as exc:action_parse_error=str(exc)
     pc_capabilities = direct_capability_question(text)
-    pc_request = not (pc_capabilities or chat_action or confirm_intent or action_parse_error) and direct_device_command(text)
-    command = None if pc_request or pc_capabilities or chat_action or confirm_intent or action_parse_error else direct_graph_command(text, selected_node_id)
-    route = 'chat_approval' if confirm_intent else 'chat_pc_action' if chat_action or action_parse_error else 'device_capabilities' if pc_capabilities else 'device_metrics' if pc_request else 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
+    pc_request = not (pc_capabilities or audit_intent or chat_action or confirm_intent or action_parse_error) and direct_device_command(text)
+    command = None if pc_request or pc_capabilities or audit_intent or chat_action or confirm_intent or action_parse_error else direct_graph_command(text, selected_node_id)
+    route = 'chat_audit' if audit_intent else 'chat_approval' if confirm_intent else 'chat_pc_action' if chat_action or action_parse_error else 'device_capabilities' if pc_capabilities else 'device_metrics' if pc_request else 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
     status = 'completed'
     operator_jobs=[]
     operator_proposals=[]
     try:
-        if confirm_intent or chat_action or action_parse_error:
+        if audit_intent:
+            _record_user(db,text)
+            answer=_record_answer(db,summarize_chat_friction(db))
+            db.info['engine_steps'].append({'tool':'chat.history_audit','status':'read'})
+        elif confirm_intent or chat_action or action_parse_error:
             from .operator import chat_queue, chat_decide
             _record_user(db,text)
             if owner is None:raise HTTPException(401,'Owner session required for PC chat actions')
