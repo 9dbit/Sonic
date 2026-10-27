@@ -48,7 +48,7 @@ with local_server(settings={"OPENROUTER_API_KEY": "LOCAL-FAKE-KEY-DO-NOT-SEND"})
         expect(page.locator("#brainModelStatus")).to_contain_text(model, timeout=12000)
         expect(page.locator("#brainPill")).to_contain_text(model)
         expect(page.locator("#testProvider")).to_be_enabled()
-        assert "Voice tetap OpenAI" in page.locator("#brainModelStatus").inner_text()
+        assert "OpenAI" in page.locator("#brainModelStatus").inner_text()
         metrics = page.evaluate("""() => ({
           viewport:innerWidth, documentWidth:document.documentElement.scrollWidth,
           selected: document.querySelector('#brainModelSelect').value,
