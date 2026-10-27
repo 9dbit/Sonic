@@ -24,7 +24,7 @@ jobs:
         run: |
           python -m pip install playwright==1.56.0
           python -m playwright install --with-deps chromium
-      - name: Real staging login view: desktop, tablet, mobile
+      - name: "Real staging login view: desktop, tablet, mobile"
         run: python scripts/smoke_command_deck_live_browser_r1.py
       - name: Upload public-only staging screenshots
         if: always()
