@@ -155,7 +155,9 @@ async def reply(db: Session, latest_user_text: str) -> str:
 
     selection = selected_model(db)
     if not configured(selection.provider):
-        raise HTTPException(503, "Selected SONIC brain provider is not configured on the server")
+        # Keep the previous OpenAI error contract for existing clients/tests.
+        required = "OPENAI_API_KEY" if selection.provider == "openai" else "OPENROUTER_API_KEY"
+        raise HTTPException(503, "SONIC brain needs " + required + " on the server")
     _record_user(db, latest_user_text)
     items: list[dict] = chat_history(db, 16)
     # Re-read persistent facts for each request, including after login/restart.
