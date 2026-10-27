@@ -1,0 +1,22 @@
+name: SONIC Command Deck R1 Live Staging Acceptance
+
+on:
+  push:
+    branches:
+      - test/sonic-command-deck-r1-live-smoke-20261027
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Independent public HTTP smoke, no owner credentials or mutations
+        run: python scripts/smoke_command_deck_live_r1.py
