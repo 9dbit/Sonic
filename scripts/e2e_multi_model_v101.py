@@ -31,15 +31,22 @@ with local_server(settings={"OPENROUTER_API_KEY": "LOCAL-FAKE-KEY-DO-NOT-SEND"})
         page.locator('.nav[data-tab="setup"]').click()
         expect(page.locator("#brainModelControl")).to_be_visible()
         expect(page.locator("#brainModelSelect option")).to_have_count(4)
-        expect(page.locator("#brainModelStatus")).to_contain_text("openai")
-        assert page.locator("#testProvider").is_disabled(), "Missing OpenAI key must not pass a live test"
+        # Both viewports share this disposable DB: desktop selects Prime,
+        # then mobile observes the persisted Prime and switches to Standard.
+        initial_provider="openai" if name=="desktop" else "openrouter"
+        model="z-ai/glm-5.3-prime" if name=="desktop" else "z-ai/glm-5.3"
+        expect(page.locator("#brainModelStatus")).to_contain_text(initial_provider)
+        if name=="desktop":
+            assert page.locator("#testProvider").is_disabled(), "Missing OpenAI key must not pass a live test"
+        else:
+            expect(page.locator("#brainModelStatus")).to_contain_text("z-ai/glm-5.3-prime")
 
-        page.locator("#brainModelSelect").select_option("openrouter|z-ai/glm-5.3-prime")
+        page.locator("#brainModelSelect").select_option("openrouter|"+model)
         expect(page.locator("#applyBrainModel")).to_be_enabled()
         page.once("dialog", lambda dialog: dialog.accept())
         page.locator("#applyBrainModel").click()
-        expect(page.locator("#brainModelStatus")).to_contain_text("z-ai/glm-5.3-prime", timeout=12000)
-        expect(page.locator("#brainPill")).to_contain_text("z-ai/glm-5.3-prime")
+        expect(page.locator("#brainModelStatus")).to_contain_text(model, timeout=12000)
+        expect(page.locator("#brainPill")).to_contain_text(model)
         expect(page.locator("#testProvider")).to_be_enabled()
         assert "Voice tetap OpenAI" in page.locator("#brainModelStatus").inner_text()
         metrics = page.evaluate("""() => ({
@@ -57,8 +64,8 @@ with local_server(settings={"OPENROUTER_API_KEY": "LOCAL-FAKE-KEY-DO-NOT-SEND"})
 
         page.reload(wait_until="networkidle")
         page.locator('.nav[data-tab="setup"]').click()
-        expect(page.locator("#brainModelStatus")).to_contain_text("z-ai/glm-5.3-prime")
-        expect(page.locator("#brainModelSelect")).to_have_value("openrouter|z-ai/glm-5.3-prime")
+        expect(page.locator("#brainModelStatus")).to_contain_text(model)
+        expect(page.locator("#brainModelSelect")).to_have_value("openrouter|"+model)
         assert not errors, errors
         result.append({"viewport": name, "selection_persists": True,
                        "no_paid_calls_or_windows_actions": True,
