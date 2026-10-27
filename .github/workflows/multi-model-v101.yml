@@ -15,6 +15,7 @@ on:
       - 'web/index.html'
       - 'web/app.js'
       - 'web/model-router-v101.css'
+      - 'web/model-router-v101.js'
       - 'tests/test_multi_model_v101.py'
       - 'scripts/e2e_multi_model_v101.py'
       - '.github/workflows/multi-model-v101.yml'
@@ -40,6 +41,7 @@ jobs:
         run: |
           python -m compileall -q sonic
           node --check web/app.js
+          node --check web/model-router-v101.js
           node --check web/sonic-shell-v100.js
       - name: Security, Chat engine, Voice and provider regressions
         run: |
