@@ -8,6 +8,7 @@ This module does NOT change OpenAI Realtime voice or OpenAI-only vision.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import math
 import re
 
@@ -170,6 +171,12 @@ def _chat_messages(parts: list[dict], instructions: str) -> list[dict]:
                     or not isinstance(name, str) or not SAFE_TOOL.fullmatch(name) \
                     or not isinstance(arguments, str) or len(arguments) > 10_000:
                 raise HTTPException(502, "Invalid model tool-call format")
+            try:
+                parsed = json.loads(arguments)
+            except ValueError:
+                raise HTTPException(502, "Invalid model tool arguments") from None
+            if not isinstance(parsed, dict):
+                raise HTTPException(502, "Invalid model tool arguments")
             tool_batch.append({"id": call_id, "type": "function",
                                "function": {"name": name, "arguments": arguments}})
         elif kind == "function_call_output":
@@ -235,7 +242,8 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
                    "tool_choice": request.get("tool_choice", "auto"),
                    "parallel_tool_calls": False, "stream": False,
                    "max_tokens": max(100, min(2400, int(request.get("max_output_tokens", 1800)))),
-                   "reasoning": {"effort": "low"}}
+                   "reasoning": {"effort": "low"},
+                   "usage": {"include": True}}
         if not payload["tools"]:
             payload.pop("tools")
             payload.pop("tool_choice")
@@ -279,6 +287,12 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
                     or not isinstance(name, str) or not SAFE_TOOL.fullmatch(name) \
                     or not isinstance(arguments, str) or len(arguments) > 10_000:
                 raise ValueError("Malformed tool call")
+            try:
+                parsed_arguments = json.loads(arguments)
+            except ValueError:
+                raise ValueError("Invalid JSON tool arguments") from None
+            if not isinstance(parsed_arguments, dict):
+                raise ValueError("Tool arguments must be an object")
             out.append({"type": "function_call", "call_id": call_id,
                         "name": name, "arguments": arguments})
         if out and finish != "tool_calls":
