@@ -55,6 +55,7 @@ async def test_provider(_: dict = Depends(auth.require_owner_write), db: Session
         "tools": [], "store": False, "max_output_tokens": 280
     }
     started = time.monotonic()
+    usage_recorded = False
     try:
         async with httpx.AsyncClient(timeout=75) as client:
             data = await complete(client, payload, selection)
@@ -64,11 +65,14 @@ async def test_provider(_: dict = Depends(auth.require_owner_write), db: Session
         verified = data.get("status") == "completed" and "SONIC_OK" in answer
         record_usage(db, selection, round((time.monotonic()-started)*1000),
                      "ok" if verified else "error", data.get("usage"))
+        usage_recorded = True
         if not verified:
             raise HTTPException(502, "Selected model did not return the expected SONIC_OK response")
         return {"verified": True, "provider": selection.provider, "model": selection.model,
                 "store": False, "note": "Only chat model tested. Voice remains OpenAI Realtime."}
     except HTTPException:
-        # A semantic verification failure is already counted above; failures
-        # before a response are recorded as safe status-only telemetry.
+        # Record failed connectivity tests once, even when the provider rejects
+        # the request before returning token usage. Never store response bodies.
+        if not usage_recorded:
+            record_usage(db, selection, round((time.monotonic()-started)*1000), "error")
         raise
