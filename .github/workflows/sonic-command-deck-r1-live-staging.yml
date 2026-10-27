@@ -20,3 +20,17 @@ jobs:
           python-version: '3.12'
       - name: Independent public HTTP smoke, no owner credentials or mutations
         run: python scripts/smoke_command_deck_live_r1.py
+      - name: Install read-only browser check dependencies
+        run: |
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Real staging login view: desktop, tablet, mobile
+        run: python scripts/smoke_command_deck_live_browser_r1.py
+      - name: Upload public-only staging screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-command-deck-r1-live-public
+          path: artifacts/sonic-command-deck-live-r1/
+          if-no-files-found: warn
+          retention-days: 7
