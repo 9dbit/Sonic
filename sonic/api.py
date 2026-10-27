@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from . import auth
 from .brain import reply
 from .config import database_ready, model_name, owner_ready, setting, public_url
+from .providers import configured, selected_model
 from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_messages, utcnow
 from .memory import save_note, delete_note, record
 
@@ -97,7 +98,7 @@ def home():
 @app.get("/api/health")
 def health():
     return {"service": "SONIC", "status": "ok",
-            "setup_required": not (owner_ready() and database_ready() and bool(setting("OPENAI_API_KEY"))),
+            "setup_required": not (owner_ready() and database_ready() and (configured("openai") or configured("openrouter"))),
             "version": VERSION}
 
 
@@ -107,7 +108,11 @@ def session_status(request: Request):
         owner = auth.read_session(request)
     except HTTPException:
         return {"authenticated": False}
-    return {"authenticated": True, "csrf": owner["csrf"], "model": model_name(), "version": VERSION,
+    from .db import session_factory
+    with session_factory()() as db:
+        selection = selected_model(db)
+    return {"authenticated": True, "csrf": owner["csrf"], "provider": selection.provider,
+            "model": selection.model, "version": VERSION,
             "capabilities": ["chat", "explicit-memory", "knowledge-graph", "owner-memory-links", "voice-ui", "device-status", "chat-first-pc-actions", "inline-approvals"]}
 
 
@@ -279,6 +284,8 @@ from .integrations import router as integrations_router
 from .operator import router as operator_router
 from .speech import router as speech_router
 from .persona import router as persona_router
+from .model_control import router as model_router
+app.include_router(model_router)
 app.include_router(activation_router)
 from .engine import router as engine_router
 app.include_router(engine_router)
