@@ -124,6 +124,7 @@ def test_openrouter_tools_and_text_adapt_to_legacy_engine():
         requested.append(sent)
         assert sent["model"] == "z-ai/glm-5.3-prime"
         assert sent["reasoning"] == {"effort": "low"}
+        assert sent["usage"] == {"include": True}
         assert sent["parallel_tool_calls"] is False
         assert "store" not in sent
         return httpx.Response(200, json=responses.pop(0))
@@ -277,6 +278,42 @@ def test_malformed_or_incomplete_glm_result_fails_closed(data):
     from unittest.mock import patch
     with patch.dict("os.environ", {"OPENROUTER_API_KEY": "fake"}):
         asyncio.run(check())
+
+
+@pytest.mark.parametrize("bad_arguments", ["not json", "[]", "null", '"hello"', '{"time":'])
+def test_malformed_glm_tool_arguments_are_rejected_before_any_executor(bad_arguments):
+    from unittest.mock import patch
+    requests = []
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={"choices":[{"finish_reason":"tool_calls",
+            "message":{"tool_calls":[{"id":"call_valid_id","type":"function",
+                "function":{"name":"pc_status","arguments":bad_arguments}}]}}]})
+    async def check():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(HTTPException) as error:
+                await providers.complete(client,{
+                    "instructions":"SONIC","input":[{"role":"user","content":"PC status?"}],
+                    "tools":[],"max_output_tokens":1000
+                },providers.Selection("openrouter","z-ai/glm-5.3-prime"))
+            assert error.value.status_code == 502
+            assert "pc_status" not in str(error.value.detail)
+    with patch.dict("os.environ",{"OPENROUTER_API_KEY":"synthetic-test"}):
+        asyncio.run(check())
+    assert len(requests)==1
+
+
+def test_invalid_saved_tool_call_arguments_cannot_be_replayed_to_other_provider():
+    history=[
+        {"role":"user","content":"Check PC status"},
+        {"type":"function_call","call_id":"call_valid","name":"pc_status",
+         "arguments":'{"extra":'},  # malformed OpenAI Responses trace
+        {"type":"function_call_output","call_id":"call_valid",
+         "output":'{"connected":false}'},
+    ]
+    with pytest.raises(HTTPException) as error:
+        providers._chat_messages(history,"System instructions")
+    assert error.value.status_code==502
 
 
 def test_selected_provider_explicit_test_is_owner_only_and_does_not_call_voice(client, monkeypatch):
