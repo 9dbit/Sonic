@@ -1,0 +1,96 @@
+/* SONIC Multi-Model Router: quiet Command Deck Settings presentation.
+   Scoped styles only. No changes to Neural 3D, particle or voice layers. */
+.sonic-shell-v100 .sonic-model-router{
+  background:linear-gradient(145deg,#101e30 0%,#0c1523 100%)!important;
+  border:1px solid rgba(99,170,224,.22)!important;
+  border-radius:19px!important;
+  padding:22px 24px!important;
+  margin:16px 0 22px;
+  color:#e9f5ff;
+}
+.sonic-shell-v100 .model-router-heading{
+  display:flex;justify-content:space-between;align-items:start;gap:12px;
+  margin-bottom:14px;
+}
+.sonic-shell-v100 .model-router-heading h3{
+  font-size:24px;letter-spacing:-.035em;font-weight:680;
+  color:#f1fbff;margin:5px 0 0;
+}
+.sonic-shell-v100 .model-router-tag{
+  color:#85d6fa;
+  background:rgba(39,109,167,.16);
+  border:1px solid rgba(99,176,237,.22);
+  border-radius:50px;padding:8px 11px;
+  font:650 9px/1 ui-monospace,monospace;
+  letter-spacing:.13em;white-space:nowrap;
+}
+.sonic-shell-v100 .model-router-controls{
+  display:flex;flex-wrap:wrap;align-items:end;gap:11px;margin:21px 0 8px;
+}
+.sonic-shell-v100 .model-router-controls label{
+  flex:1 1 240px;
+  display:flex;flex-direction:column;gap:8px;
+  font-size:11px;font-weight:650;color:#a6c8e0;
+}
+.sonic-shell-v100 .model-router-controls select{
+  width:100%;min-height:47px;
+  padding:11px 13px;color:#ecf7ff;
+  background:#081321;border:1px solid rgba(102,172,225,.26);
+  border-radius:12px;font:inherit;font-size:13px;
+}
+.sonic-shell-v100 .model-router-controls select option{
+  background:#0d1727;color:#f1fbff;
+}
+.sonic-shell-v100 .app .model-router-controls button:not(.nav):not(.plain):not(.logout){
+  background:linear-gradient(120deg,#276ed7,#174ba4)!important;
+  color:#fff!important;
+  border:1px solid rgba(111,192,245,.26)!important;
+  border-radius:12px!important;
+  padding:12px 19px!important;
+  min-height:47px;
+  font-size:12px;font-weight:700;
+  box-shadow:none!important;
+}
+.sonic-shell-v100 .model-router-privacy{
+  font-size:11px;line-height:1.65;
+  color:#8aa9bd;
+  margin:12px 0 0;
+}
+.sonic-shell-v100 #brainModelStatus{
+  color:#80c7e7!important;font-size:11px;line-height:1.65;
+  min-height:18px;overflow-wrap:anywhere;
+}
+.sonic-shell-v100 .model-router-metrics{
+  border-top:1px solid rgba(98,151,197,.15);margin-top:18px;padding-top:16px;
+}
+.sonic-shell-v100 .model-router-metrics h4{
+  font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+  color:#8db9d5;font-weight:680;margin:0 0 12px;
+}
+.sonic-shell-v100 .model-usage-rows{display:grid;gap:7px}
+.sonic-shell-v100 .model-usage-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;gap:8px 15px;
+  background:rgba(6,15,26,.62);
+  border:1px solid rgba(95,144,197,.13);
+  border-radius:11px;
+  padding:11px 13px;font-size:11px;
+}
+.sonic-shell-v100 .model-usage-row strong{
+  color:#d3eaff;font-weight:630;overflow-wrap:anywhere;
+}
+.sonic-shell-v100 .model-usage-row small{
+  color:#85a3b9;font-size:10px;line-height:1.5;
+}
+.sonic-shell-v100 .model-usage-row .model-usage-status{
+  color:#92e0d6;font-weight:690;text-align:right;
+}
+.sonic-shell-v100 .model-usage-row .model-usage-status.error{color:#f3a8a8}
+@media(max-width:720px){
+  .sonic-shell-v100 .sonic-model-router{padding:17px!important;margin:14px 0!important}
+  .sonic-shell-v100 .model-router-heading h3{font-size:22px}
+  .sonic-shell-v100 .model-router-controls{display:grid;grid-template-columns:1fr;margin:18px 0 10px}
+  .sonic-shell-v100 .model-router-controls label{min-width:0;flex:none}
+  .sonic-shell-v100 .model-router-controls select{font-size:16px}
+  .sonic-shell-v100 .model-router-tag{font-size:8px}
+}

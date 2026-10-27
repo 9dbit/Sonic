@@ -4,7 +4,7 @@
   const tabs={brain:'brainPanel',chat:'chatPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
   const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
-  let csrf=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
+  let csrf=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const watchingJobs=new Set();
   const taskLabels={awaiting_approval:'Menunggu persetujuan',pending:'Menunggu persetujuan',queued:'Menunggu Windows',leased:'Sedang berjalan',running:'Sedang berjalan',completed:'Selesai',done:'Selesai',failed:'Gagal',cancelled:'Dibatalkan',expired:'Kedaluwarsa',rejected:'Tidak dijalankan',approved:'Persetujuan dicatat',needs_clarification:'Perlu nama dan tujuan yang jelas'};
@@ -302,9 +302,9 @@
       for(let i=0;i<40;i++){await new Promise(r=>setTimeout(r,1500));const latest=await API('/api/device/jobs/'+job.id);if(['done','failed'].includes(latest.state)){$('deviceResult').textContent=JSON.stringify(latest.result,null,2);return;}}
       $('deviceResult').textContent='No result received yet. Refresh status before trying again.';
     }catch(error){$('deviceResult').textContent=error.message;}finally{loadDevice();}}
-  async function loadSetup(){try{const s=await API('/api/setup/status');brainConfigured=s.provider_key_configured;$('brainPill').textContent=brainConfigured?'Model: '+s.model:'API key required';$('coreModel').textContent=s.model+' / configured';$('testProvider').disabled=!brainConfigured;
-      if(!brainConfigured)$('coreModel').textContent='OpenAI not configured';
-      const states=[['Owner authentication',s.owner_configured],['Persistent database',s.database_connected],['OpenAI key configured (not a live test)',s.provider_key_configured],['PC credential configured',s.device_credential_configured],['TRADEVICEPC heartbeat',s.device_online]];
+  async function loadSetup(){try{const s=await API('/api/setup/status');brainConfigured=s.provider_key_configured;visionConfigured=s.openai_key_configured;$('brainPill').textContent=brainConfigured?'Model: '+s.model:'API key required';$('coreModel').textContent=s.model+' / configured';$('testProvider').disabled=!brainConfigured;
+      if(!brainConfigured)$('coreModel').textContent='Selected model API key missing';
+      const states=[['Owner authentication',s.owner_configured],['Persistent database',s.database_connected],['Selected '+(s.provider==='openrouter'?'OpenRouter':'OpenAI')+' key configured (not a live test)',s.provider_key_configured],['PC credential configured',s.device_credential_configured],['TRADEVICEPC heartbeat',s.device_online]];
       $('setupList').replaceChildren();for(const [label,ready] of states){const row=el('div','memory-item');row.append(el('span','',label),el('strong','',ready?'Ready':'Pending'));$('setupList').append(row);}
     }catch(error){$('setupMessage').textContent=error.message;}}
   async function initialize(){const r=await API('/api/session');$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
@@ -340,12 +340,12 @@
     r.onresult=e=>{const input=$(currentTab==='brain'?'brainMessage':'message');input.value=e.results[0][0].transcript;input.focus();};
     r.onerror=()=>notify('Mikrofon tidak tersedia atau izin ditolak.');r.onend=()=>{speech=null;document.querySelectorAll('.mic-control').forEach(b=>b.classList.remove('on'));activityState(waiting?'thinking':'idle');};speech=r;r.start();
   }
-  async function sendVision(dataUrl,kind){if(liveVoice?.active){notify('Stop sesi suara sebelum menganalisis gambar.');return;}if(waiting){notify('SONIC masih memproses permintaan sebelumnya.');return;}if(!brainConfigured){setTab('setup');notify('OpenAI belum dikonfigurasi.');return;}
+  async function sendVision(dataUrl,kind){if(liveVoice?.active){notify('Stop sesi suara sebelum menganalisis gambar.');return;}if(waiting){notify('SONIC masih memproses permintaan sebelumnya.');return;}if(!visionConfigured){setTab('setup');notify('Image analysis membutuhkan OPENAI_API_KEY.');return;}
     const [header,base64]=dataUrl.split(',',2),mimeType=header.match(/^data:(image\/(?:png|jpeg|webp));base64$/)?.[1];if(!mimeType||!base64){notify('Format gambar tidak didukung.');return;}
     const input=$(currentTab==='brain'?'brainMessage':'message'),question=input.value.trim().slice(0,500)||'Jelaskan apa yang terlihat pada gambar ini.';input.value='';line('user','['+kind+'] '+question);const p=line('assistant','SONIC is analyzing the image...');brainAnswer('SONIC is analyzing the image...');setWaiting(true);activityState('thinking');
     try{const r=await API('/api/vision',{method:'POST',body:JSON.stringify({mimeType,base64,question})});p.querySelector('.body').textContent=r.reply;brainAnswer(r.reply);activityState('idle');speak(r.reply);}
     catch(error){p.classList.add('error');p.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');}finally{setWaiting(false);}}
-  async function captureOnce(kind){if(waiting||liveVoice?.active)return;if(!brainConfigured){setTab('setup');return;}const screen=kind==='Screen';
+  async function captureOnce(kind){if(waiting||liveVoice?.active)return;if(!visionConfigured){setTab('setup');notify('Image analysis membutuhkan OPENAI_API_KEY.');return;}const screen=kind==='Screen';
     if(!confirm('Kirim satu frame '+(screen?'layar':'kamera')+' ke OpenAI untuk dianalisis? Tidak ada rekaman terus-menerus.'))return;let stream;
     try{stream=screen?await navigator.mediaDevices.getDisplayMedia({video:true,audio:false}):await navigator.mediaDevices.getUserMedia({video:true,audio:false});
       const video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=stream;await video.play();await new Promise(r=>setTimeout(r,350));if(!video.videoWidth)throw Error('No video frame');
@@ -553,7 +553,7 @@
   $('memoryForm').addEventListener('submit',async e=>{e.preventDefault();const text=$('memoryInput').value.trim();if(!text)return;const b=e.submitter;b.disabled=true;
     try{const r=await API('/api/memories',{method:'POST',body:JSON.stringify({text})});if(!r.saved)throw Error('No storage receipt');$('memoryInput').value='';await loadMemory();await refreshGraph();notify(r.created?'Memory tersimpan.':'Catatan sudah ada di Memory Vault.');}catch(error){notify(error.message);}finally{b.disabled=false;}});
   $('refreshDevice').addEventListener('click',loadDevice);$('snapshotDevice').addEventListener('click',snapshot);$('refreshSetup').addEventListener('click',loadSetup);
-  $('testProvider').addEventListener('click',async()=>{$('testProvider').disabled=true;$('setupMessage').textContent='Testing OpenAI...';try{const r=await API('/api/setup/test-provider',{method:'POST',body:'{}'});$('setupMessage').textContent=r.verified?'OpenAI live test passed. Chat is ready.':'Provider not verified.';}catch(error){$('setupMessage').textContent=error.message;}finally{$('testProvider').disabled=!brainConfigured;}});
+  $('testProvider').addEventListener('click',async()=>{$('testProvider').disabled=true;$('setupMessage').textContent='Testing selected chat model...';try{const r=await API('/api/setup/test-provider',{method:'POST',body:'{}'});$('setupMessage').textContent=r.verified?'Selected chat model verified. Chat is ready.':'Provider not verified.';}catch(error){$('setupMessage').textContent=error.message;}finally{$('testProvider').disabled=!brainConfigured;}});
   for(const id of ['voice','brainVoice'])$(id).addEventListener('click',toggleVoice);for(const id of ['mic','brainMic'])$(id).addEventListener('click',startMic);
   for(const id of ['camera','brainCamera'])$(id).addEventListener('click',()=>captureOnce('Camera'));for(const id of ['screen','brainScreen'])$(id).addEventListener('click',()=>captureOnce('Screen'));for(const id of ['image','brainImage'])$(id).addEventListener('click',()=>$('imageFile').click());
   $('imageFile').addEventListener('change',e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(file.size>3*1024*1024){notify('Ukuran gambar maksimal 3 MB.');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){notify('Gunakan JPG, PNG, atau WebP.');return;}const reader=new FileReader();reader.onerror=()=>notify('Gambar tidak dapat dibaca.');reader.onload=()=>sendVision(String(reader.result),'Image');reader.readAsDataURL(file);});

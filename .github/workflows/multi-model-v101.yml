@@ -1,0 +1,71 @@
+name: SONIC Multi-Model Router V1.0
+
+on:
+  push:
+    branches:
+      - feat/sonic-multi-model-router-20261027
+  pull_request:
+    paths:
+      - 'sonic/providers.py'
+      - 'sonic/model_control.py'
+      - 'sonic/brain.py'
+      - 'sonic/activation.py'
+      - 'sonic/api.py'
+      - 'sonic/db.py'
+      - 'web/index.html'
+      - 'web/app.js'
+      - 'web/model-router-v101.css'
+      - 'web/model-router-v101.js'
+      - 'tests/test_multi_model_v101.py'
+      - 'scripts/e2e_multi_model_v101.py'
+      - '.github/workflows/multi-model-v101.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  provider-and-legacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test requirements
+        run: python -m pip install -r requirements.txt
+      - name: Validate Python and existing frontend syntax
+        run: |
+          python -m compileall -q sonic
+          node --check web/app.js
+          node --check web/model-router-v101.js
+          node --check web/sonic-shell-v100.js
+      - name: Security, Chat engine, Voice and provider regressions
+        run: |
+          python -m pytest -q tests/test_multi_model_v101.py tests/test_activation.py tests/test_engine_v04.py tests/test_voice_v04.py tests/test_brain_and_companion.py
+
+  selector-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install local browser testing dependencies
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Desktop and mobile model selector with synthetic local API key
+        run: python scripts/e2e_multi_model_v101.py
+      - name: Upload synthetic screenshots only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-model-router-v101
+          path: artifacts/sonic-multi-model-v101/
+          if-no-files-found: warn
+          retention-days: 7
