@@ -21,7 +21,7 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '0.9.0'
+VERSION = '1.0.0'
 
 
 @asynccontextmanager
