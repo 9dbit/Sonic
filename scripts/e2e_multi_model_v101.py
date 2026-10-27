@@ -41,7 +41,7 @@ with local_server(settings={"OPENROUTER_API_KEY": "LOCAL-FAKE-KEY-DO-NOT-SEND"})
         expect(page.locator("#brainModelStatus")).to_contain_text("z-ai/glm-5.3-prime", timeout=12000)
         expect(page.locator("#brainPill")).to_contain_text("z-ai/glm-5.3-prime")
         expect(page.locator("#testProvider")).to_be_enabled()
-        assert "Voice and Vision remain OpenAI" in page.locator("#brainModelStatus").inner_text()
+        assert "Voice tetap OpenAI" in page.locator("#brainModelStatus").inner_text()
         metrics = page.evaluate("""() => ({
           viewport:innerWidth, documentWidth:document.documentElement.scrollWidth,
           selected: document.querySelector('#brainModelSelect').value,
@@ -52,7 +52,7 @@ with local_server(settings={"OPENROUTER_API_KEY": "LOCAL-FAKE-KEY-DO-NOT-SEND"})
         })""")
         assert metrics["documentWidth"] <= metrics["viewport"] + 2, metrics
         assert metrics["animationAnchor"] and metrics["neuralGraph"] and metrics["liveVoice"]
-        assert "No paid model calls" in metrics["usage"]
+        assert "Belum ada panggilan model" in metrics["usage"]
         page.screenshot(path=str(OUT / f"{name}-settings.png"), full_page=False)
 
         page.reload(wait_until="networkidle")
