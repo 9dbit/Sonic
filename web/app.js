@@ -4,7 +4,7 @@
   const tabs={brain:'brainPanel',chat:'chatPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
   const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
-  let csrf=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
+  let csrf=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const watchingJobs=new Set();
   const taskLabels={awaiting_approval:'Menunggu persetujuan',pending:'Menunggu persetujuan',queued:'Menunggu Windows',leased:'Sedang berjalan',running:'Sedang berjalan',completed:'Selesai',done:'Selesai',failed:'Gagal',cancelled:'Dibatalkan',expired:'Kedaluwarsa',rejected:'Tidak dijalankan',approved:'Persetujuan dicatat',needs_clarification:'Perlu nama dan tujuan yang jelas'};
@@ -25,6 +25,8 @@
   function clearPrivateUI(){
     window.sonicMotion?.returnHome();window.sonicWorkspace?.clear();window.sonicPCWorkspace?.clear();window.sonicWindows?.clear();
     $('executionTasks').replaceChildren();watchingJobs.clear();
+    $('brainModelSelect').replaceChildren();$('brainModelMetrics').replaceChildren();
+    $('brainModelStatus').textContent='Login required.';$('applyBrainModel').disabled=true;
     wake?.stop();liveVoice?.stop('session_expired');speechAudio?.pause();$('voiceProposalHost').replaceChildren();
     graph.setVisible(false);graph.nodes=[];graph.edges=[];graph.lookup.clear();graph.positions.clear();graph.projected?.clear();graph.selected=null;graph.path=[];graph.highlight=null;graph.initialized=false;
     graph.ctx.clearRect(0,0,graph.width,graph.height);if(graph.gl)graph.gl.clear(graph.gl.COLOR_BUFFER_BIT);graph.tooltip.classList.add('hidden');
@@ -302,11 +304,375 @@
       for(let i=0;i<40;i++){await new Promise(r=>setTimeout(r,1500));const latest=await API('/api/device/jobs/'+job.id);if(['done','failed'].includes(latest.state)){$('deviceResult').textContent=JSON.stringify(latest.result,null,2);return;}}
       $('deviceResult').textContent='No result received yet. Refresh status before trying again.';
     }catch(error){$('deviceResult').textContent=error.message;}finally{loadDevice();}}
-  async function loadSetup(){try{const s=await API('/api/setup/status');brainConfigured=s.provider_key_configured;$('brainPill').textContent=brainConfigured?'Model: '+s.model:'API key required';$('coreModel').textContent=s.model+' / configured';$('testProvider').disabled=!brainConfigured;
-      if(!brainConfigured)$('coreModel').textContent='OpenAI not configured';
-      const states=[['Owner authentication',s.owner_configured],['Persistent database',s.database_connected],['OpenAI key configured (not a live test)',s.provider_key_configured],['PC credential configured',s.device_credential_configured],['TRADEVICEPC heartbeat',s.device_online]];
-      $('setupList').replaceChildren();for(const [label,ready] of states){const row=el('div','memory-item');row.append(el('span','',label),el('strong','',ready?'Ready':'Pending'));$('setupList').append(row);}
-    }catch(error){$('setupMessage').textContent=error.message;}}
+  async function loadSetup(){
+    try{
+      const [s, models]=await Promise.all([API('/api/setup/status'),API('/api/models')]);
+      if(!csrf)return;
+      brainConfigured=s.provider_key_configured;
+      visionConfigured=s.openai_key_configured;
+      $('brainPill').textContent=brainConfigured?('Model: '+s.model):('Model key required');
+      $('coreModel').textContent=brainConfigured?(s.model+' / '+s.provider):('Selected provider key missing');
+      $('testProvider').disabled=!brainConfigured;
+      const states=[
+        ['Owner authentication',s.owner_configured],
+        ['Persistent database',s.database_connected],
+        ['Selected '+(s.provider==='openrouter'?'OpenRouter':'OpenAI')+' key configured (not a live test)',s.provider_key_configured],
+        ['OpenAI Realtime Voice / Vision key',s.openai_key_configured],
+        ['PC credential configured',s.device_credential_configured],
+        ['TRADEVICEPC heartbeat',s.device_online]
+      ];
+      $('setupList').replaceChildren();
+      for(const [label,ready] of states){
+        const row=el('div','memory-item');
+        row.append(el('span','',label),el('strong','',ready?'Ready':'Pending'));
+        $('setupList').append(row);
+      }
+      const selector=$('brainModelSelect');
+      selector.replaceChildren();
+      for(const item of models.models||[]){
+        const opt=el('option');
+        opt.value=item.provider+'|'+item.model;
+        opt.textContent=item.label+(item.key_configured?'':' · API key missing');
+        opt.disabled=!item.key_configured;
+        opt.selected=!!item.selected;
+        selector.append(opt);
+      }
+      function updateSaveButton(){
+        const choice=(models.models||[]).find(x=>x.provider+'|'+x.model===selector.value);
+        $('applyBrainModel').disabled=!choice?.key_configured||!!choice?.selected;
+      }
+      selector.onchange=updateSaveButton;
+      updateSaveButton();
+      $('brainModelStatus').textContent='Active chat model: '+models.selected.provider+
+        ' / '+models.selected.model+'. Voice and Vision remain OpenAI.';
+      const host=$('brainModelMetrics');
+      host.replaceChildren();
+      const history=models.usage||[];
+      if(!history.length){
+        host.append(el('p','small-note','No paid model calls logged. Usage is visible after an owner-initiated chat or connectivity test.'));
+      }else{
+        const list=el('div','model-usage-rows');
+        for(const event of history.slice(0,8)){
+          const row=el('div','model-usage-row');
+          const details=el('div');
+          details.append(el('strong','',event.provider+' / '+event.model),
+            el('small','',event.latency_ms+' ms · '+
+              (event.input_tokens??'—')+' input · '+(event.output_tokens??'—')+' output tokens'+
+              (typeof event.provider_reported_cost_usd==='number'
+               ?' · 
+  async function initialize(){const r=await API('/api/session');$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
+    const initialTab=currentTab;
+    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(brainConfigured?'brain':'setup'):currentTab);
+    await loadTasks(true);
+  }
+  async function signOut(){await liveVoice?.stop('logout');try{await API('/api/logout',{method:'POST'});}catch(error){notify('Sign out gagal: '+error.message);return;}
+    csrf=null;speech?.stop();window.speechSynthesis?.cancel();clearPrivateUI();location.reload();}
+  async function speak(text,{force=false}={}){
+    if(liveVoice?.active||(!voiceOn&&!force))return;
+    speechAudio?.pause();window.speechSynthesis?.cancel();const words=String(text).slice(0,1600);
+    if(!words)return;
+    activityState('speaking');
+    try{
+      const response=await fetch('/api/voice/speak',{method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json','X-Sonic-CSRF':csrf},body:JSON.stringify({text:words,consent:true})});
+      if(!response.ok)throw Error('Synthetic voice unavailable');
+      const blob=await response.blob(),url=URL.createObjectURL(blob),audio=new Audio(url);
+      speechAudio=audio;audio.onended=()=>{URL.revokeObjectURL(url);speechAudio=null;activityState('idle');wake?.resume();};
+      audio.onerror=()=>{URL.revokeObjectURL(url);speechAudio=null;activityState('idle');wake?.resume();};
+      await audio.play();
+    }catch(error){
+      // Do not silently switch to a different system voice. That would make
+      // the applied SONIC persona sound inconsistent across the application.
+      activityState('idle');wake?.resume();notify('Suara persona tidak tersedia: '+error.message);
+    }
+  }
+  function toggleVoice(){voiceOn=!voiceOn;document.querySelectorAll('.voice-control').forEach(b=>{b.classList.toggle('on',voiceOn);b.setAttribute('aria-pressed',String(voiceOn));b.querySelector('span').textContent=voiceOn?'Voice on':'Voice off';});if(!voiceOn){window.speechSynthesis?.cancel();activityState(waiting?'thinking':'idle');}}
+  function startMic(){if(liveVoice?.active){notify('Realtime voice sedang aktif. Gunakan Mute atau Stop.');return;}const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Recognition){notify('Voice input belum tersedia di browser ini. Gunakan keyboard.');return;}
+    if(speech){speech.stop();return;}const r=new Recognition();r.lang='id-ID';r.interimResults=false;
+    r.onstart=()=>{activityState('listening');document.querySelectorAll('.mic-control').forEach(b=>b.classList.add('on'));};
+    r.onresult=e=>{const input=$(currentTab==='brain'?'brainMessage':'message');input.value=e.results[0][0].transcript;input.focus();};
+    r.onerror=()=>notify('Mikrofon tidak tersedia atau izin ditolak.');r.onend=()=>{speech=null;document.querySelectorAll('.mic-control').forEach(b=>b.classList.remove('on'));activityState(waiting?'thinking':'idle');};speech=r;r.start();
+  }
+  async function sendVision(dataUrl,kind){if(liveVoice?.active){notify('Stop sesi suara sebelum menganalisis gambar.');return;}if(waiting){notify('SONIC masih memproses permintaan sebelumnya.');return;}if(!visionConfigured){setTab('setup');notify('Image analysis membutuhkan OPENAI_API_KEY terpisah.');return;}
+    const [header,base64]=dataUrl.split(',',2),mimeType=header.match(/^data:(image\/(?:png|jpeg|webp));base64$/)?.[1];if(!mimeType||!base64){notify('Format gambar tidak didukung.');return;}
+    const input=$(currentTab==='brain'?'brainMessage':'message'),question=input.value.trim().slice(0,500)||'Jelaskan apa yang terlihat pada gambar ini.';input.value='';line('user','['+kind+'] '+question);const p=line('assistant','SONIC is analyzing the image...');brainAnswer('SONIC is analyzing the image...');setWaiting(true);activityState('thinking');
+    try{const r=await API('/api/vision',{method:'POST',body:JSON.stringify({mimeType,base64,question})});p.querySelector('.body').textContent=r.reply;brainAnswer(r.reply);activityState('idle');speak(r.reply);}
+    catch(error){p.classList.add('error');p.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');}finally{setWaiting(false);}}
+  async function captureOnce(kind){if(waiting||liveVoice?.active)return;if(!visionConfigured){setTab('setup');notify('Image analysis membutuhkan OPENAI_API_KEY.');return;}const screen=kind==='Screen';
+    if(!confirm('Kirim satu frame '+(screen?'layar':'kamera')+' ke OpenAI untuk dianalisis? Tidak ada rekaman terus-menerus.'))return;let stream;
+    try{stream=screen?await navigator.mediaDevices.getDisplayMedia({video:true,audio:false}):await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+      const video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=stream;await video.play();await new Promise(r=>setTimeout(r,350));if(!video.videoWidth)throw Error('No video frame');
+      const canvas=document.createElement('canvas');canvas.width=Math.min(1280,video.videoWidth);canvas.height=Math.round(canvas.width*video.videoHeight/video.videoWidth);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);const data=canvas.toDataURL('image/jpeg',.76);stream.getTracks().forEach(t=>t.stop());stream=null;await sendVision(data,kind);
+    }catch(error){notify('Capture dibatalkan atau tidak tersedia: '+error.message);}finally{stream?.getTracks().forEach(t=>t.stop());}}
+
+  async function applyGraphActions(actions){
+    for(const a of (actions||[]).filter(x=>x?.type==='device.metrics')){await showDevicePopup();}
+    return window.applySonicGraphActions((actions||[]).filter(x=>x?.type!=='device.metrics'),{
+      graph,refresh:refreshGraph,show:()=>{if(currentTab!=='brain')setTab('brain');},
+      enableAll:()=>{for(const type of Object.keys(categoryNames))filters.add(type);graph.setFilters(filters);renderFilters();},
+      search:q=>{$('graphSearch').value=q;renderSearch();},showSearch:()=>{if(innerWidth<=650)toggleInspector(true);},
+      select:chooseNode,depth:value=>document.querySelectorAll('[data-depth]').forEach(b=>b.classList.toggle('active',Number(b.dataset.depth)===value)),notify
+    });
+  }
+  function renderReferences(host,references){
+    const seen=new Set(),box=el('div','memory-references');
+    for(const r of references.slice(0,12)){if(!Number.isInteger(r.id)||seen.has(r.id))continue;seen.add(r.id);box.append(button('Memory #'+r.id,async()=>{setTab('brain');await refreshGraph();chooseNode(r.node_id||'memory:'+r.id);},'reference-chip'));}
+    if(box.children.length){box.prepend(el('span','small-note','Catatan yang dibaca: '));host.append(box);}
+  }
+  async function loadRuns(){try{const r=await API('/api/engine/runs');$('engineRuns').replaceChildren();if(!r.runs.length)$('engineRuns').append(el('p','small-note','Belum ada eksekusi pada engine V0.4.'));for(const run of r.runs.slice(0,10)){const row=el('div','engine-run');row.append(el('span','',run.route),el('small','',run.status+' / '+run.duration_ms+' ms'));$('engineRuns').append(row);}}catch(e){$('engineRuns').textContent=e.message;}}
+  async function loadTasks(resume=false){
+    try{const r=await API('/api/engine/tasks');const host=$('executionTasks');host.replaceChildren();
+      if(!r.tasks.length)host.append(el('p','small-note','Belum ada tugas PC pada login ini.'));
+      for(const task of r.tasks){const row=el('div','engine-run');row.append(el('span','',task.action+' · '+task.id.slice(0,8)),el('small','',taskLabel(task.status)+' · '+(task.channel==='voice'?'Voice':'Chat')));host.append(row);
+        if(resume&&['queued','leased'].includes(task.state))watchChatJob(task,'chat').catch(e=>notify(e.message));
+        if(resume&&task.state==='pending'){const card=line('assistant','Menunggu persetujuan: '+task.action);const details=await API('/api/operator/requests/'+encodeURIComponent(task.id));card.append(el('pre','',JSON.stringify(details.payload,null,2)));inlineChatApproval(card,'chat',task.id);}
+      }
+    }catch(e){if($('executionTasks'))$('executionTasks').textContent=e.message;}
+  }
+  $('stopExecution').addEventListener('click',async()=>{const b=$('stopExecution');b.disabled=true;try{const r=await API('/api/engine/stop',{method:'POST',body:'{}'});notify(r.notice);await loadTasks();}catch(e){notify(e.message);}finally{b.disabled=false;}});
+  $('refreshExecutionTasks').addEventListener('click',()=>loadTasks());
+  async function loadVoiceStatus(){const status=await API('/api/voice/status');$('voiceReadiness').textContent=(status.enabled&&status.configured?'Configured, live audio not yet verified. ':'Not enabled. ')+status.model+' / '+status.max_session_seconds+' sec / '+status.sessions_started_today_utc+' of '+(status.daily_limit_enabled?status.daily_session_limit+' sessions today (UTC)':'No SONIC daily session cap')+'.';return status;}
+  async function openVoiceDialog(){
+    if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
+    if(waiting){notify('Tunggu respons chat selesai sebelum memulai suara.');return;}
+    $('voiceAgree').checked=false;$('startVoice').disabled=true;$('voiceDialogStatus').textContent='Checking voice configuration...';$('voiceConsent').showModal();
+    try{const status=await loadVoiceStatus();$('voiceLimits').textContent='Maksimal '+Math.round(status.max_session_seconds/60)+' menit per sesi, '+(status.daily_limit_enabled?status.daily_session_limit+' sesi/hari (UTC)':'tanpa batas harian internal SONIC')+'. Pemakaian OpenAI API dikenakan biaya dan provider masih memiliki batasnya.';
+      if(status.active_session){$('voiceDialogStatus').textContent='Sesi sebelumnya masih tercatat. Tutup sesi itu sebelum memulai lagi.';const b=button('Close previous session',async()=>{b.disabled=true;try{await API('/api/voice/sessions/'+status.active_session.id+'/stop',{method:'POST',body:'{}'});$('voiceConsent').close();}catch(e){notify(e.message);}finally{b.disabled=false;}});$('voiceDialogStatus').append(b);}
+      else{$('startVoice').disabled=!(status.enabled&&status.configured);$('voiceDialogStatus').textContent=status.enabled&&status.configured?'Siap untuk pengujian suara pada perangkat ini.':'Realtime voice belum diaktifkan pada server. Chat dan input suara browser tetap tersedia.';}
+    }catch(e){$('voiceDialogStatus').textContent=e.message;}
+  }
+  function showNodePopup(node){
+    if($('voiceProposalHost').children.length)return;
+    $('nodePopupTitle').textContent=node.label;
+    $('nodePopupText').textContent=node.detail||'No additional description available.';
+    $('nodePopupSource').textContent='Source: '+(node.source||'unknown')+' / '+node.degree+' connections';
+    $('nodeDetailPopup').classList.remove('hidden');
+  }
+  async function showDevicePopup(){
+    const d=await API('/api/device/metrics');
+    const m=d.metrics||{},valid=d.metrics_available&&Number.isFinite(m.ram_available_bytes);
+    const format=n=>(n/2**30).toFixed(2)+' GiB';
+    $('nodePopupTitle').textContent='TRADEVICEPC / '+(d.connected?'Online':'Offline');
+    $('nodePopupText').textContent=valid?('CPU: '+(m.cpu_usage_percent??'N/A')+'%\nDisk: '+(m.disks||[]).length+' volumes\nProcesses: '+(m.process_count??'N/A')+'\nRAM free: '+format(m.ram_available_bytes)+' / RAM total: '+format(m.ram_total_bytes)+'\nRAM used: '+m.ram_used_percent+'%\nTelemetry age: '+d.metrics_age_seconds+' seconds'):d.notice;
+    $('nodePopupSource').textContent='Source: authenticated SONIC companion heartbeat; no estimated figures.';
+    $('nodeDetailPopup').classList.remove('hidden');
+    $('telemetryValue').textContent=valid?(format(m.ram_available_bytes)+' available'):'No fresh reading';
+    $('telemetryFill').style.width=valid?Math.max(0,Math.min(100,m.ram_used_percent))+'%':'0%';
+    $('telemetrySource').textContent=valid?('Last measurement '+d.metrics_age_seconds+' seconds ago. / '+d.agent_version):d.notice;
+    return d;
+  }
+  function handleVoiceSessionCommand(text){
+    const s=text.toLocaleLowerCase().trim();if(window.sonicMotion?.handleCommand(s)){notify('Motion Core kembali ke tempat semula.');return true;}if(!/\bsonic\b/.test(s))return false;
+    if(/(?:stop all|berhenti semuanya|matikan semua mikrofon)/.test(s)){wake?.stop();liveVoice.stop('voice_stop_all');notify('All SONIC microphones stopped.');return true;}
+    if(/(?:selesai|stop|akhiri sesi|end session)/.test(s)){liveVoice.stop('voice_command');return true;}
+    if(/(?:tutup panel|hide panel|minimize|sembunyikan panel)/.test(s)){$('voiceSessionBar').classList.add('compact');notify('Panel diminimalkan. Sesi suara tetap aktif.');return true;}
+    if(/(?:buka panel|show panel|expand)/.test(s)){$('voiceSessionBar').classList.remove('compact');return true;}
+    return false;
+  }
+  function updateOperatorForm(){
+    const a=$('operatorAction').value;
+    $('operatorRecipeWrap').classList.toggle('hidden',a!=='shell.run');
+    $('operatorCommandWrap').classList.toggle('hidden',a!=='shell.inspect');
+    $('operatorPathWrap').classList.toggle('hidden',a!=='file.read'&&a!=='file.list');
+    $('operatorWindowWrap').classList.toggle('hidden',!a.startsWith('mouse.')&&!a.startsWith('keyboard.'));
+    $('operatorTextWrap').classList.toggle('hidden',a!=='keyboard.type');
+    $('operatorKeyWrap').classList.toggle('hidden',a!=='keyboard.key');
+    $('operatorCoordWrap').classList.toggle('hidden',a!=='mouse.click');
+  }
+  let pendingOperator=null;
+  async function proposePCAction(){
+    const action=$('operatorAction').value,payload={};
+    if(action==='shell.run')payload.recipe=$('operatorRecipe').value;
+    if(action==='shell.inspect')payload.command=$('operatorCommand').value.trim();
+    if(action==='file.read'||action==='file.list')payload.path=$('operatorPath').value.trim();
+    if(action.includes('keyboard')||action.includes('mouse'))payload.window=$('operatorWindow').value.trim();
+    if(action==='keyboard.type')payload.text=$('operatorText').value;
+    if(action==='keyboard.key')payload.key=$('operatorKey').value;
+    if(action==='mouse.click'){payload.x=Number($('operatorX').value);payload.y=Number($('operatorY').value);}
+    try{
+      pendingOperator=await API('/api/operator/requests',{method:'POST',body:JSON.stringify({action,payload})});
+      $('operatorApprovalText').textContent=JSON.stringify({action,payload,expires_at:pendingOperator.expires_at},null,2);
+      $('operatorApproval').showModal();
+    }catch(e){$('operatorState').textContent=e.message;notify(e.message);}
+  }
+  async function confirmPCAction(){
+    if(!pendingOperator)return;
+    const request=pendingOperator;pendingOperator=null;$('operatorApproval').close();
+    $('operatorState').textContent='Approved action queued...';
+    try{
+      await API('/api/operator/requests/'+request.id+'/confirm',{method:'POST',body:JSON.stringify({confirm:true,digest:request.digest})});
+      for(let i=0;i<45;i++){
+        await new Promise(r=>setTimeout(r,1200));
+        const state=await API('/api/operator/requests/'+request.id);
+        if(['done','failed','cancelled','expired'].includes(state.state)){
+          $('operatorState').textContent='Result: '+state.state;
+          $('deviceResult').textContent=JSON.stringify(state.result||state,null,2);return;
+        }
+      }
+      $('operatorState').textContent='Result not yet confirmed; check the action status again before retrying.';
+    }catch(e){$('operatorState').textContent='Action not confirmed: '+e.message;}
+  }
+  async function transcribeAudio(){
+    const file=$('referenceAudioFile').files?.[0];
+    if(!file){notify('Choose an MP3 or WAV reference first.');return;}
+    if(file.size>10*1024*1024){notify('Reference audio must be 10 MB or smaller.');return;}
+    if(!confirm('Transcribe this audio using OpenAI? Spoken words will be sent to the provider; SONIC does not save the audio. Music separation is not guaranteed.'))return;
+    $('referenceTranscript').textContent='Transcribing speech; background music will be ignored where possible...';
+    try{
+      const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
+      const base64=String(dataUrl).split(',')[1];
+      const result=await API('/api/voice/reference/transcribe',{method:'POST',body:JSON.stringify({mime_type:file.type||'audio/mpeg',audio_base64:base64,consent:true})});
+      $('referenceTranscript').textContent='Spoken text: '+result.text+'\nMusic separated: no\nVoice cloned: no';
+    }catch(e){$('referenceTranscript').textContent='Transcription failed: '+e.message;}
+  }
+  function showVoiceProposal(proposal,sessionId){
+    $('nodeDetailPopup').classList.add('hidden');
+    const host=$('voiceProposalHost');if(host.querySelector('[data-proposal="'+proposal.proposal_id+'"]'))return;
+    const card=el('div','voice-proposal glass');card.dataset.proposal=proposal.proposal_id;
+    card.append(el('strong','','Review memory'),el('p','',proposal.text),el('small','','Belum tersimpan. Periksa hasil transkripsi sebelum mengonfirmasi.'));
+    const controls=el('div','node-actions');
+    const save=button('Confirm memory',async()=>{save.disabled=true;reject.disabled=true;try{const receipt=await API('/api/voice/sessions/'+sessionId+'/memories/'+proposal.proposal_id+'/confirm',{method:'POST',body:JSON.stringify({confirm:true})});
+      card.replaceChildren(el('strong','','Tersimpan di Memory Vault'));appendReceipt(card,receipt);await refreshGraph();liveVoice.memoryReceipt(receipt);setTimeout(()=>card.remove(),5000);
+    }catch(e){notify(e.message);save.disabled=false;reject.disabled=false;}},'small-button');
+    const reject=button('Discard',async()=>{try{await API('/api/voice/sessions/'+sessionId+'/memories/'+proposal.proposal_id+'/reject',{method:'POST',body:'{}'});card.remove();}catch(e){notify(e.message);}},'plain');controls.append(save,reject);card.append(controls);host.append(card);
+  }
+  liveVoice=new window.SonicVoice({api:API,onActions:applyGraphActions,onProposal:showVoiceProposal,onError:notify,
+    onInputStart:()=>window.sonicWorkspace?.captureContext(),
+    onState:state=>{window.sonicRealtimeActive=state!=='idle';$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
+    onConnected:info=>{$('coreModel').textContent=info.model+' / realtime';},
+    onTranscript:async(role,text,meta={})=>{
+      if(!text.trim())return {handled:false};
+      const item=line(role,text);
+      if(role==='assistant'){
+        item.append(el('small','execution-note','Spoken response / not automatically saved'));
+        brainAnswer(text);return {handled:false};
+      }
+      if(handleVoiceSessionCommand(text))return {handled:true,silent:true};
+      const workspace=await window.sonicWorkspace?.handleVoice(text,meta.inputContext||null);
+      if(workspace?.handled){line('assistant',workspace.reply);return workspace;}
+      const result=await dispatchSpokenPC(meta.sessionId,meta.itemId,text);
+      const queued=!!(result.operator_jobs?.length||result.operator_proposals?.length);
+      item.append(el('small','execution-note',queued
+        ?'PC action / receipt recorded in SONIC chat'
+        :result.handled?'PC status / no new device action':'Voice transcript / not automatically saved'));
+      return result;
+    },
+    onReferences:refs=>renderReferences($('brainReceipt'),refs),
+    onTick:seconds=>{$('voiceCountdown').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');},
+    onPlaybackBlocked:()=>{$('voiceResume').classList.remove('hidden');notify('Tekan Enable audio untuk mengizinkan suara pada browser ini.');},
+    onPlaybackResumed:()=>$('voiceResume').classList.add('hidden'),
+    onStopped:()=>{$('voiceProposalHost').replaceChildren();$('voiceResume').classList.add('hidden');if(csrf)loadSetup();if(wake?.enabled&&!document.hidden)wake.resume();}
+  });
+  window.sonicWorkspace=new window.SonicWorkspace({api:API,notify,open:()=>setTab('workspace'),read:text=>{if(liveVoice.active)liveVoice.verifiedPCReceipt(text);else speak(text,{force:true});}});
+  window.sonicPCWorkspace=new window.SonicPCWorkspace({api:API,notify,cloud:window.sonicWorkspace});
+  window.addEventListener('sonic:persona-applied',async event=>{
+    // Future TTS and text chats already use the saved server persona.
+    // Realtime voice output cannot be switched in the middle of a session.
+    speechAudio?.pause();speechAudio=null;window.speechSynthesis?.cancel();
+    const changed=event.detail?.active,previous=event.detail?.previous;
+    if(liveVoice?.active){
+      notify('Persona disimpan. Mengakhiri Talk lama agar voice dan style berikutnya sinkron.');
+      await liveVoice.stop('persona_changed');
+      // Explicit microphone consent remains required. Never silently restart it.
+      if(csrf){await openVoiceDialog();$('voiceDialogStatus').textContent='Persona baru aktif. Tekan Start voice untuk memakai pilihan suara dan gaya bahasa baru.';}
+    }else if(changed){
+      notify('SONIC Persona aktif: '+changed.voice_id+' / '+changed.style+' / '+changed.intensity+'.');
+    }
+  });
+  $('talkSonic').addEventListener('click',openVoiceDialog);$('cancelVoice').addEventListener('click',()=>$('voiceConsent').close());
+  // Runs in the second tap's event stack, before any await: that tap is the
+  // owner's application consent. Browser/OS permission still applies.
+  window.addEventListener('sonic:invoke',event=>{
+    if(event.detail?.consent!=='double_tap')return;
+    if(!csrf){window.sonicMotion?.returnHome();notify('Masuk ke SONIC sebelum memulai mikrofon.');return;}
+    $('voiceSessionBar').classList.remove('compact');$('voiceHide').textContent='Minimize';
+    if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
+    if(waiting){notify('Tunggu respons chat selesai, lalu double tap lagi.');return;}
+    $('voiceConsent').close();wake?.pause();speech?.stop();window.sonicWorkspace?.stopDictation();speechAudio?.pause();window.speechSynthesis?.cancel();
+    liveVoice.start().catch(error=>{notify(error.message);if(wake?.enabled)wake.resume();});
+  });
+  $('voiceConsentForm').addEventListener('submit',async e=>{e.preventDefault();if(!$('voiceAgree').checked)return;$('voiceConsent').close();wake?.pause();speech?.stop();window.speechSynthesis?.cancel();try{await liveVoice.start();}catch(error){notify(error.message);}});
+  $('voiceStop').addEventListener('click',()=>liveVoice.stop());$('voiceHide').addEventListener('click',()=>{$('voiceSessionBar').classList.toggle('compact');$('voiceHide').textContent=$('voiceSessionBar').classList.contains('compact')?'Expand':'Minimize';});$('voiceMute').addEventListener('click',()=>liveVoice.mute());$('voiceResume').addEventListener('click',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
+  $('refreshRuns').addEventListener('click',loadRuns);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(liveVoice.active)liveVoice.stop('page_hidden');wake?.stop();}});
+  window.addEventListener('pagehide',()=>{if(liveVoice.active)liveVoice.stop('page_hidden');wake?.stop();});
+
+  $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';const token=$('ownerToken').value;$('ownerToken').value='';const submit=e.submitter;submit.disabled=true;
+    try{const r=await API('/api/login',{method:'POST',body:JSON.stringify({token})});csrf=r.csrf;await initialize();}catch(error){$('loginError').textContent=error.message;}finally{submit.disabled=false;}});
+  for(const id of ['logout','setupLogout'])$(id).addEventListener('click',signOut);
+  document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+  for(const [form,input,source] of [['chatForm','message','chat'],['brainForm','brainMessage','brain']]){$(form).addEventListener('submit',e=>{e.preventDefault();send(source);});$(input).addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(source);}});}
+  $('goToBrain')?.addEventListener('click',()=>setTab('brain'));$('openFullChat').addEventListener('click',()=>setTab('chat'));
+  $('memoryForm').addEventListener('submit',async e=>{e.preventDefault();const text=$('memoryInput').value.trim();if(!text)return;const b=e.submitter;b.disabled=true;
+    try{const r=await API('/api/memories',{method:'POST',body:JSON.stringify({text})});if(!r.saved)throw Error('No storage receipt');$('memoryInput').value='';await loadMemory();await refreshGraph();notify(r.created?'Memory tersimpan.':'Catatan sudah ada di Memory Vault.');}catch(error){notify(error.message);}finally{b.disabled=false;}});
+  $('refreshDevice').addEventListener('click',loadDevice);$('snapshotDevice').addEventListener('click',snapshot);$('refreshSetup').addEventListener('click',loadSetup);
+  $('applyBrainModel').addEventListener('click',async()=>{
+    const value=$('brainModelSelect').value,index=value.indexOf('|');
+    if(index<=0)return;
+    if(liveVoice?.active){notify('Akhiri sesi voice terlebih dahulu.');return;}
+    const provider=value.slice(0,index),model=value.slice(index+1);
+    if(!confirm('Aktifkan '+provider+' / '+model+' untuk chat SONIC?\n\nBila memilih OpenRouter, konteks chat dikirim ke OpenRouter dan provider model. Voice tetap OpenAI. Tidak ada fallback otomatis.'))return;
+    const button=$('applyBrainModel');button.disabled=true;
+    try{
+      await API('/api/models/selection',{method:'PUT',body:JSON.stringify({provider,model})});
+      $('setupMessage').textContent='Model chat aktif: '+model+'. Voice tetap OpenAI Realtime.';
+      await loadSetup();
+    }catch(error){$('setupMessage').textContent=error.message;await loadSetup();}
+  });
+  $('testProvider').addEventListener('click',async()=>{
+    $('testProvider').disabled=true;
+    $('setupMessage').textContent='Testing selected chat model (one paid API request)...';
+    try{
+      const r=await API('/api/setup/test-provider',{method:'POST',body:'{}'});
+      $('setupMessage').textContent=r.verified
+        ?('Verified '+r.provider+' / '+r.model+'. Text chat ready; Voice unaffected.')
+        :'Provider not verified.';
+      await loadSetup();
+    }catch(error){$('setupMessage').textContent=error.message;}
+    finally{$('testProvider').disabled=!brainConfigured;}
+  });
+  for(const id of ['voice','brainVoice'])$(id).addEventListener('click',toggleVoice);for(const id of ['mic','brainMic'])$(id).addEventListener('click',startMic);
+  for(const id of ['camera','brainCamera'])$(id).addEventListener('click',()=>captureOnce('Camera'));for(const id of ['screen','brainScreen'])$(id).addEventListener('click',()=>captureOnce('Screen'));for(const id of ['image','brainImage'])$(id).addEventListener('click',()=>$('imageFile').click());
+  $('imageFile').addEventListener('change',e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(file.size>3*1024*1024){notify('Ukuran gambar maksimal 3 MB.');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){notify('Gunakan JPG, PNG, atau WebP.');return;}const reader=new FileReader();reader.onerror=()=>notify('Gambar tidak dapat dibaca.');reader.onload=()=>sendVision(String(reader.result),'Image');reader.readAsDataURL(file);});
+  if(!navigator.mediaDevices?.getDisplayMedia)document.querySelectorAll('.screen-control').forEach(b=>{b.disabled=true;b.title='Screen capture tidak tersedia. Upload screenshot melalui Image.';});
+  $('focusIntegration').addEventListener('click',async()=>{setTab('brain');await refreshGraph();chooseNode('integration:hub',true);if(innerWidth<=650)toggleInspector(true);});
+  $('graphSearch').addEventListener('input',renderSearch);$('fitGraph').addEventListener('click',()=>graph.fit());$('clearFocus').addEventListener('click',()=>graph.clear());$('refreshGraph').addEventListener('click',refreshGraph);
+  $('dimensionGraph').addEventListener('click',()=>{graph.setDimension(!graph.is3D);$('dimensionGraph').textContent=graph.is3D?'3D':'2D';$('dimensionGraph').setAttribute('aria-pressed',String(graph.is3D));});
+  $('rotateGraph').addEventListener('click',()=>{if(graph.reduced){notify('Orbit otomatis dimatikan karena pengaturan reduced motion.');return;}graph.autoRotate=!graph.autoRotate;$('rotateGraph').textContent=graph.autoRotate?'Orbit on':'Orbit off';$('rotateGraph').setAttribute('aria-pressed',String(graph.autoRotate));graph.invalidate();});
+  document.querySelectorAll('[data-depth]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-depth]').forEach(x=>x.classList.toggle('active',x===b));graph.setDepth(Number(b.dataset.depth));}));
+  $('toggleInspector').addEventListener('click',()=>toggleInspector(!$('graphInspector').classList.contains('open')));$('closeInspector').addEventListener('click',()=>toggleInspector(false));$('toggleFilters').addEventListener('click',()=>toggleFilters(!$('graphFilters').classList.contains('open')));$('closeFilters').addEventListener('click',()=>toggleFilters(false));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){toggleInspector(false);toggleFilters(false);}});
+  const onStandbyState=state=>{const active=wake?.enabled||false;$('wakeToggle').textContent=active?'Standby on':'Standby off';$('wakeToggle').setAttribute('aria-pressed',String(active));$('wakeIndicator').classList.toggle('hidden',!active||state==='paused');$('wakeIndicator').textContent='● SONIC standby / mic active / foreground only';};
+  wake=new window.SonicWake({onState:onStandbyState,onError:notify,onWake:async rest=>{
+      if(!csrf){wake.stop();return;}
+      if(rest){$('brainMessage').value=rest;setTab('brain');await send('brain',{readAloud:true});}
+      else{try{await liveVoice.start();}catch(e){notify(e.message);wake.resume();}}
+    }});
+  $('wakeToggle').addEventListener('click',()=>{if(wake.enabled){wake.stop();return;}
+    if(!confirm('Aktifkan standby mikrofon selama tab SONIC terlihat? Browser mungkin memproses transkripsi suara lewat layanan pihak ketiga. Tutup tab atau tekan Standby off untuk menghentikan.'))return;
+    try{wake.start();}catch(e){notify(e.message);}
+  });
+  $('deviceRAM').addEventListener('click',()=>showDevicePopup().catch(e=>notify(e.message)));
+  $('nodePopupClose').addEventListener('click',()=>$('nodeDetailPopup').classList.add('hidden'));
+  $('nodePopupSpeak').addEventListener('click',()=>speak($('nodePopupText').textContent,{force:true}));
+  $('operatorAction').addEventListener('change',updateOperatorForm);
+  $('proposeOperator').addEventListener('click',proposePCAction);
+  $('operatorCancel').addEventListener('click',()=>{$('operatorApproval').close();});
+  $('operatorConfirm').addEventListener('click',confirmPCAction);
+  $('testSonicSpeech').addEventListener('click',()=>speak('Welcome back, sir. SONIC is online and ready.',{force:true}));
+  $('transcribeReference').addEventListener('click',transcribeAudio);
+  updateOperatorForm();
+  initialize().catch(error=>{$('loginError').textContent=error.message;notify(error.message);});
+  setInterval(()=>{if(csrf&&!document.hidden)loadDevice();},30000);
+})();
++event.provider_reported_cost_usd.toFixed(5)+' reported cost':' · cost unavailable')));
+          const state=el('span','model-usage-status'+(event.status==='ok'?'':' error'),event.status);
+          row.append(details,state);list.append(row);
+        }
+        host.append(list);
+      }
+    }catch(error){$('setupMessage').textContent=error.message;}
+  }
   async function initialize(){const r=await API('/api/session');$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
     const initialTab=currentTab;
     csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(brainConfigured?'brain':'setup'):currentTab);
