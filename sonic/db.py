@@ -5,7 +5,7 @@ import os
 from threading import Lock
 
 from fastapi import HTTPException
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine, select
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from .config import setting, database_ready
 
@@ -303,3 +303,27 @@ class PersonaPreference(Base):
     style: Mapped[str] = mapped_column(String(24), default='friendly', nullable=False)
     intensity: Mapped[str] = mapped_column(String(24), default='balanced', nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+# SONIC V1.0 multi-model: additive tables. No changes to existing owner,
+# Memory Vault, execution or voice schemas. Never store prompts or secrets here.
+class BrainPreference(Base):
+    __tablename__ = 'brain_preference_v100'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(24), nullable=False)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class BrainUsage(Base):
+    """Sanitized per-provider request telemetry. No raw responses/queries."""
+    __tablename__ = 'brain_usage_v100'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    provider: Mapped[str] = mapped_column(String(24), nullable=False)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reported_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
