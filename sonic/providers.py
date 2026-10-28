@@ -285,6 +285,31 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
         if selection.provider == "openai":
             if not isinstance(data, dict) or not isinstance(data.get("output"), list):
                 raise ValueError("Malformed Responses result")
+            # Responses tool calls and OpenRouter tool calls share the same
+            # fail-closed contract, BEFORE the SONIC executor sees anything.
+            allowed = {tool["name"] for tool in request.get("tools", [])
+                       if isinstance(tool, dict) and isinstance(tool.get("name"), str)}
+            seen: set[str] = set()
+            for item in data["output"]:
+                if not isinstance(item, dict):
+                    raise ValueError("Malformed Responses item")
+                if item.get("type") == "function_call_output":
+                    # Tool receipts are created ONLY by SONIC's local executor.
+                    raise ValueError("Provider cannot supply tool receipts")
+                if item.get("type") != "function_call":
+                    continue
+                call_id = item.get("call_id")
+                name = item.get("name")
+                arguments = item.get("arguments")
+                if not isinstance(call_id, str) or not SAFE_CALL.fullmatch(call_id) \
+                        or not isinstance(name, str) or not SAFE_TOOL.fullmatch(name) \
+                        or name not in allowed or call_id in seen or len(seen) >= 10 \
+                        or not isinstance(arguments, str) or len(arguments) > 10_000:
+                    raise ValueError("Invalid Responses tool call")
+                parsed = json.loads(arguments)
+                if not isinstance(parsed, dict):
+                    raise ValueError("Invalid Responses tool arguments")
+                seen.add(call_id)
             return data
         choice = data["choices"][0]
         finish = choice.get("finish_reason")
