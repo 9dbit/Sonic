@@ -342,3 +342,126 @@ def test_selected_provider_explicit_test_is_owner_only_and_does_not_call_voice(c
     assert result.json()["verified"] is True
     assert calls == [providers.OPENROUTER_URL]
     assert client.get("/api/voice/status").json()["configured"] is False
+
+
+@pytest.mark.parametrize("trace", [
+    [{"type": "function_call_output", "call_id": "orphan", "output": "{}"}],
+    [
+        {"type": "function_call", "call_id": "first", "name": "pc_status", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "other", "output": "{}"},
+    ],
+    [
+        {"type": "function_call", "call_id": "first", "name": "pc_status", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "first", "output": "{}"},
+        {"type": "function_call_output", "call_id": "first", "output": "{}"},
+    ],
+    [
+        {"type": "function_call", "call_id": "first", "name": "pc_status", "arguments": "{}"},
+        {"type": "function_call", "call_id": "first", "name": "pc_status", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "first", "output": "{}"},
+    ],
+    [
+        {"type": "function_call", "call_id": "first", "name": "pc_status", "arguments": "{}"},
+        {"role": "user", "content": "An unrelated turn before the receipt"},
+        {"type": "function_call_output", "call_id": "first", "output": "{}"},
+    ],
+    [
+        {"type": "function_call", "call_id": "first", "name": "pc_status", "arguments": "{}"},
+    ],
+    [
+        {"type": "function_call", "call_id": "first", "name": "pc_status", "arguments": "{}"},
+        {"type": "message", "content": [{"type": "output_text", "text": "All done!"}]},
+    ],
+])
+def test_openrouter_history_rejects_unverified_or_incomplete_tool_receipts(trace):
+    with pytest.raises(HTTPException) as error:
+        providers._chat_messages([{"role": "user", "content": "Check"}] + trace, "System")
+    assert error.value.status_code == 502
+    assert "receipt" not in str(error.value.detail).lower()
+
+
+@pytest.mark.parametrize("tool_calls", [
+    [
+        {"id": "call_a", "type": "function", "function": {"name": "pc_status", "arguments": "{}"}},
+    ],
+    [
+        {"id": "call_a", "type": "function", "function": {"name": "current_time", "arguments": "{}"}},
+        {"id": "call_a", "type": "function", "function": {"name": "current_time", "arguments": "{}"}},
+    ],
+])
+def test_openrouter_rejects_unoffered_or_duplicate_tool_calls(tool_calls):
+    def handler(request):
+        return httpx.Response(200, json={"choices": [
+            {"finish_reason": "tool_calls", "message": {"tool_calls": tool_calls}}
+        ]})
+
+    async def check():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(HTTPException) as error:
+                await providers.complete(client, {
+                    "instructions": "SONIC", "input": [{"role": "user", "content": "Check"}],
+                    "tools": [{"type": "function", "name": "current_time",
+                               "description": "Get time", "parameters": {"type": "object",
+                                   "properties": {}, "additionalProperties": False}}],
+                    "max_output_tokens": 1000
+                }, providers.Selection("openrouter", "z-ai/glm-5.3-prime"))
+            assert error.value.status_code == 502
+
+    from unittest.mock import patch
+    with patch.dict("os.environ", {"OPENROUTER_API_KEY": "synthetic-test"}):
+        asyncio.run(check())
+
+
+def test_incomplete_openai_response_does_not_execute_any_tool(client, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic-test")
+    csrf = login(client)["X-Sonic-CSRF"]
+    import sonic.brain as brain
+
+    tool_calls = []
+    monkeypatch.setattr(brain, "run_tool",
+                        lambda *args, **kwargs: tool_calls.append((args, kwargs)))
+
+    class MockClient:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, url, **kwargs):
+            assert url == providers.OPENAI_URL
+            return httpx.Response(200, json={
+                "status": "incomplete",
+                "output": [{"type": "function_call", "call_id": "call_not_done",
+                            "name": "current_time", "arguments": '{"timezone":"Asia/Jakarta"}'}]
+            })
+
+    monkeypatch.setattr(brain.httpx, "AsyncClient", MockClient)
+    response = client.post("/api/chat", json={"message": "Please check the time in Jakarta"},
+                           headers={"X-Sonic-CSRF": csrf})
+    assert response.status_code == 502
+    assert tool_calls == []
+    assert client.get("/api/models").json()["usage"][0]["status"] == "incomplete"
+
+
+@pytest.mark.parametrize("answer", [
+    "PREFIX SONIC_OK", "SONIC_OK EXTRA", "SONIC_OKAY", "not verified, SONIC_OK appears"
+])
+def test_provider_connectivity_requires_exact_magic_reply(client, monkeypatch, answer):
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic-test")
+    csrf = login(client)["X-Sonic-CSRF"]
+    import sonic.activation as activation
+
+    class MockClient:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, url, **kwargs):
+            return httpx.Response(200, json={
+                "status": "completed", "output": [
+                    {"type": "message", "content": [{"type": "output_text", "text": answer}]}
+                ]
+            })
+
+    monkeypatch.setattr(activation.httpx, "AsyncClient", MockClient)
+    response = client.post("/api/setup/test-provider", headers={"X-Sonic-CSRF": csrf})
+    assert response.status_code == 502
+    assert client.get("/api/models").json()["usage"][0]["status"] == "error"
+
