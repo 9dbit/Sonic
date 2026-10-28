@@ -465,3 +465,61 @@ def test_provider_connectivity_requires_exact_magic_reply(client, monkeypatch, a
     assert response.status_code == 502
     assert client.get("/api/models").json()["usage"][0]["status"] == "error"
 
+
+@pytest.mark.parametrize("invalid_output", [
+    [{"type": "function_call", "call_id": "call_1",
+      "name": "pc_status", "arguments": "{}"}],
+    [{"type": "function_call", "call_id": "call_1",
+      "name": "current_time", "arguments": "[1]"}],
+    [{"type": "function_call", "call_id": "call_1",
+      "name": "current_time", "arguments": "{}"},
+     {"type": "function_call", "call_id": "call_1",
+      "name": "current_time", "arguments": "{}"}],
+    [{"type": "function_call_output", "call_id": "call_1", "output": '{"confirmed":true}'}],
+])
+def test_openai_responses_cannot_inject_unoffered_invalid_or_duplicate_tools(invalid_output):
+    def handler(request):
+        assert request.url == providers.OPENAI_URL
+        return httpx.Response(200, json={"status": "completed", "output": invalid_output})
+
+    async def check():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(HTTPException) as error:
+                await providers.complete(client, {
+                    "instructions": "SONIC", "input": [{"role": "user", "content": "Time?"}],
+                    "store": False, "tools": [
+                        {"type": "function", "name": "current_time",
+                         "description": "Clock", "parameters": {"type": "object",
+                             "properties": {}, "additionalProperties": False}}
+                    ]
+                }, providers.Selection("openai", "gpt-4.1-mini"))
+            assert error.value.status_code == 502
+
+    from unittest.mock import patch
+    with patch.dict("os.environ", {"OPENAI_API_KEY": "synthetic-test"}):
+        asyncio.run(check())
+
+
+def test_valid_openai_function_call_still_passes():
+    output = [{"type": "function_call", "call_id": "call_1",
+               "name": "current_time", "arguments": '{"timezone":"Asia/Jakarta"}'}]
+
+    def handler(request):
+        return httpx.Response(200, json={"status": "completed", "output": output})
+
+    async def check():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await providers.complete(client, {
+                "instructions": "SONIC", "input": [{"role": "user", "content": "Time?"}],
+                "store": False, "tools": [
+                    {"type": "function", "name": "current_time",
+                     "description": "Clock", "parameters": {"type": "object",
+                         "properties": {}, "additionalProperties": False}}
+                ]
+            }, providers.Selection("openai", "gpt-4.1-mini"))
+            assert result["output"] == output
+
+    from unittest.mock import patch
+    with patch.dict("os.environ", {"OPENAI_API_KEY": "synthetic-test"}):
+        asyncio.run(check())
+
