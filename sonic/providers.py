@@ -155,6 +155,10 @@ def _chat_messages(parts: list[dict], instructions: str) -> list[dict]:
     """
     messages = [{"role": "system", "content": instructions}]
     tool_batch: list[dict] = []
+    # Only authenticated SONIC tool receipts may be replayed as a tool role.
+    # Never forward orphan, duplicated, or unfinished tool calls to a provider.
+    seen_call_ids: set[str] = set()
+    awaiting_call_ids: set[str] = set()
 
     def flush():
         if tool_batch:
@@ -177,16 +181,25 @@ def _chat_messages(parts: list[dict], instructions: str) -> list[dict]:
                 raise HTTPException(502, "Invalid model tool arguments") from None
             if not isinstance(parsed, dict):
                 raise HTTPException(502, "Invalid model tool arguments")
+            if call_id in seen_call_ids or (awaiting_call_ids and not tool_batch):
+                raise HTTPException(502, "Invalid model tool-call sequence")
+            seen_call_ids.add(call_id)
+            awaiting_call_ids.add(call_id)
             tool_batch.append({"id": call_id, "type": "function",
                                "function": {"name": name, "arguments": arguments}})
         elif kind == "function_call_output":
             flush()
             call_id = item.get("call_id")
-            if not isinstance(call_id, str) or not SAFE_CALL.fullmatch(call_id):
+            output = item.get("output")
+            if not isinstance(call_id, str) or not SAFE_CALL.fullmatch(call_id) \
+                    or call_id not in awaiting_call_ids or not isinstance(output, str):
                 raise HTTPException(502, "Invalid model tool result")
+            awaiting_call_ids.remove(call_id)
             messages.append({"role": "tool", "tool_call_id": call_id,
-                             "content": str(item.get("output", ""))[:16_000]})
+                             "content": output[:16_000]})
         elif kind == "message":
+            if awaiting_call_ids:
+                raise HTTPException(502, "Incomplete model tool-call sequence")
             flush()
             content = item.get("content", [])
             if not isinstance(content, list):
@@ -196,6 +209,8 @@ def _chat_messages(parts: list[dict], instructions: str) -> list[dict]:
             if text:
                 messages.append({"role": "assistant", "content": text[:16_000]})
         elif item.get("role") in ("user", "assistant", "system"):
+            if awaiting_call_ids:
+                raise HTTPException(502, "Incomplete model tool-call sequence")
             flush()
             text = item.get("content", "")
             if not isinstance(text, str):
@@ -209,6 +224,8 @@ def _chat_messages(parts: list[dict], instructions: str) -> list[dict]:
             continue
         else:
             raise HTTPException(502, "Unknown model conversation item")
+    if awaiting_call_ids:
+        raise HTTPException(502, "Incomplete model tool-call sequence")
     flush()
     return messages
 
@@ -278,6 +295,8 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
         if not isinstance(tool_calls, list) or len(tool_calls) > 10:
             raise ValueError("Invalid tool calls")
         out = []
+        allowed_names = {tool["function"]["name"] for tool in payload.get("tools", [])}
+        response_call_ids: set[str] = set()
         for call in tool_calls:
             if not isinstance(call, dict) or call.get("type") != "function":
                 raise ValueError("Unknown tool call type")
@@ -293,6 +312,9 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
                 raise ValueError("Invalid JSON tool arguments") from None
             if not isinstance(parsed_arguments, dict):
                 raise ValueError("Tool arguments must be an object")
+            if name not in allowed_names or call_id in response_call_ids:
+                raise ValueError("Unapproved or repeated model tool call")
+            response_call_ids.add(call_id)
             out.append({"type": "function_call", "call_id": call_id,
                         "name": name, "arguments": arguments})
         if out and finish != "tool_calls":
