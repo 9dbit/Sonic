@@ -206,6 +206,10 @@ async def reply(db: Session, latest_user_text: str) -> str:
                 record_usage(db, selection, round((time.monotonic()-started)*1000),
                              "incomplete" if output.get("status") not in (None, "completed") else "ok",
                              output.get("usage"))
+                # Never invoke even read-only tools from an explicitly incomplete
+                # provider turn. Record the diagnostic but fail before dispatch.
+                if output.get("status") not in (None, "completed"):
+                    raise HTTPException(502, "Brain response did not complete")
                 parts = output.get("output", [])
                 calls = [p for p in parts if p.get("type") == "function_call"]
                 if not calls:
