@@ -62,7 +62,7 @@ async def test_provider(_: dict = Depends(auth.require_owner_write), db: Session
         answer = "\n".join(c.get("text", "") for part in data.get("output", [])
                            if part.get("type") == "message"
                            for c in part.get("content", []) if c.get("type") == "output_text")
-        verified = data.get("status") == "completed" and "SONIC_OK" in answer
+        verified = data.get("status") == "completed" and answer.strip() == "SONIC_OK"
         record_usage(db, selection, round((time.monotonic()-started)*1000),
                      "ok" if verified else "error", data.get("usage"))
         usage_recorded = True
