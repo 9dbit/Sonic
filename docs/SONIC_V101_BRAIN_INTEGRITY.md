@@ -11,7 +11,7 @@ The V1.0 multi-model adapter already validates JSON syntax, fixed provider URLs,
 ## Implemented boundaries
 
 1. `sonic/providers.py`: reconstruct OpenRouter messages only from well-formed call batches with unique IDs and exactly one matching string receipt for each call; reject orphan, duplicate, interleaved and unfinished tool messages. Preserve normal multi-tool batches and first-party user/system isolation.
-2. `sonic/providers.py`: reject OpenRouter tool-call outputs containing names not offered in the current request or duplicate call IDs before returning any function call to SONIC's executor.
+2. `sonic/providers.py`: validate **both** OpenRouter and OpenAI tool-call outputs before execution: reject names not offered in the request, duplicate/missing IDs, malformed/non-object arguments and provider-supplied tool receipts.
 3. `sonic/brain.py`: fail closed on an explicitly incomplete model response *before* processing its tool calls. Still write a sanitized `incomplete` usage row; no tool dispatch or success claim.
 4. `sonic/activation.py`: the explicit owner provider-connectivity test requires the exact `SONIC_OK` sentinel after whitespace trimming. An answer containing that string alongside other text is not accepted.
 
@@ -24,8 +24,12 @@ The V1.0 multi-model adapter already validates JSON syntax, fixed provider URLs,
 - No database schema modification, new settings, external dependency or Windows elevated rights.
 - Family Voice Profiles remain *backlog*, not enabled.
 
+## Version
+
+The backend `/api/health` version and Command Deck UI label are bumped to **V1.0.1** on this branch. The running Railway staging version remains unchanged until an authorized deployment.
+
 ## Acceptance
 
-Run the inherited `SONIC Multi-Model Router V1.0` workflow and all related workflows against **the exact final branch SHA** before considering a source merge. Added regression cases cover orphan and mismatched receipts, duplicate IDs, unfinished tool batches, unoffered tools, incomplete OpenAI tool calls, and misleading provider-verification text. All provider tests use synthetic responses and keys; no paid provider request, live device action, or biometric capture.
+Run the inherited `SONIC Multi-Model Router V1.0` workflow and all related workflows against **the exact final branch SHA** before considering a source merge. Added **19 parametrized regression cases** cover orphan and mismatched receipts, duplicate IDs, unfinished tool batches, unoffered OpenAI/OpenRouter tools, incomplete OpenAI tool calls, provider-injected tool receipts, misleading provider-verification text, and a positive OpenAI tool-call case. All provider tests use synthetic responses and keys; no paid provider request, live device action, or biometric capture.
 
 Railway SONIC / staging has a separate pre-existing source patch for V1.0 commit `d6554557`. **Do not accept it or deploy V1.0.1 from this PR automatically.** After CI, review and explicitly authorize staging deployment, pinning the tested SHA, and retain prior Command Deck R1 commit `6ef97746a2033174078eb314b2069fb3107d0425` as the rollback anchor. Production is outside this scope.
