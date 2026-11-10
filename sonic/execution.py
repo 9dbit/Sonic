@@ -43,9 +43,15 @@ class NativeWindowsAdapter:
             raise HTTPException(409, 'WINDOWS_CAPABILITY_NOT_READY: No action queued')
         if action == 'powershell.exec' and setting('SONIC_ENABLE_POWERSHELL_EXEC', 'false').lower() not in ('1', 'true', 'yes'):
             raise HTTPException(403, 'PowerShell command broker is disabled in this environment')
+        if action.startswith('software.'):
+            from .software import require_enabled
+            require_enabled(action)
         return clean_request(action, payload)
 
     def verify(self, action: str, payload: dict, result: dict, success: bool) -> dict:
+        if action.startswith('software.'):
+            from .software import verify_result
+            return verify_result(action, payload, result, success)
         if not success:
             return {'status': 'failed', 'code': 'DEVICE_ACTION_FAILED'}
         if action in ('window.open','window.close','window.focus'):

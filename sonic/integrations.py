@@ -32,7 +32,8 @@ CATALOG = (
         "description": "SONIC's own outbound-only limited Windows companion on TRADEVICEPC.",
         "requires": "Windows companion heartbeat, live capabilities, owner command policy.",
         "actions": ("desktop.mkdir", "file.mkdir", "file.list", "process.list",
-                    "system.metrics", "powershell.exec"),
+                    "system.metrics", "powershell.exec", "software.search",
+                    "software.inspect", "software.inventory", "software.install"),
     },
     {
         "id": "rdc",
