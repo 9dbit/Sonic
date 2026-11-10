@@ -12,7 +12,10 @@ def client(monkeypatch, tmp_path):
     monkeypatch.setenv("SONIC_ENV", "local")
     monkeypatch.delenv("RAILWAY_ENVIRONMENT_NAME", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    for name in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY",
+                 "SONIC_BRAIN_PROVIDER", "SONIC_MODEL", "SONIC_OPENROUTER_MODEL",
+                 "SONIC_DEEPSEEK_MODEL"):
+        monkeypatch.delenv(name, raising=False)
     import sonic.db as storage
     if storage._engine:
         storage._engine.dispose()

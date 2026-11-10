@@ -30,7 +30,9 @@ def local_server(app_path='sonic.api:app', settings=None):
         owner = secrets.token_urlsafe(32)
         with socket.socket() as s:
             s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
-        env = {k: v for k, v in os.environ.items() if not k.startswith(('SONIC_', 'OPENAI_', 'DATABASE_', 'RAILWAY_'))}
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith(('SONIC_', 'OPENAI_', 'OPENROUTER_', 'DEEPSEEK_',
+                                    'DATABASE_', 'RAILWAY_'))}
         env.update(SONIC_ENV='local', SONIC_PUBLIC_URL=f'http://127.0.0.1:{port}',
                    SONIC_LOCAL_DB=str(Path(temp) / 'qa.sqlite3'), SONIC_SESSION_SECRET=secrets.token_urlsafe(48),
                    SONIC_OWNER_TOKEN_SHA256=hashlib.sha256(owner.encode()).hexdigest(), PYTHONPATH=str(ROOT))

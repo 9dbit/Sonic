@@ -1,7 +1,7 @@
-"""SONIC V1.0 multi-model brain router.
+"""SONIC multi-model brain router.
 
-Only owner-selected allowlisted text models. OpenAI Responses and OpenRouter
-Chat Completions normalize to the existing bounded SONIC tool-dispatch shape.
+Only owner-selected allowlisted text models. OpenAI Responses, OpenRouter and
+DeepSeek Chat Completions normalize to the bounded SONIC tool-dispatch shape.
 No secret, prompt, transcript, reasoning text or raw provider error is logged.
 This module does NOT change OpenAI Realtime voice or OpenAI-only vision.
 """
@@ -22,11 +22,18 @@ from .db import BrainPreference, BrainUsage, utcnow
 
 OPENAI_URL = "https://api.openai.com/v1/responses"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
+PROVIDER_KEY_ENVS = {
+    "openai": "OPENAI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+}
 CATALOG = (
     ("openai", "gpt-4.1-mini", "OpenAI · GPT-4.1 mini"),
     ("openai", "gpt-4.1", "OpenAI · GPT-4.1"),
     ("openrouter", "z-ai/glm-5.3-prime", "OpenRouter · GLM-5.3 Prime"),
     ("openrouter", "z-ai/glm-5.3", "OpenRouter · GLM-5.3"),
+    ("deepseek", "deepseek-flash", "DeepSeek · Flash"),
 )
 SAFE_MODEL = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,99}$")
 SAFE_CALL = re.compile(r"^[a-zA-Z0-9_-]{1,160}$")
@@ -45,6 +52,7 @@ def available_models() -> list[dict]:
     for provider, configured in (
         ("openai", model_name()),
         ("openrouter", setting("SONIC_OPENROUTER_MODEL", "z-ai/glm-5.3-prime")),
+        ("deepseek", setting("SONIC_DEEPSEEK_MODEL", "deepseek-flash")),
     ):
         if SAFE_MODEL.fullmatch(configured) and not any(
             item["provider"] == provider and item["model"] == configured for item in entries
@@ -62,9 +70,20 @@ def validate_model(provider: str, model: str) -> Selection:
     return Selection(provider=provider, model=model)
 
 
+def provider_key_env(provider: str) -> str:
+    """Return a configured secret's name, never its value or another provider's key."""
+    name = PROVIDER_KEY_ENVS.get(provider)
+    if name is None:
+        raise HTTPException(503, "Unsupported SONIC brain provider")
+    return name
+
+
 def configured(provider: str) -> bool:
-    return bool(setting("OPENAI_API_KEY" if provider == "openai" else "OPENROUTER_API_KEY")) \
-        if provider in ("openai", "openrouter") else False
+    return provider in PROVIDER_KEY_ENVS and bool(setting(provider_key_env(provider)))
+
+
+def any_configured() -> bool:
+    return any(configured(provider) for provider in PROVIDER_KEY_ENVS)
 
 
 def selected_model(db: Session) -> Selection:
@@ -73,17 +92,18 @@ def selected_model(db: Session) -> Selection:
         return validate_model(row.provider, row.model)
     # Existing SONIC deployments default to unchanged OpenAI behavior.
     provider = setting("SONIC_BRAIN_PROVIDER", "openai").lower()
-    if provider not in ("openai", "openrouter"):
+    if provider not in PROVIDER_KEY_ENVS:
         raise HTTPException(503, "Invalid SONIC brain provider setting")
-    model = (model_name() if provider == "openai"
-             else setting("SONIC_OPENROUTER_MODEL", "z-ai/glm-5.3-prime"))
+    model = {"openai": model_name(),
+             "openrouter": setting("SONIC_OPENROUTER_MODEL", "z-ai/glm-5.3-prime"),
+             "deepseek": setting("SONIC_DEEPSEEK_MODEL", "deepseek-flash")}[provider]
     return validate_model(provider, model)
 
 
 def choose_model(db: Session, provider: str, model: str) -> Selection:
     selected = validate_model(provider, model)
     if not configured(provider):
-        raise HTTPException(409, "Selected provider API key is not configured on the SONIC server")
+        raise HTTPException(409, provider_key_env(provider) + " is not configured on the SONIC server")
     row = db.get(BrainPreference, 1)
     if row is None:
         db.add(BrainPreference(id=1, provider=provider, model=model))
@@ -111,7 +131,8 @@ def public_model_status(db: Session) -> dict:
                        "provider_reported_cost_usd": u.reported_cost_usd,
                        "at": u.created_at.isoformat() + "Z"} for u in recent],
             "notice": "Chat model only. Realtime Voice and image analysis remain OpenAI. "
-                      "Switching to OpenRouter sends chat context and tool descriptions to that provider. "
+                      "Switching to OpenRouter or DeepSeek sends chat context, relevant memories and tool data to that provider. "
+                      "DeepSeek uses non-thinking chat mode. "
                       "No automatic provider fallback or hidden request retries."}
 
 
@@ -162,7 +183,8 @@ def _chat_messages(parts: list[dict], instructions: str) -> list[dict]:
 
     def flush():
         if tool_batch:
-            messages.append({"role": "assistant", "tool_calls": list(tool_batch)})
+            messages.append({"role": "assistant", "content": None,
+                             "tool_calls": list(tool_batch)})
             tool_batch.clear()
 
     for item in parts:
@@ -245,22 +267,30 @@ def _chat_tools(tools: list[dict]) -> list[dict]:
 
 async def complete(client: httpx.AsyncClient, request: dict, selection: Selection) -> dict:
     """Single provider HTTP call, no cross-provider retries/fallback."""
-    key = setting("OPENAI_API_KEY" if selection.provider == "openai" else "OPENROUTER_API_KEY")
+    key_env = provider_key_env(selection.provider)
+    key = setting(key_env)
     if not key:
-        raise HTTPException(503, "Selected SONIC model API key is not configured")
+        raise HTTPException(503, key_env + " is not configured on the SONIC server")
     if selection.provider == "openai":
         url = OPENAI_URL
         payload = {**request, "model": selection.model}
-    elif selection.provider == "openrouter":
-        url = OPENROUTER_URL
+    elif selection.provider in ("openrouter", "deepseek"):
+        url = OPENROUTER_URL if selection.provider == "openrouter" else DEEPSEEK_URL
         payload = {"model": selection.model,
                    "messages": _chat_messages(request["input"], request["instructions"]),
                    "tools": _chat_tools(request.get("tools", [])),
                    "tool_choice": request.get("tool_choice", "auto"),
-                   "parallel_tool_calls": False, "stream": False,
-                   "max_tokens": max(100, min(2400, int(request.get("max_output_tokens", 1800)))),
-                   "reasoning": {"effort": "low"},
-                   "usage": {"include": True}}
+                   "stream": False,
+                   "max_tokens": max(100, min(2400, int(request.get("max_output_tokens", 1800))))}
+        if selection.provider == "openrouter":
+            payload.update(parallel_tool_calls=False, reasoning={"effort": "low"},
+                           usage={"include": True})
+        else:
+            # DeepSeek defaults to thinking/high. Its thinking tool rounds
+            # require replaying private reasoning, which SONIC does not store.
+            # Keep this integration explicitly non-thinking. Send only the
+            # documented native parameters; execution remains bounded by SONIC.
+            payload["thinking"] = {"type": "disabled"}
         if not payload["tools"]:
             payload.pop("tools")
             payload.pop("tool_choice")
@@ -285,7 +315,7 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
         if selection.provider == "openai":
             if not isinstance(data, dict) or not isinstance(data.get("output"), list):
                 raise ValueError("Malformed Responses result")
-            # Responses tool calls and OpenRouter tool calls share the same
+            # Responses and Chat Completions tool calls share the same
             # fail-closed contract, BEFORE the SONIC executor sees anything.
             allowed = {tool["name"] for tool in request.get("tools", [])
                        if isinstance(tool, dict) and isinstance(tool.get("name"), str)}
@@ -311,12 +341,17 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
                     raise ValueError("Invalid Responses tool arguments")
                 seen.add(call_id)
             return data
+        if not isinstance(data, dict) or not isinstance(data.get("choices"), list) \
+                or len(data["choices"]) != 1 or not isinstance(data["choices"][0], dict):
+            raise ValueError("Malformed Chat Completions result")
         choice = data["choices"][0]
         finish = choice.get("finish_reason")
         message = choice["message"]
         if not isinstance(message, dict) or finish not in ("stop", "tool_calls"):
             raise ValueError("Incomplete provider response")
-        tool_calls = message.get("tool_calls") or []
+        tool_calls = message.get("tool_calls")
+        if tool_calls is None:
+            tool_calls = []
         if not isinstance(tool_calls, list) or len(tool_calls) > 10:
             raise ValueError("Invalid tool calls")
         out = []
@@ -326,7 +361,9 @@ async def complete(client: httpx.AsyncClient, request: dict, selection: Selectio
             if not isinstance(call, dict) or call.get("type") != "function":
                 raise ValueError("Unknown tool call type")
             fn = call["function"]
-            call_id, name, arguments = call["id"], fn["name"], fn.get("arguments", "{}")
+            if not isinstance(fn, dict):
+                raise ValueError("Malformed tool function")
+            call_id, name, arguments = call["id"], fn["name"], fn["arguments"]
             if not isinstance(call_id, str) or not SAFE_CALL.fullmatch(call_id) \
                     or not isinstance(name, str) or not SAFE_TOOL.fullmatch(name) \
                     or not isinstance(arguments, str) or len(arguments) > 10_000:
