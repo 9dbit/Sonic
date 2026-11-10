@@ -69,6 +69,8 @@ def looks_like_pc_action(text: str) -> bool:
     if looks_like_window_command(s):return True
     if BAD_CONTEXT.search(s):
         return False
+    if re.match(r'^(?:(?:tolong|please|coba|mohon)\s+)?(?:cari(?:kan)?\s+(?:software|aplikasi|program)|install\b|instal\b|pasang\b|periksa\s+software)',s,re.I):
+        return True
     if re.match(r'^'+MAKE_PREFIX,s,re.I) and re.search(
         r'\b(?:folder(?:nya)?|direktori|desktop|dekstop|komputer|tradevice|threadvice)\b',s,re.I):
         return True
@@ -100,6 +102,31 @@ def classify(text: str) -> ChatAction | None:
     s=PREFIX.sub('',text.strip()).strip().rstrip('.!?').strip()
     if BAD_CONTEXT.search(s):
         return None
+
+    # Software requests are resolved from the owner's words only. Discovery
+    # never grants installation or agreement consent. A pinned inspection and
+    # an exact reviewed plan are required in the Software Manager before install.
+    software_prefix=r'(?:(?:tolong|please|coba|mohon)\s+)?'
+    target=r'(?:\s+(?:di|on)\s+(?:tradevice\s*pc|pc|komputer\s+saya))?'
+    inspect=re.fullmatch(software_prefix+
+        r'(?:periksa|cek|detail|inspect|install|instal|pasang)\s+'
+        r'(?:(?:software|aplikasi|program)\s+)?(?P<id>[A-Za-z0-9][A-Za-z0-9_.+-]{0,127})'
+        r'\s+(?:versi|version)\s+(?P<version>[A-Za-z0-9][A-Za-z0-9_.+-]{0,63})'+target,s,re.I)
+    if inspect:
+        return ChatAction('automatic','software.inspect',clean_request('software.inspect',{
+            'package_id':inspect.group('id'),'version':inspect.group('version'),
+            'accept_source_agreements':False,'accept_package_agreements':False}))
+    software_search=re.fullmatch(software_prefix+
+        r'(?:(?:cari(?:kan)?|search|find)\s+(?:software|aplikasi|program)|'
+        r'(?:install|instal|pasang)(?:\s+(?:software|aplikasi|program))?)\s+'
+        r'(?P<query>.+?)'+target,s,re.I)
+    if software_search:
+        return ChatAction('automatic','software.search',clean_request('software.search',{
+            'query':software_search.group('query'),'accept_source_agreements':False}))
+    if re.fullmatch(software_prefix+r'(?:lihat|tampilkan|cek|list|show)\s+'
+                   r'(?:daftar\s+)?(?:software|aplikasi|program)\s+'
+                   r'(?:terpasang|installed)'+target,s,re.I):
+        return ChatAction('automatic','software.inventory',{})
 
     # Allowlisted owner command, never parse model output, arbitrary apps or trade orders.
     # Sensitive MetaTrader window actions always wait for same-chat approval.

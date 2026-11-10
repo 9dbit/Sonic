@@ -22,6 +22,8 @@ from urllib.request import Request, urlopen
 import windows_command_v08 as command_broker
 import windows_workspace_v082 as workspace_actions
 import windows_window_v090 as window_control
+import windows_software
+import threading
 
 HERE=Path(__file__).resolve().parent
 DEVICE=os.environ.get('SONIC_DEVICE_ID','TRADEVICEPC')
@@ -34,6 +36,9 @@ RECIPES={
     'system':'[ordered]@{Computer=$env:COMPUTERNAME;OS=[Environment]::OSVersion.VersionString;CPUCount=[Environment]::ProcessorCount} | ConvertTo-Json -Compress',
 }
 _LAST_NET=None
+_SOFTWARE_BROKER=None
+_SOFTWARE_PREFLIGHT=(0.0,{})
+_SOFTWARE_PENDING_RESULT=None
 KEYS={'ENTER':0x0d,'TAB':0x09,'BACKSPACE':0x08,'DELETE':0x2e,'LEFT':0x25,'RIGHT':0x27,'UP':0x26,'DOWN':0x28,'HOME':0x24,'END':0x23,'ESCAPE':0x1b}
 
 
@@ -388,10 +393,90 @@ def execute(action,params):
 
 def system_status():
     return {'hostname':platform.node(),'platform':platform.platform(),'logical_cpu_count':os.cpu_count(),
-            'sonic_agent_version':'0.9.0','capabilities':['system.status','system.metrics']}
+            'sonic_agent_version':'0.10.0','capabilities':['system.status','system.metrics']}
+
+
+def software_broker():
+    global _SOFTWARE_BROKER
+    if _SOFTWARE_BROKER is None:
+        # Private companion state, outside the browsable SONIC workspace.
+        _SOFTWARE_BROKER=windows_software.WindowsSoftwareBroker(HERE/'software-state')
+    return _SOFTWARE_BROKER
+
+
+def software_capabilities():
+    global _SOFTWARE_PREFLIGHT
+    if os.environ.get('SONIC_SOFTWARE_DISCOVERY_ENABLED','').lower() not in ('1','true','yes'):
+        return []
+    now=time.monotonic()
+    if now-_SOFTWARE_PREFLIGHT[0]>60 or not _SOFTWARE_PREFLIGHT[1]:
+        _SOFTWARE_PREFLIGHT=(now,software_broker().preflight())
+    check=_SOFTWARE_PREFLIGHT[1]
+    if not check.get('ok') or not check.get('discovery_enabled'):
+        return []
+    actions=['software.search','software.inspect','software.inventory']
+    if check.get('install_enabled'):
+        actions.append('software.install')
+    return actions
+
+
+def software_heartbeat(capabilities):
+    # Take a genuine new sample. Do not relabel stale telemetry as current.
+    api('/api/device/heartbeat',{'device_id':DEVICE,'hostname':platform.node()[:120],
+        'platform':platform.platform()[:200],'agent_version':'0.10.0',
+        'capabilities':capabilities,'metrics':extended_stats(),'gui_targets':[]})
+
+
+def execute_software(operator,lease,capabilities):
+    """Keep the limited companion reachable during longer WinGet operations."""
+    stopped=threading.Event()
+    def heartbeat_loop():
+        while not stopped.wait(25):
+            try:software_heartbeat(capabilities)
+            except Exception as error:
+                print('SONIC software heartbeat unavailable:',type(error).__name__,flush=True)
+    thread=threading.Thread(target=heartbeat_loop,daemon=True)
+    thread.start()
+    state={'sequence':0,'last_phase':None,'last_event':0.0,'last_check':0.0,'cancel':False,'pending':None}
+    def cancelled():
+        now=time.monotonic()
+        if now-state['last_check']<3:
+            return state['cancel']
+        state['last_check']=now
+        try:state['cancel']=not api('/api/device/operator/check',lease).get('execute',False)
+        except Exception:state['cancel']=True
+        return state['cancel']
+    def progress(event):
+        now=time.monotonic()
+        phase=str(event.get('phase') or event.get('status') or 'running')[:60]
+        def deliver_pending():
+            pending=state['pending']
+            if pending is None:return True
+            try:api('/api/device/operator/stream',pending['payload'])
+            except Exception:return False
+            state.update(sequence=pending['payload']['sequence'],last_phase=pending['phase'],
+                         last_event=pending['time'],pending=None)
+            return True
+        # If an acknowledgement was lost, retry the exact event bytes. Reusing
+        # its sequence for different text would permanently conflict at server.
+        if not deliver_pending():return
+        # Bound the existing stream to 48 events, keeping room for final phases.
+        if state['sequence']>=46 or (phase==state['last_phase'] and now-state['last_event']<45):
+            return
+        message=json.dumps({key:event[key] for key in ('phase','status','elapsed_seconds','cancellation_requested') if key in event},ensure_ascii=True)[:900]+'\n'
+        state['pending']={'phase':phase,'time':now,'payload':{**lease,
+            'sequence':state['sequence']+1,'channel':'system','text':message}}
+        deliver_pending()
+    try:
+        return software_broker().handle(operator['action'],operator['payload'],
+            task_id=operator['id'],on_progress=progress,cancel_requested=cancelled)
+    finally:
+        stopped.set()
+        thread.join(timeout=1)
 
 
 def run_once(only_heartbeat=False):
+    global _SOFTWARE_PENDING_RESULT
     m=extended_stats()
     shell_enabled=os.environ.get('SONIC_ENABLE_POWERSHELL_EXEC','').lower() in ('1','true','yes')
     window_enabled=os.environ.get('SONIC_WINDOW_CONTROL_ENABLED','').lower() in ('1','true','yes')
@@ -400,11 +485,19 @@ def run_once(only_heartbeat=False):
                   'shell.inspect','process.terminate']
     if shell_enabled:capabilities.append('powershell.exec')
     if window_enabled:capabilities.extend(['window.open','window.focus','window.close'])
+    # Installer preflight is a candidate, not the running task. Do not advertise
+    # actions that the still-running previous companion cannot execute yet.
+    if not only_heartbeat:capabilities.extend(software_capabilities())
     api('/api/device/heartbeat',{'device_id':DEVICE,'hostname':platform.node()[:120],
-        'platform':platform.platform()[:200],'agent_version':'0.9.0',
+        'platform':platform.platform()[:200],'agent_version':'0.10.0',
         'capabilities':capabilities,
         'metrics':m,'gui_targets':[]})
     if only_heartbeat:return
+    if _SOFTWARE_PENDING_RESULT is not None:
+        # Retry only receipt delivery. Never re-dispatch an installer after a
+        # network error; the broker journal survives process restarts separately.
+        api('/api/device/operator/result',_SOFTWARE_PENDING_RESULT)
+        _SOFTWARE_PENDING_RESULT=None
     job=api('/api/device/next',{}).get('job')
     if job:
         if job.get('action')=='system.status':
@@ -416,7 +509,10 @@ def run_once(only_heartbeat=False):
         if api('/api/device/operator/check',lease).get('execute'):
             success=True
             try:
-                if operator['action']=='powershell.exec':
+                if operator['action'].startswith('software.'):
+                    result=execute_software(operator,lease,capabilities)
+                    success=result.get('ok') is True
+                elif operator['action']=='powershell.exec':
                     if not shell_enabled:raise PermissionError('LOCAL_POWERSHELL_OPT_IN_REQUIRED')
                     p=operator['payload']
                     result=command_broker.run_powershell(p['command'],p['timeout_seconds'],api,lease,ALLOWED_ROOT)
@@ -431,12 +527,21 @@ def run_once(only_heartbeat=False):
                     result=execute(operator['action'],operator['payload'])
             except Exception as ex:
                 success=False;result={'error':type(ex).__name__,'detail':str(ex)[:160]}
-            api('/api/device/operator/result',{**lease,'success':success,'result':result})
+            receipt={**lease,'success':success,'result':result}
+            if operator['action'].startswith('software.'):
+                _SOFTWARE_PENDING_RESULT=receipt
+            api('/api/device/operator/result',receipt)
+            if operator['action'].startswith('software.'):
+                _SOFTWARE_PENDING_RESULT=None
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--once',action='store_true');parser.add_argument('--preflight',action='store_true');args=parser.parse_args()
     ensure_config()
+    if args.preflight and os.environ.get('SONIC_SOFTWARE_DISCOVERY_ENABLED')=='1':
+        check=software_broker().preflight()
+        if not check.get('ok'):
+            raise RuntimeError('Software preflight blocked: '+str(check.get('code','UNAVAILABLE')))
     while True:
         try:run_once(only_heartbeat=args.preflight)
         except (HTTPError,URLError,TimeoutError,ValueError,RuntimeError) as error:

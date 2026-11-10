@@ -17,6 +17,7 @@ from . import auth
 from .config import setting
 from .db import Device, DeviceTelemetry, OperatorRequest, OperatorOutput, OwnerSession, ChatMessage, ChatOperation, ExecutionTask, get_db, utcnow
 from .device_contract import ACTIONS, RECIPES, clean_metrics, clean_request
+from . import software
 
 router=APIRouter()
 
@@ -149,6 +150,10 @@ def capability_reply(data:dict) -> str:
     if 'window.focus' in caps:abilities.append("memfokuskan window aplikasi yang diizinkan")
     if 'window.open' in caps:abilities.append("membuka Notepad, Paint, atau MetaTrader 5 jika konfigurasi lokal mengizinkan")
     if 'window.close' in caps:abilities.append("menutup window secara normal (WM_CLOSE) setelah persetujuan, tanpa force-kill")
+    if 'software.search' in caps and software.capabilities()['discovery_enabled']:
+        abilities.append("mencari software di katalog WinGet dan memeriksa installer versi tertentu")
+    if 'software.install' in caps and software.capabilities()['installation_enabled']:
+        abilities.append("memasang paket WinGet yang telah diperiksa dan disetujui, lalu memeriksa versi dalam inventaris")
     if not abilities:abilities.append("menampilkan status dan heartbeat perangkat")
     return (f"{device_id} adalah PC Windows milik Anda yang terhubung ke SONIC. "
             f"Status: online; companion {data.get('agent_version') or 'versi tidak tersedia'}. "
@@ -204,6 +209,8 @@ def owner_row(db,request_id,owner):
 
 
 def ensure_capability(db,action):
+    if action in software.ACTIONS:
+        software.require_enabled(action)
     if action=='powershell.exec' and setting('SONIC_ENABLE_POWERSHELL_EXEC','false').lower() not in ('1','true','yes'):
         raise HTTPException(403,'PowerShell command broker is disabled in this environment')
     if action not in device_metrics(db)['capabilities']:
@@ -211,14 +218,20 @@ def ensure_capability(db,action):
 
 
 def receipt(row):
-    return {'id':row.id,'action':row.action,'payload':json.loads(row.payload_json),'digest':row.digest,
+    output = {'id':row.id,'action':row.action,'payload':json.loads(row.payload_json),'digest':row.digest,
             'state':row.state,'created_at':row.created_at.isoformat()+'Z','expires_at':row.expires_at.isoformat()+'Z',
             'result':json.loads(row.result_json) if row.result_json else None}
+    if row.action in software.ACTIONS:
+        output['operation_status'] = (output['result'] or {}).get('status', row.state)
+        output['automatic_retry'] = False
+        if row.action == 'software.install':
+            output['notice'] = 'Cancellation does not roll back installer changes. Unknown results require reconciliation; automatic restart and retry are disabled.'
+    return output
 
 
 # Safe, scoped operations can be queued directly from an authenticated owner chat
 # request. Everything else keeps a pending review, resolved IN THE SAME CHAT.
-AUTO_SAFE_ACTIONS=frozenset({'desktop.mkdir','file.mkdir','file.list','file.read','process.list','window.list','window.focus'})
+AUTO_SAFE_ACTIONS=frozenset({'desktop.mkdir','file.mkdir','file.list','file.read','process.list','window.list','window.focus'}) | software.READ_ACTIONS
 
 def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:int,auto:bool) -> dict:
     from .execution import choose_adapter, find_replay
@@ -234,9 +247,11 @@ def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:i
         raise HTTPException(422,str(exc)) from None
     if auto and action not in AUTO_SAFE_ACTIONS:
         raise HTTPException(403,'OPERATION_REQUIRES_CHAT_APPROVAL')
-    if not auto and action not in {'powershell.exec','process.terminate','window.open','window.close','window.focus'}:
+    if not auto and action not in {'powershell.exec','process.terminate','window.open','window.close','window.focus','software.install'}:
         raise HTTPException(403,'CHAT_REVIEW_ACTION_NOT_SUPPORTED')
     sid=auth.sha256(owner['sid'])
+    if action == 'software.install':
+        software.require_inspection(db, sid, setting('SONIC_DEVICE_ID','TRADEVICEPC'), safe)
     active=db.scalar(select(func.count()).select_from(OperatorRequest).where(
         OperatorRequest.owner_sid==sid,
         OperatorRequest.state.in_(['pending','queued','leased']),
@@ -255,7 +270,7 @@ def chat_queue(db:Session,owner:dict,action:str,payload:dict,source_message_id:i
     row=OperatorRequest(id=rid,owner_sid=sid,device_id=setting('SONIC_DEVICE_ID','TRADEVICEPC'),
         action=action,payload_json=raw,digest=digest,
         state='queued' if auto else 'pending',
-        expires_at=utcnow()+timedelta(seconds=180 if auto else 120))
+        expires_at=utcnow()+timedelta(seconds=software.execution_seconds(action) if auto and action in software.ACTIONS else 180 if auto else 300 if action == 'software.install' else 120))
     db.add(row)
     db.add(ChatOperation(request_id=rid,source_message_id=source_message_id))
     if identity:
@@ -295,7 +310,9 @@ def chat_decide(db:Session,owner:dict,approved:bool,request_id:str|None=None) ->
     # reviving this exact proposal after the owner has cancelled it.
     if approved:
         ensure_capability(db,row.action)
-        values={'state':'queued','expires_at':utcnow()+timedelta(seconds=180 if row.action=='powershell.exec' else 90)}
+        if row.action == 'software.install':
+            software.require_inspection(db, sid, row.device_id, json.loads(row.payload_json), row.id)
+        values={'state':'queued','expires_at':utcnow()+timedelta(seconds=software.execution_seconds(row.action))}
     else:
         values={'state':'cancelled'}
     changed=db.execute(update(OperatorRequest).where(OperatorRequest.id==row.id,
@@ -319,6 +336,8 @@ def chat_output_excerpt(db:Session,request_id:str) -> str:
 
 
 def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:str='') -> str:
+    if row.action in software.ACTIONS:
+        return software.result_text(row.action, result, success)
     if not success:
         if row.action=='window.close' and result.get('close_requested') is True:
             return ('Windows menerima permintaan penutupan normal, tetapi window belum terkonfirmasi tertutup. '
@@ -379,6 +398,7 @@ def chat_result_text(row:OperatorRequest,result:dict,success:bool,output_text:st
 def capabilities(_:dict=Depends(auth.require_owner),db:Session=Depends(get_db)):
     return {**device_metrics(db),'shell_recipes':RECIPES, 'shell_inspection_examples':['Get-Process','Get-Service','Get-NetAdapter','Get-CimInstance Win32_Processor'],
             'powershell_enabled':setting('SONIC_ENABLE_POWERSHELL_EXEC','false').lower() in ('1','true','yes'),
+            'software': software.capabilities(),
             'policy':'Each command requires exact preview and owner approval. PowerShell is unrestricted inside the Limited Windows user account, not an OS sandbox. Avoid secrets; no elevation or inbound ports.'}
 
 
@@ -388,13 +408,15 @@ def propose(p:Proposal,owner:dict=Depends(auth.require_owner_write),db:Session=D
     except (ValueError,TypeError) as e:raise HTTPException(422,str(e)) from None
     ensure_capability(db,p.action)
     sid=auth.sha256(owner['sid'])
+    if p.action == 'software.install':
+        software.require_inspection(db, sid, setting('SONIC_DEVICE_ID','TRADEVICEPC'), payload)
     count=db.scalar(select(func.count()).select_from(OperatorRequest).where(OperatorRequest.owner_sid==sid,
         OperatorRequest.state.in_(['pending','queued','leased']),OperatorRequest.expires_at>utcnow())) or 0
     if count>=4:raise HTTPException(429,'Finish or cancel pending actions before requesting more')
     rid=str(uuid4());raw=json.dumps(payload,sort_keys=True,separators=(',',':'))
     digest=hashlib.sha256((rid+p.action+raw).encode()).hexdigest()
     row=OperatorRequest(id=rid,owner_sid=sid,device_id=setting('SONIC_DEVICE_ID','TRADEVICEPC'),action=p.action,
-        payload_json=raw,digest=digest,expires_at=utcnow()+timedelta(seconds=90))
+        payload_json=raw,digest=digest,expires_at=utcnow()+timedelta(seconds=300 if p.action == 'software.install' else 90))
     db.add(row);db.commit();return receipt(row)
 
 
@@ -404,7 +426,9 @@ def confirm(request_id:str,p:Approval,owner:dict=Depends(auth.require_owner_writ
     if not hmac.compare_digest(p.digest,row.digest):raise HTTPException(409,'Action changed; review before confirming')
     if row.state!='pending' or row.expires_at<=utcnow():raise HTTPException(409,'Approval expired or no longer pending')
     ensure_capability(db,row.action)
-    lease_deadline=utcnow()+timedelta(seconds=180 if row.action=='powershell.exec' else 90)
+    if row.action == 'software.install':
+        software.require_inspection(db, row.owner_sid, row.device_id, json.loads(row.payload_json), row.id)
+    lease_deadline=utcnow()+timedelta(seconds=software.execution_seconds(row.action))
     db.execute(update(OperatorRequest).where(OperatorRequest.id==row.id,OperatorRequest.state=='pending').values(state='queued',expires_at=lease_deadline))
     db.commit();db.refresh(row);return receipt(row)
 
@@ -453,7 +477,8 @@ def cancel(request_id:str,owner:dict=Depends(auth.require_owner_write),db:Sessio
         from .execution import update_run
         update_run(db,row)
         db.commit()
-    return {'state':row.state,'notice':'Cancellation may not undo an action already underway'}
+    return {'state':row.state,'notice':('Cancellation does not roll back installer changes. The installer may still finish; inspect the receipt before retrying.'
+            if row.action == 'software.install' else 'Cancellation may not undo an action already underway')}
 
 
 @router.post('/api/device/operator/next')
@@ -465,6 +490,15 @@ def next_action(request:Request,db:Session=Depends(get_db)):
         session=db.get(OwnerSession,row.owner_sid)
         if not session or session.expires_at<=utcnow():
             row.state='cancelled';db.commit();continue
+        if row.action in software.ACTIONS:
+            try:
+                software.require_enabled(row.action)
+                if row.action == 'software.install':
+                    software.require_inspection(db, row.owner_sid, row.device_id, json.loads(row.payload_json), row.id)
+            except HTTPException as exc:
+                row.state='cancelled'
+                row.result_json=json.dumps({'ok':False,'status':'blocked','error':str(exc.detail)[:180]})
+                db.commit();continue
         token=secrets.token_urlsafe(32)
         result=db.execute(update(OperatorRequest).where(OperatorRequest.id==row.id,OperatorRequest.state=='queued').values(state='leased',lease_hash=auth.sha256(token)))
         db.commit()
@@ -483,14 +517,18 @@ def valid_lease(db,p):
 def check(p:Lease,request:Request,db:Session=Depends(get_db)):
     auth.require_device(request);row=valid_lease(db,p)
     session=db.get(OwnerSession,row.owner_sid)
-    return {'execute':bool(row.state=='leased' and row.expires_at>utcnow() and session and session.expires_at>utcnow())}
+    allowed=True
+    if row.action in software.ACTIONS:
+        try:software.require_enabled(row.action)
+        except HTTPException:allowed=False
+    return {'execute':bool(allowed and row.state=='leased' and row.expires_at>utcnow() and session and session.expires_at>utcnow())}
 
 
 @router.post('/api/device/operator/stream')
 def device_stream(event:OutputEvent,request:Request,db:Session=Depends(get_db)):
     auth.require_device(request)
     row=valid_lease(db,event)
-    if row.action!='powershell.exec' or row.state!='leased' or row.expires_at<=utcnow():
+    if row.action not in ({'powershell.exec'} | software.ACTIONS) or row.state!='leased' or row.expires_at<=utcnow():
         raise HTTPException(409,'Command stream no longer active')
     if any(ord(ch)<32 and ch not in '\n\r\t' for ch in event.text):
         raise HTTPException(422,'Invalid output control characters')
@@ -518,12 +556,13 @@ def result(p:Result,request:Request,db:Session=Depends(get_db)):
     from .execution import NATIVE, update_run
     task=db.get(ExecutionTask,row.id)
     success=p.success
-    if task:
+    if task or row.action in software.ACTIONS:
         evidence=NATIVE.verify(row.action,json.loads(row.payload_json),p.result,p.success)
-        task.verification_json=json.dumps(evidence)
+        if task:task.verification_json=json.dumps(evidence)
         if evidence['status']=='unverified':
             success=False
-            raw=json.dumps({'error':'RESULT_VERIFICATION_FAILED','verification_error':evidence['code']})
+            raw=json.dumps({'error':'RESULT_VERIFICATION_FAILED','verification_error':evidence['code'],
+                            **({'status':'unverified'} if row.action in software.ACTIONS else {})})
     # Late results remain available as evidence, but cannot revive expired or
     # cancelled work or claim that a cancellation undid an already-started job.
     if row.state=='leased' and row.expires_at<=utcnow():

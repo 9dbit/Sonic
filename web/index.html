@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="/assets/window-manager-v090.css?v=0.9.0">
   <link rel="stylesheet" href="/assets/sonic-shell-v100.css?v=1.0.0">
   <link rel="stylesheet" href="/assets/model-router-v101.css?v=1.0.1">
+  <link rel="stylesheet" href="/assets/software-manager.css?v=1.1.0">
   <script src="/assets/workspace.js?v=0.9.0" defer></script>
   <script src="/assets/pc-workspace-v089.js?v=0.9.0" defer></script>
   <script src="/assets/app.js?v=0.9.0" defer></script>
@@ -37,6 +38,7 @@
   <script src="/assets/window-manager-v090.js?v=0.9.0" defer></script>
   <script src="/assets/sonic-shell-v100.js?v=1.0.0" defer></script>
   <script src="/assets/model-router-v101.js?v=1.0.1" defer></script>
+  <script src="/assets/software-manager.js?v=1.1.0" defer></script>
 </head>
 <body class="sonic-shell-v100">
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -81,7 +83,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.0.1</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
+        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.1.0</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
@@ -192,6 +194,37 @@
           <p class="pc-window-notice">MetaTrader 5: penutupan terminal dapat menghentikan EA dan otomasi lokal. Posisi broker tidak otomatis ditutup. SONIC tidak akan memaksa aplikasi keluar jika muncul dialog konfirmasi.</p>
           <p id="pcWindowStatus" role="status" aria-live="polite">Memeriksa kemampuan companion.</p>
         </section>
+        <section id="softwareManager" class="operator-panel software-manager" aria-labelledby="softwareTitle">
+          <div class="software-heading"><div><span class="eyebrow">TRADEVICEPC / SOFTWARE</span><h3 id="softwareTitle">Software Manager</h3><p>Cari software, tinjau sumber dan versinya, lalu pasang di PC.</p></div><span id="softwareReady" class="software-tag">Memeriksa koneksi</span></div>
+          <div class="software-grid">
+            <div class="software-controls">
+              <form id="softwareSearchForm" class="software-card">
+                <span class="software-step">01 / CARI</span>
+                <label for="softwareQuery">Nama atau kata kunci software<input id="softwareQuery" maxlength="120" autocomplete="off" placeholder="Contoh: VLC atau Python" required></label>
+                <label class="software-check"><input id="softwareSourceAgreement" type="checkbox"><span>Saya menerima ketentuan sumber WinGet untuk pencarian dan paket yang saya pilih.</span></label>
+                <div class="software-actions"><button id="softwareSearch" type="submit" disabled>Cari software</button><button id="softwareInventory" type="button" class="software-secondary" disabled>Lihat yang terpasang</button></div>
+              </form>
+              <form id="softwareInspectForm" class="software-card">
+                <span class="software-step">02 / PILIH PAKET</span>
+                <p class="software-help">Salin ID paket dan versi dari hasil pencarian untuk memeriksa metadata publisher dan installer.</p>
+                <div class="software-package-fields"><label for="softwarePackage">ID paket<input id="softwarePackage" maxlength="128" autocomplete="off" placeholder="Publisher.NamaPaket" required></label><label for="softwareVersion">Versi<input id="softwareVersion" maxlength="80" autocomplete="off" placeholder="Versi yang dipilih" required></label></div>
+                <label class="software-check"><input id="softwarePackageAgreement" type="checkbox"><span>Saya sudah meninjau dan menerima lisensi paket yang dipilih.</span></label>
+                <div class="software-actions"><button id="softwareInspect" type="submit" class="software-secondary" disabled>Periksa detail</button><button id="softwareReviewInstall" type="button" disabled>Tinjau instalasi</button></div>
+                <p id="softwarePlanHint" class="software-help">Periksa paket dahulu. Instalasi dimulai setelah konfirmasi paket dan versi yang sama.</p>
+              </form>
+            </div>
+            <div class="software-card software-results">
+              <div class="software-result-heading"><span class="software-step">03 / HASIL &amp; STATUS</span><button id="softwareRefresh" class="software-secondary" type="button">Periksa status</button></div>
+              <p id="softwareStatus" class="software-status" role="status" aria-live="polite">Belum ada pekerjaan software.</p>
+              <dl id="softwareSelected" class="software-selected" hidden></dl>
+              <p class="software-help">Metadata berasal dari katalog WinGet. Hasil pencarian belum berarti aplikasi terpasang.</p>
+              <pre id="softwareOutput" class="software-output" tabindex="0" aria-label="Hasil pencarian dan pemeriksaan software">Hasil pencarian dan detail paket akan muncul di sini.</pre>
+              <p id="softwareReceipt" class="software-help"></p>
+              <p class="software-footnote">Instalasi meminta scope akun Windows pengguna. Jika installer membutuhkan izin lokal, SONIC menampilkan tindak lanjut. Restart otomatis tidak diminta.</p>
+            </div>
+          </div>
+          <section class="software-card software-history" aria-labelledby="softwareHistoryTitle"><div class="software-result-heading"><h4 id="softwareHistoryTitle">Riwayat software</h4><button id="softwareRefreshHistory" class="software-secondary" type="button">Muat riwayat</button></div><div id="softwareHistory"><p class="software-help">Riwayat dan hasil pekerjaan tersimpan pada sesi pemilik.</p></div></section>
+        </section>
         <section id="pcCommandCenter" class="operator-panel pc-command-center" aria-label="SONIC PC Command Center">
           <div class="pc-command-heading">
             <div><span class="eyebrow">TRADEVICEPC / V0.8</span><h3>PC Command Center</h3>
@@ -261,6 +294,15 @@
   </div>
   <div id="wakeIndicator" class="wake-indicator hidden" role="status">● Standby mic active · foreground only</div>
   <div id="nodeDetailPopup" class="sonic-popup hidden" role="dialog" aria-label="SONIC node details"><h3 id="nodePopupTitle">Node</h3><p id="nodePopupText"></p><small id="nodePopupSource"></small><div class="popup-actions"><button id="nodePopupSpeak" type="button">Read aloud</button><button id="nodePopupClose" type="button">Close</button></div></div>
+  <dialog id="softwareApproval" class="software-approval" aria-labelledby="softwareApprovalTitle">
+    <span class="software-step">KONFIRMASI INSTALASI</span><h3 id="softwareApprovalTitle">Pasang paket ini di TRADEVICEPC?</h3>
+    <dl id="softwareApprovalDetails" class="software-selected"></dl>
+    <p class="software-help">Paket dan versi di bawah dikirim persis sesuai hasil pemeriksaan. Pilihan lisensi terikat pada permintaan ini.</p>
+    <pre id="softwareApprovalMetadata" class="software-output" tabindex="0" aria-label="Metadata paket yang diperiksa"></pre>
+    <p class="software-footnote">Instalasi dapat mengubah file aplikasi. Menutup halaman tidak membatalkan pekerjaan. Pembatalan bukan rollback perubahan installer.</p>
+    <p id="softwareApprovalExpiry" class="software-help"></p><p id="softwareApprovalError" class="software-status" role="alert"></p>
+    <div class="software-actions"><button id="softwareApprovalCancel" type="button" class="software-secondary">Batal</button><button id="softwareApprovalConfirm" type="button">Setujui &amp; pasang</button></div>
+  </dialog>
   <dialog id="pcApproval" class="operator-review pc-approval" aria-label="Approve exact Windows command">
     <h3>Approve this exact Windows operation?</h3>
     <p>One-time approval, subject to owner login, device lease and command timeout. The command runs as the Limited Windows user and may change files or launch applications.</p>
@@ -280,6 +322,6 @@
     </form>
   </dialog>
   <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb"><img src="/assets/sonic-mark.svg" width="68" height="68" alt="SONIC logo"></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Intelligence,<br><span class="gradient-heading">in your orbit.</span></h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 0.9.0</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb"><img src="/assets/sonic-mark.svg" width="68" height="68" alt="SONIC logo"></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Intelligence,<br><span class="gradient-heading">in your orbit.</span></h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 1.1.0</small></form></div>
 </body>
 </html>

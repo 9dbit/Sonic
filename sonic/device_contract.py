@@ -3,7 +3,7 @@ import math
 import re
 from typing import Any
 
-ACTIONS = frozenset({'desktop.mkdir', 'file.mkdir', 'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect', 'powershell.exec', 'process.terminate', 'window.open', 'window.focus', 'window.close'})
+ACTIONS = frozenset({'desktop.mkdir', 'file.mkdir', 'shell.run', 'file.read', 'mouse.click', 'keyboard.type', 'keyboard.key', 'file.list', 'process.list', 'window.list', 'shell.inspect', 'powershell.exec', 'process.terminate', 'window.open', 'window.focus', 'window.close', 'software.search', 'software.inspect', 'software.inventory', 'software.install'})
 RECIPES = {
     'clock': 'Get-Date -Format o',
     'memory': 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress',
@@ -95,6 +95,9 @@ def clean_workspace_folder(raw: str) -> str:
 def clean_request(action: str, payload: dict) -> dict:
     if action not in ACTIONS or not isinstance(payload, dict):
         raise ValueError('ACTION_NOT_ALLOWED')
+    if action.startswith('software.'):
+        from .software import clean_request as clean_software_request
+        return clean_software_request(action, payload)
     fields = {'shell.run': {'recipe'}, 'file.read': {'path'}, 'mouse.click': {'window', 'x', 'y'},
               'keyboard.type': {'window', 'text'}, 'keyboard.key': {'window', 'key'},
               'file.list': {'path'}, 'file.mkdir': {'path'}, 'desktop.mkdir': {'name'}, 'process.list': set(), 'window.list': set(), 'shell.inspect': {'command'},

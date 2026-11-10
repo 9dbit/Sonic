@@ -70,7 +70,10 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
                     summary='Belum ada tugas PC pada login ini.'
             else:
                 status='needs_clarification'
-                summary=('Belum ada window yang dibuka atau ditutup. Sebutkan satu aplikasi: Notepad, Paint, atau MetaTrader 5.'
+                summary=('Gunakan “cari software nama aplikasi” atau “periksa software Package.Id versi 1.2.3”. '
+                         'Paket yang sudah diperiksa dapat ditinjau dan dipasang melalui Devices > Software Manager.'
+                         if any(word in text.casefold() for word in ('software','install','instal','pasang')) else
+                         'Belum ada window yang dibuka atau ditutup. Sebutkan satu aplikasi: Notepad, Paint, atau MetaTrader 5.'
                          if looks_like_window_command(text) else
                          'Belum ada perintah yang dijalankan. Sebutkan satu nama folder dan lokasi tujuan yang jelas.')
             answer=_record_answer(db,summary)
@@ -106,7 +109,12 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
                         desc=(f"folder {chat_action.payload.get('path')}" if chat_action.action=='file.mkdir'
                               else f"folder {chat_action.payload.get('name')} di Desktop" if chat_action.action=='desktop.mkdir'
                               else chat_action.action)
-                        answer=_record_answer(db,'Saya jalankan '+desc+' di TRADEVICEPC tanpa konfirmasi tambahan. Menunggu konfirmasi hasil dari Windows agent...')
+                        if chat_action.action.startswith('software.'):
+                            answer=_record_answer(db,'Saya periksa software melalui WinGet di TRADEVICEPC. '
+                                'Ini pencarian/pemeriksaan; belum ada software yang diinstal. '
+                                'Hasil dari Windows akan muncul di sini. Tinjau paket dan versi di Devices > Software Manager untuk memasang.')
+                        else:
+                            answer=_record_answer(db,'Saya jalankan '+desc+' di TRADEVICEPC tanpa konfirmasi tambahan. Menunggu konfirmasi hasil dari Windows agent...')
                     else:
                         operator_proposals.append({'id':job['id'],'action':job['action']})
                         preview=json.dumps(chat_action.payload,ensure_ascii=False,indent=2)
