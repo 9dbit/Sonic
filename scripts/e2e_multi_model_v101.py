@@ -126,7 +126,7 @@ with sync_playwright() as playwright:
                 assert not test_calls, "Login/readiness must not trigger a provider test"
 
                 if not deepseek_key:
-                    expect(page.locator(f'#brainModelSelect option[value="{DEEPSEEK}"]')).to_be_disabled()
+                    expect(page.locator(f'#brainModelSelect option[value="{DEEPSEEK}"]')).to_have_js_property("disabled", True)
                     expect(key_row).to_contain_text("Key belum diisi")
                     model = "z-ai/glm-5.3-prime" if viewport == "desktop" else "z-ai/glm-5.3"
                     if viewport == "desktop":
@@ -136,7 +136,7 @@ with sync_playwright() as playwright:
                     activate(page, "openrouter|" + model, "ke OpenRouter serta penyedia model")
                     selection = "openrouter|" + model
                 else:
-                    expect(page.locator(f'#brainModelSelect option[value="{DEEPSEEK}"]')).to_be_enabled()
+                    expect(page.locator(f'#brainModelSelect option[value="{DEEPSEEK}"]')).to_have_js_property("disabled", False)
                     expect(key_row).to_contain_text("Key terkonfigurasi")
                     if viewport == "mobile":
                         # This viewport observes the preceding owner's persisted
