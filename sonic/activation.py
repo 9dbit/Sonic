@@ -7,7 +7,7 @@ import time
 from . import auth
 from .config import setting, owner_ready, device_ready
 from .db import get_db, Device, utcnow
-from .providers import complete, configured, record_usage, selected_model
+from .providers import complete, configured, provider_key_env, record_usage, selected_model
 
 router = APIRouter()
 
@@ -30,11 +30,12 @@ def setup_status(request: Request, _: dict = Depends(auth.require_owner), db: Se
         "provider": selected.provider, "model": selected.model,
         "openai_key_configured": configured("openai"),
         "openrouter_key_configured": configured("openrouter"),
+        "deepseek_key_configured": configured("deepseek"),
         "device_credential_configured": device_ready(),
         "device_online": online, "device_id": setting("SONIC_DEVICE_ID", "TRADEVICEPC"),
         "voice_mode": "realtime_opt_in" if setting("SONIC_REALTIME_ENABLED", "false").lower() == "true" else "browser_speech", "computer_control_enabled": False,
         "ready_for_chat_request": key_present,
-        "remaining": [] if key_present else ["OPENAI_API_KEY" if selected.provider == "openai" else "OPENROUTER_API_KEY"]
+        "remaining": [] if key_present else [provider_key_env(selected.provider)]
     }
 
 
@@ -47,7 +48,8 @@ async def test_provider(_: dict = Depends(auth.require_owner_write), db: Session
     """
     selection = selected_model(db)
     if not configured(selection.provider):
-        raise HTTPException(status_code=503, detail="Configure the selected provider API key in Railway Variables")
+        raise HTTPException(status_code=503,
+                            detail="Configure " + provider_key_env(selection.provider) + " in Railway Variables")
     payload = {
         "model": selection.model,
         "instructions": "Reply only with SONIC_OK, no explanation.",

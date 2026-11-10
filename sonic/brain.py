@@ -1,4 +1,4 @@
-"""OpenAI conversation with verified local memory writes and bounded tools."""
+"""Selected-provider conversation with verified memory writes and bounded tools."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from .config import setting
-from .providers import complete, configured, record_usage, selected_model
+from .providers import complete, configured, provider_key_env, record_usage, selected_model
 from .db import ChatMessage, Device, DeviceJob, chat_history, utcnow
 from .operator import device_metrics
 from .integrations import integration_snapshot
@@ -156,7 +156,7 @@ async def reply(db: Session, latest_user_text: str) -> str:
     selection = selected_model(db)
     if not configured(selection.provider):
         # Keep the previous OpenAI error contract for existing clients/tests.
-        required = "OPENAI_API_KEY" if selection.provider == "openai" else "OPENROUTER_API_KEY"
+        required = provider_key_env(selection.provider)
         raise HTTPException(503, "SONIC brain needs " + required + " on the server")
     _record_user(db, latest_user_text)
     items: list[dict] = chat_history(db, 16)

@@ -1,9 +1,10 @@
-name: SONIC Multi-Model Router V1.0
+name: SONIC Multi-Model Router
 
 on:
   push:
     branches:
       - feat/sonic-multi-model-router-20261027
+      - 'feat/sonic-deepseek-*'
   pull_request:
     paths:
       - 'sonic/providers.py'
@@ -17,7 +18,12 @@ on:
       - 'web/model-router-v101.css'
       - 'web/model-router-v101.js'
       - 'tests/test_multi_model_v101.py'
+      - 'tests/test_deepseek_provider.py'
+      - 'tests/conftest.py'
+      - 'tests/js/model-router.test.cjs'
+      - '.env.example'
       - 'scripts/e2e_multi_model_v101.py'
+      - 'scripts/qa_server.py'
       - '.github/workflows/multi-model-v101.yml'
 
 permissions:
@@ -45,7 +51,8 @@ jobs:
           node --check web/sonic-shell-v100.js
       - name: Security, Chat engine, Voice and provider regressions
         run: |
-          python -m pytest -q tests/test_multi_model_v101.py tests/test_activation.py tests/test_engine_v04.py tests/test_voice_v04.py tests/test_brain_and_companion.py
+          python -m pytest -q
+          node --test tests/js/*.test.cjs
 
   selector-browser:
     runs-on: ubuntu-latest
@@ -59,7 +66,7 @@ jobs:
         run: |
           python -m pip install -r requirements.txt playwright==1.56.0
           python -m playwright install --with-deps chromium
-      - name: Desktop and mobile model selector with synthetic local API key
+      - name: Desktop and mobile provider selection with synthetic keys and test responses
         run: python scripts/e2e_multi_model_v101.py
       - name: Upload synthetic screenshots only
         if: always()

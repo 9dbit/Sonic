@@ -16,6 +16,14 @@
   let generation=0;
   let working=false;
   let lastModels=[];
+  const providers={
+    openai:{label:'OpenAI',key:'OPENAI_API_KEY',
+      sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim ke OpenAI.'},
+    openrouter:{label:'OpenRouter',key:'OPENROUTER_API_KEY',
+      sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim ke OpenRouter serta penyedia model.'},
+    deepseek:{label:'DeepSeek',key:'DEEPSEEK_API_KEY',
+      sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim langsung ke DeepSeek.'}
+  };
 
   const status = message => {
     if($('brainModelStatus')) $('brainModelStatus').textContent=message;
@@ -26,6 +34,7 @@
     working=false;
     lastModels=[];
     $('brainModelSelect')?.replaceChildren();
+    $('brainProviderStatus')?.replaceChildren();
     $('brainModelMetrics')?.replaceChildren();
     if($('applyBrainModel')) $('applyBrainModel').disabled=true;
     status('Login owner diperlukan untuk mengatur model SONIC.');
@@ -47,7 +56,26 @@
 
   function updateButton(){
     const option=lastModels.find(item=>item.provider+'|'+item.model===$('brainModelSelect').value);
-    $('applyBrainModel').disabled=working||!option||!option.key_configured||!!option.selected;
+    $('applyBrainModel').disabled=working||!option||!Object.hasOwn(providers,option.provider)||
+      option.key_configured!==true||!!option.selected;
+  }
+
+  function renderProviderStatus(){
+    const host=$('brainProviderStatus');
+    if(!host)return;
+    host.replaceChildren();
+    for(const [id,provider] of Object.entries(providers)){
+      const options=lastModels.filter(item=>item.provider===id);
+      if(!options.length)continue;
+      const configured=options.some(item=>item.key_configured===true);
+      const row=text('div','','model-provider-row');
+      row.dataset.provider=id;
+      const info=text('div','');
+      info.append(text('strong',provider.label),text('small',provider.key));
+      row.append(info,text('span',configured?'Key terkonfigurasi':'Key belum diisi',
+        'model-provider-state'+(configured?' configured':'')));
+      host.append(row);
+    }
   }
 
   function renderUsage(events){
@@ -83,15 +111,17 @@
     for(const item of lastModels){
       const option=document.createElement('option');
       option.value=item.provider+'|'+item.model;
-      option.textContent=item.label+(item.key_configured?'':' · API key missing');
-      option.disabled=!item.key_configured;
+      option.textContent=item.label+(item.key_configured===true?'':' · API key missing');
+      option.disabled=item.key_configured!==true||!Object.hasOwn(providers,item.provider);
       option.selected=!!item.selected;
       select.append(option);
     }
     const selected=data.selected||{};
-    status('Active chat: '+selected.provider+' / '+selected.model+
+    status('Pilihan chat: '+selected.provider+' / '+selected.model+
+           (selected.key_configured===true?'':'. API key pilihan ini belum terkonfigurasi')+
            '. Realtime Voice dan Vision tetap menggunakan OpenAI.');
     updateButton();
+    renderProviderStatus();
     renderUsage(data.usage||[]);
   }
 
@@ -114,11 +144,9 @@
     if(working)return;
     const [provider,model]=String($('brainModelSelect').value).split('|',2);
     const item=lastModels.find(x=>x.provider===provider&&x.model===model);
-    if(!item||!item.key_configured||item.selected)return;
+    if(!item||item.key_configured!==true||item.selected||!Object.hasOwn(providers,provider))return;
     if(!confirm('Aktifkan '+item.label+' untuk chat SONIC?\n\n'+
-      (provider==='openrouter'
-        ?'Konteks percakapan, catatan Memory Vault yang dipakai, dan hasil tool dapat dikirim ke OpenRouter serta penyedia model.'
-        :'Chat akan dikirim ke OpenAI.')+
+      providers[provider].sharing+
       '\n\nOpenAI Realtime Voice dan Vision tidak berubah. Tidak ada fallback otomatis.'))return;
     working=true;updateButton();
     try{

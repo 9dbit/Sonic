@@ -16,12 +16,12 @@ from sqlalchemy.orm import Session
 from . import auth
 from .brain import reply
 from .config import database_ready, model_name, owner_ready, setting, public_url
-from .providers import configured, selected_model
+from .providers import any_configured, selected_model
 from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_messages, utcnow
 from .memory import save_note, delete_note, record
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 
 
 @asynccontextmanager
@@ -98,7 +98,7 @@ def home():
 @app.get("/api/health")
 def health():
     return {"service": "SONIC", "status": "ok",
-            "setup_required": not (owner_ready() and database_ready() and (configured("openai") or configured("openrouter"))),
+            "setup_required": not (owner_ready() and database_ready() and any_configured()),
             "version": VERSION}
 
 
