@@ -112,15 +112,29 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
                        ('mobile',{'width':390,'height':844}),
                        ('small',{'width':360,'height':780})]:
         page=browser.new_page(viewport=size)
-        errors=[]; calls=[]
+        errors=[]; calls=[]; voice_calls=[]; reject_chat=[True]; reject_voice=[True]
         page.on('pageerror',lambda e:errors.append(str(e)))
         def fake_chat(route):
             calls.append(route.request.post_data_json)
+            if reject_chat[0]:
+                reject_chat[0]=False
+                route.fulfill(status=403,json={'detail':'Preview CSRF token required'})
+                return
             route.fulfill(status=200,json={'reply':'SONIC preview model replied.',
                 'operator_jobs':[],'operator_proposals':[],'memory_events':[],
                 'memory_references':[],'ui_actions':[]})
+        def fake_voice(route):
+            if route.request.method=='POST' and route.request.url.endswith('/api/preview/voice/sessions'):
+                voice_calls.append(route.request.post_data_json)
+                if reject_voice[0]:
+                    reject_voice[0]=False
+                    route.fulfill(status=403,json={'detail':'Preview CSRF token required'})
+                    return
+                route.fulfill(status=200,json={'model':'gpt-realtime','session_id':'synthetic','sdp':'v=0','expires_at':'2026-11-13T02:00:00Z'})
+                return
+            route.fulfill(status=200,json={'provider_close_confirmed':True})
         page.route('**/api/preview/chat',fake_chat)
-        page.route('**/api/preview/voice/**',lambda route:route.fulfill(status=503,json={'detail':'Offline synthetic voice test'}))
+        page.route('**/api/preview/voice/**',fake_voice)
         page.goto(url,wait_until='networkidle')
         expect(page.locator('#loginOverlay')).to_be_hidden()
         expect(page.locator('.orbit-preview-pill')).to_have_text('STAGING')
@@ -140,7 +154,7 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
         page.locator('#brainMessage').fill('Hello SONIC')
         page.locator('#brainSend').click()
         expect(page.locator('#brainAnswerText')).to_have_text('SONIC preview model replied.',timeout=10000)
-        assert calls[-1]['provider']=='deepseek'
+        assert calls[-1]['provider']=='deepseek' and len(calls)==2, 'CSRF denial must retry just once'
         page.locator('#previewModelPicker select').select_option('openai|gpt-4.1-mini')
         expect(page.locator('#brainPill')).to_contain_text('gpt-4.1-mini')
         page.locator('.nav[data-tab="chat"]').click()
@@ -152,12 +166,19 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
         # Prove the gesture connects to the existing voice controller without
         # fetching user microphone/audio or charging the provider in CI.
         page.evaluate("""()=>{window.__previewStarts=0;
-           SonicVoice.prototype.start=async function(){window.__previewStarts++;this.setState('listening');};}""")
+           SonicVoice.prototype.start=async function(){
+             window.__previewStarts++;
+             await this.options.api('/api/voice/sessions',{
+               method:'POST',body:JSON.stringify({session_id:crypto.randomUUID(),sdp:'synthetic',consent:true})
+             });
+             this.setState('listening');
+           };}""")
         page.locator('.nav[data-tab="brain"]').click()
         page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(60)
         assert page.evaluate('window.__previewStarts')==0
         page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(150)
         assert page.evaluate('window.__previewStarts')==1
+        assert len(voice_calls)==2, 'CSRF voice denial must retry exactly once'
         assert page.evaluate('sonicMotion.focused') is True
         expect(page.locator('#voiceStop')).to_be_visible()
         page.locator('#voiceStop').click()

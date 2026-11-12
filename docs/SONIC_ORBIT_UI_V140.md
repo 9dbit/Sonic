@@ -31,3 +31,8 @@ The 1.4.1 open-preview mode hid authentication but set `csrf=null`, bypassed gra
 4. Verify unauthenticated `/api/history`, owner `/api/chat`, `/api/device/status` and login remain locked. A single bounded provider text request can verify production API response. Do not claim microphone tested until user tests it on device.
 
 TRADEVICEPC Windows Companion, Markstudios and Chatvice remain untouched.
+
+## v1.4.3 browser integration fix
+- Four parallel browser components may request /api/session before the first cookie settles. Their responses can establish different signed guest cookies; the app's first CSRF token can then be stale. Backend cookies are persistent across repeated requests, but first-load concurrency still requires reconciliation.
+- Client retries a paid preview POST once only upon exact server-generated guest CSRF/expiry rejection; it re-reads the same-origin /api/session and updates the signed guest CSRF for chat and WebRTC. The initial 403 reserves no upstream budget or API cost.
+- End-to-end browser test injects the exact 403 for both chat and voice, verifies retry and no tools/provider execution, and checks 24-node 3D rendering across desktop/tablet/phones.

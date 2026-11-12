@@ -44,8 +44,23 @@
     const headers={'Content-Type':'application/json',...(opts.headers||{})};
     if(openPreview&&opts.method&&opts.method!=='GET')headers['X-Sonic-Preview-CSRF']=previewCsrf;
     else if(csrf&&opts.method&&opts.method!=='GET')headers['X-Sonic-CSRF']=csrf;
-    const response=await fetch(path,{credentials:'same-origin',...opts,headers});
-    const body=await response.json().catch(()=>({}));
+    let response=await fetch(path,{credentials:'same-origin',...opts,headers});
+    let body=await response.json().catch(()=>({}));
+    // Other SONIC modules may request /api/session concurrently on first load.
+    // Their first Set-Cookie responses can race. Only a verified CSRF refusal
+    // (before an upstream provider call) is safe to retry once.
+    if(openPreview&&response.status===403
+        &&['Preview CSRF token required','Invalid or expired preview browser. Refresh the page.'].includes(body.detail)
+        &&(path==='/api/preview/chat'||path.startsWith('/api/preview/voice/sessions'))){
+      const fresh=await fetch('/api/session',{credentials:'same-origin',cache:'no-store'});
+      const session=fresh.ok?await fresh.json().catch(()=>({})):{};
+      if(session.preview===true&&typeof session.preview_csrf==='string'&&session.preview_csrf.length===64){
+        previewCsrf=session.preview_csrf;
+        headers['X-Sonic-Preview-CSRF']=previewCsrf;
+        response=await fetch(path,{credentials:'same-origin',...opts,headers});
+        body=await response.json().catch(()=>({}));
+      }
+    }
     if(response.status===401&&path!=='/api/login'&&!openPreview){csrf=null;clearPrivateUI();$('loginOverlay').classList.remove('hidden');}
     if(!response.ok){const detail=body.detail||body.error;const error=Error(typeof detail==='string'?detail:'Request failed (HTTP '+response.status+')');error.status=response.status;throw error;}
     return body;
