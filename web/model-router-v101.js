@@ -1,11 +1,6 @@
-/* SONIC V1.0 Model Router UI.
- * Isolated from the Neural, Motion, Voice and PC command controllers.
- * Never stores API keys, session secrets, chat history or model selections
- * in browser storage. All mutations go through existing owner cookie+CSRF.
- */
+/* SONIC Model Router UI. No API keys or choices in browser storage. */
 (() => {
   'use strict';
-
   const $ = id => document.getElementById(id);
   const text = (tag, value, klass='') => {
     const node = document.createElement(tag);
@@ -16,6 +11,7 @@
   let generation=0;
   let working=false;
   let lastModels=[];
+  let draftSelection=null;
   const providers={
     openai:{label:'OpenAI',key:'OPENAI_API_KEY',
       sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim ke OpenAI.'},
@@ -24,42 +20,37 @@
     deepseek:{label:'DeepSeek',key:'DEEPSEEK_API_KEY',
       sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim langsung ke DeepSeek.'}
   };
-
   const status = message => {
     if($('brainModelStatus')) $('brainModelStatus').textContent=message;
   };
-
   function reset(){
     generation++;
     working=false;
     lastModels=[];
+    draftSelection=null;
     $('brainModelSelect')?.replaceChildren();
     $('brainProviderStatus')?.replaceChildren();
     $('brainModelMetrics')?.replaceChildren();
     if($('applyBrainModel')) $('applyBrainModel').disabled=true;
     status('Login owner diperlukan untuk mengatur model SONIC.');
   }
-
   async function request(path, options={}){
     const response=await fetch(path,{
-      method:options.method||'GET',
-      credentials:'same-origin',
+      method:options.method||'GET', credentials:'same-origin',
       headers:{'Content-Type':'application/json',...(options.csrf?{'X-Sonic-CSRF':options.csrf}:{})},
       ...(options.body?{body:JSON.stringify(options.body)}:{})
     });
     const value=await response.json().catch(()=>({}));
     if(response.status===401){reset();throw Error('Session owner berakhir. Login kembali.');}
-    if(!response.ok)throw Error(
-      typeof value.detail==='string'?value.detail:'SONIC model request failed (HTTP '+response.status+')');
+    if(!response.ok)throw Error(typeof value.detail==='string'?value.detail:'SONIC model request failed (HTTP '+response.status+')');
     return value;
   }
-
   function updateButton(){
     const option=lastModels.find(item=>item.provider+'|'+item.model===$('brainModelSelect').value);
+    $('brainModelSelect').disabled=working;
     $('applyBrainModel').disabled=working||!option||!Object.hasOwn(providers,option.provider)||
       option.key_configured!==true||!!option.selected;
   }
-
   function renderProviderStatus(){
     const host=$('brainProviderStatus');
     if(!host)return;
@@ -68,8 +59,7 @@
       const options=lastModels.filter(item=>item.provider===id);
       if(!options.length)continue;
       const configured=options.some(item=>item.key_configured===true);
-      const row=text('div','','model-provider-row');
-      row.dataset.provider=id;
+      const row=text('div','','model-provider-row');row.dataset.provider=id;
       const info=text('div','');
       info.append(text('strong',provider.label),text('small',provider.key));
       row.append(info,text('span',configured?'Key terkonfigurasi':'Key belum diisi',
@@ -77,54 +67,49 @@
       host.append(row);
     }
   }
-
   function renderUsage(events){
-    const host=$('brainModelMetrics');
-    host.replaceChildren();
+    const host=$('brainModelMetrics');host.replaceChildren();
     if(!Array.isArray(events)||!events.length){
       host.append(text('p','Belum ada panggilan model yang dicatat. Tes koneksi dan chat dapat dikenakan biaya API.','small-note'));
       return;
     }
     const list=text('div','','model-usage-rows');
     for(const event of events.slice(0,8)){
-      const row=text('div','','model-usage-row');
-      const info=text('div','');
-      const model=(event.provider||'unknown')+' / '+(event.model||'unknown');
-      info.append(text('strong',model));
+      const row=text('div','','model-usage-row'),info=text('div','');
+      info.append(text('strong',(event.provider||'unknown')+' / '+(event.model||'unknown')));
       const tokens=(event.input_tokens??'—')+' input · '+(event.output_tokens??'—')+' output tokens';
       const ms=Number.isFinite(event.latency_ms)?event.latency_ms+' ms':'Latency unavailable';
       const price=typeof event.provider_reported_cost_usd==='number'
-        ?' · $'+event.provider_reported_cost_usd.toFixed(5)+' reported cost'
-        :' · cost unavailable';
+        ?' · $'+event.provider_reported_cost_usd.toFixed(5)+' reported cost':' · cost unavailable';
       info.append(text('small',ms+' · '+tokens+price));
-      row.append(info,text('span',event.status||'unknown',
-        'model-usage-status'+(event.status==='ok'?'':' error')));
+      row.append(info,text('span',event.status||'unknown','model-usage-status'+(event.status==='ok'?'':' error')));
       list.append(row);
     }
     host.append(list);
   }
-
   function render(data){
     lastModels=Array.isArray(data.models)?data.models:[];
     const select=$('brainModelSelect');
+    // An async usage/readiness refresh must not discard the owner's unsaved
+    // dropdown choice. A removed/unconfigured choice is never preserved.
+    const draft=lastModels.find(item=>item.provider+'|'+item.model===draftSelection&&
+      item.key_configured===true&&Object.hasOwn(providers,item.provider));
+    if(!draft||draft.selected)draftSelection=null;
     select.replaceChildren();
     for(const item of lastModels){
       const option=document.createElement('option');
       option.value=item.provider+'|'+item.model;
       option.textContent=item.label+(item.key_configured===true?'':' · API key missing');
       option.disabled=item.key_configured!==true||!Object.hasOwn(providers,item.provider);
-      option.selected=!!item.selected;
+      option.selected=draftSelection?option.value===draftSelection:!!item.selected;
       select.append(option);
     }
     const selected=data.selected||{};
     status('Pilihan chat: '+selected.provider+' / '+selected.model+
-           (selected.key_configured===true?'':'. API key pilihan ini belum terkonfigurasi')+
-           '. Realtime Voice dan Vision tetap menggunakan OpenAI.');
-    updateButton();
-    renderProviderStatus();
-    renderUsage(data.usage||[]);
+      (selected.key_configured===true?'':'. API key pilihan ini belum terkonfigurasi')+
+      '. Realtime Voice dan Vision tetap menggunakan OpenAI.');
+    updateButton();renderProviderStatus();renderUsage(data.usage||[]);
   }
-
   async function refresh(){
     const requestId=++generation;
     if(!$('brainModelSelect'))return;
@@ -139,14 +124,12 @@
       status('Model Router tidak tersedia: '+error.message);
     }
   }
-
   async function activate(){
     if(working)return;
     const [provider,model]=String($('brainModelSelect').value).split('|',2);
     const item=lastModels.find(x=>x.provider===provider&&x.model===model);
     if(!item||item.key_configured!==true||item.selected||!Object.hasOwn(providers,provider))return;
-    if(!confirm('Aktifkan '+item.label+' untuk chat SONIC?\n\n'+
-      providers[provider].sharing+
+    if(!confirm('Aktifkan '+item.label+' untuk chat SONIC?\n\n'+providers[provider].sharing+
       '\n\nOpenAI Realtime Voice dan Vision tidak berubah. Tidak ada fallback otomatis.'))return;
     working=true;updateButton();
     try{
@@ -156,39 +139,33 @@
         method:'PUT',csrf:session.csrf,body:{provider,model}
       });
       if(!result.saved)throw Error('Perubahan model tidak terkonfirmasi.');
-      // Refresh the original SONIC Setup readiness and model badges.
+      draftSelection=null;
       $('refreshSetup')?.click();
       await refresh();
       status('Model chat aktif: '+provider+' / '+model+'. Voice tetap OpenAI Realtime.');
-    }catch(error){
-      status('Perubahan dibatalkan: '+error.message);
-    }finally{
-      working=false;updateButton();
-    }
+    }catch(error){status('Perubahan dibatalkan: '+error.message);}
+    finally{working=false;updateButton();}
   }
-
   function init(){
     if(!$('brainModelControl'))return;
     $('applyBrainModel').addEventListener('click',activate);
-    $('brainModelSelect').addEventListener('change',updateButton);
+    $('brainModelSelect').addEventListener('change',()=>{
+      draftSelection=$('brainModelSelect').value;updateButton();
+    });
     document.querySelector('.nav[data-tab="setup"]')?.addEventListener('click',refresh);
     $('refreshSetup')?.addEventListener('click',refresh);
     const login=$('loginOverlay');
     if(login){
-      const observer=new MutationObserver(()=>{
-        if(login.classList.contains('hidden')) refresh();
-        else reset();
-      });
-      observer.observe(login,{attributes:true,attributeFilter:['class']});
+      new MutationObserver(()=>{
+        if(login.classList.contains('hidden'))refresh();else reset();
+      }).observe(login,{attributes:true,attributeFilter:['class']});
     }
-    // Native test button remains the only way to spend provider tokens on a
-    // connectivity check. Only update the recent-usage display after it ends.
     const feedback=$('setupMessage');
     if(feedback){
       new MutationObserver(()=>{
         const value=feedback.textContent||'';
-        if(/verified|passed|gagal|unavailable|failed|check response/i.test(value)
-           && $('loginOverlay')?.classList.contains('hidden')) refresh();
+        if(/verified|passed|gagal|unavailable|failed|check response/i.test(value)&&
+           $('loginOverlay')?.classList.contains('hidden'))refresh();
       }).observe(feedback,{characterData:true,childList:true,subtree:true});
     }
     if(login?.classList.contains('hidden'))refresh();
