@@ -23,7 +23,7 @@ from .passkeys import router as passkey_router, enabled as passwordless_enabled
 from .passkey_ui import render as render_passkey_page
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.3.0'
+VERSION = '1.4.0'
 
 
 @asynccontextmanager

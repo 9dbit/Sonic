@@ -1,16 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
-  <title id="title">SONIC</title>
-  <desc id="desc">A minimal luminous S shaped acoustic orbit</desc>
-  <defs>
-    <linearGradient id="signal" x1=".1" y1="0" x2=".9" y2="1">
-      <stop offset="0" stop-color="#90F6FF"/>
-      <stop offset=".55" stop-color="#38BDEB"/>
-      <stop offset="1" stop-color="#3D6BFF"/>
-    </linearGradient>
-  </defs>
-  <rect x="3" y="3" width="122" height="122" rx="32" fill="#080E19"/>
-  <rect x="3.5" y="3.5" width="121" height="121" rx="31.5" stroke="#5CCFEF" stroke-opacity=".24" fill="none"/>
-  <path d="M86 35c-8-8-19-12-31-9-13 3-22 12-22 23 0 11 11 17 30 21 20 5 31 11 31 24 0 12-13 22-29 22-13 0-24-6-31-14" transform="translate(0 -7)" fill="none" stroke="url(#signal)" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="93" cy="34" r="4" fill="#8CF3FF"/>
-  <circle cx="34" cy="96" r="4" fill="#3F79FF"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 180" fill="none" role="img" aria-label="SONIC orb">
+<defs>
+ <linearGradient id="rim" x1="32" y1="20" x2="128" y2="140" gradientUnits="userSpaceOnUse"><stop stop-color="#e0e4ff"/><stop offset=".28" stop-color="#9d8aff"/><stop offset=".58" stop-color="#7650db"/><stop offset=".83" stop-color="#53b7f7"/><stop offset="1" stop-color="#b67ae2"/></linearGradient>
+ <radialGradient id="core" cx=".28" cy=".12" r=".93"><stop stop-color="#7c8bb4"/><stop offset=".35" stop-color="#17182f"/><stop offset=".68" stop-color="#0a0b17"/><stop offset="1" stop-color="#572050"/></radialGradient>
+ <radialGradient id="bloom"><stop stop-color="#6954ff" stop-opacity=".6"/><stop offset="1" stop-color="#6954ff" stop-opacity="0"/></radialGradient>
+ <linearGradient id="eyes" x1="0" y1="50" x2="0" y2="95" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#b1b8e4"/></linearGradient>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<style>
+ .body{transform-origin:80px 138px;animation:jump 4.4s ease-in-out infinite}
+ .shadow{transform-origin:80px 166px;animation:shadow 4.4s ease-in-out infinite}
+ .look{animation:look 9s ease-in-out infinite}
+ .eyes{transform-origin:80px 72px;animation:blink 5.3s infinite}
+ @keyframes jump{0%,8%,46%,100%{transform:translateY(0)}20%,30%{transform:translateY(-10px)}40%{transform:translateY(2px) scale(1.025,.975)}}
+ @keyframes shadow{0%,8%,46%,100%{opacity:.4;transform:scaleX(1)}20%,30%{opacity:.15;transform:scaleX(.7)}}
+ @keyframes look{0%,17%,44%,55%,87%,100%{transform:translateX(0)}24%,36%{transform:translateX(-9px)}64%,78%{transform:translateX(9px)}}
+ @keyframes blink{0%,34%,39%,74%,79%,100%{transform:scaleY(1)}36%,37%,76%,77%{transform:scaleY(.08)}}
+ @media(prefers-reduced-motion:reduce){.body,.shadow,.look,.eyes{animation:none}}
+</style>
+<ellipse class="shadow" cx="80" cy="166" rx="29" ry="4" fill="#8370f6" opacity=".4" filter="url(#glow)"/>
+<g class="body"><circle cx="80" cy="80" r="78" fill="url(#bloom)"/>
+ <circle cx="80" cy="80" r="57" stroke="url(#rim)" stroke-width="14" opacity=".7" filter="url(#glow)"/>
+ <circle cx="80" cy="80" r="58" fill="url(#core)" stroke="url(#rim)" stroke-width="7"/>
+ <path d="M29 57A55 55 0 0 1 112 35" stroke="#e6eaff" stroke-opacity=".45" stroke-width="1.5" stroke-linecap="round"/>
+ <g class="look"><g class="eyes"><rect x="54" y="51" width="14" height="38" rx="7" fill="url(#eyes)"/><rect x="84" y="51" width="14" height="38" rx="7" fill="url(#eyes)"/></g></g>
+ <circle cx="142" cy="35" r="1.6" fill="#abbfff"/><circle cx="18" cy="117" r="1.4" fill="#90b5ff"/>
+</g></svg>

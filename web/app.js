@@ -24,6 +24,7 @@
   function notify(message){clearTimeout(toastTimer);$('notice').textContent=String(message);$('notice').classList.remove('hidden');toastTimer=setTimeout(()=>$('notice').classList.add('hidden'),7000);}
   function activityState(next){activity=next;window.sonicMotion?.setState(next);$('assistantCore').dataset.state=next;$('activityLabel').textContent=({idle:'READY',thinking:'THINKING',saving:'SAVED',listening:'LISTENING',speaking:'SPEAKING',error:'UNAVAILABLE'})[next]||'READY';}
   function clearPrivateUI(){
+    window.dispatchEvent(new CustomEvent('sonic:overview',{detail:{kind:'clear'}}));
     window.sonicMotion?.returnHome();window.sonicWorkspace?.clear();window.sonicPCWorkspace?.clear();window.sonicWindows?.clear();
     $('executionTasks').replaceChildren();watchingJobs.clear();
     wake?.stop();liveVoice?.stop('session_expired');speechAudio?.pause();$('voiceProposalHost').replaceChildren();
@@ -42,6 +43,7 @@
   function setTab(tab){if(!tabs[tab])return;currentTab=tab;for(const [name,id] of Object.entries(tabs))$(id).classList.toggle('hidden',name!==tab);
     if(window.sonicWorkspace){window.sonicWorkspace.visible=tab==='workspace';if(tab==='workspace'&&window.sonicPCWorkspace?.mode!=='pc')window.sonicWorkspace.refresh().catch(e=>notify(e.message));}
     document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
+    window.dispatchEvent(new CustomEvent('sonic:tab',{detail:{tab}}));
     $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&!!csrf);
     if(!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});window.sonicWindows?.refresh().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadTasks();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
   }
@@ -54,6 +56,7 @@
       const data=await API('/api/knowledge/graph');if(!csrf)return;graphData=data;
       const fingerprint=JSON.stringify({nodes:data.nodes.map(n=>[n.id,n.label,n.degree,n.state,n.category==='integration'?n.adapters?.map(a=>[a.id,a.state,a.verification,a.recent_completed_jobs,a.last_job_state]):null]),edges:data.edges.map(e=>[e.id,e.label])});
       if(fingerprint!==graphFingerprint){graph.setData(data);graphFingerprint=fingerprint;}
+      window.dispatchEvent(new CustomEvent('sonic:overview',{detail:{kind:'memory',count:data.counts.memories}}));
       $('graphCounts').textContent=data.counts.memories+' memories / '+data.counts.nodes+' nodes / '+data.counts.edges+' links';
       $('graphEmpty').classList.toggle('hidden',data.counts.memories!==0);
       $('graphLimit').textContent=data.truncated?'Tampilan dibatasi '+data.counts.displayed_memories+' catatan / '+data.limits.topics+' topik.':'';
@@ -286,9 +289,10 @@
       $('telemetryFill').style.width=ready?Math.max(0,Math.min(100,100-(100*m.ram_available_bytes/m.ram_total_bytes)))+'%':'0%';
       $('telemetrySource').textContent=ready?('Authenticated Windows telemetry · '+telemetry.metrics_age_seconds+' sec ago'):
         (d.connected?'PC is connected, but legacy companion does not transmit RAM. Upgrade companion from a trusted local Windows session.':telemetry.notice);
+      window.dispatchEvent(new CustomEvent('sonic:overview',{detail:{kind:'device',connected:d.connected,available:telemetry.metrics_available,cpu:m.cpu_usage_percent,ram:m.ram_used_percent}}));
       renderTaskManager(m,telemetry.metrics_available);
        const hint=$('companionUpgradeHint');if(hint){hint.classList.toggle('hidden',ready||!d.connected);}
-    }catch(error){$('deviceDetail').textContent=error.message;$('devicePill').textContent='PC unavailable';$('devicePill').className='pill offline';}}
+    }catch(error){window.dispatchEvent(new CustomEvent('sonic:overview',{detail:{kind:'device',connected:false,available:false}}));$('deviceDetail').textContent=error.message;$('devicePill').textContent='PC unavailable';$('devicePill').className='pill offline';}}
   function renderTaskManager(m,available){
     const host=$('taskManagerStats'),detail=$('taskManagerDetails');if(!host||!detail)return;
     host.replaceChildren();detail.replaceChildren();
@@ -305,6 +309,7 @@
     }catch(error){$('deviceResult').textContent=error.message;}finally{loadDevice();}}
   async function loadSetup(){try{const s=await API('/api/setup/status');brainConfigured=s.provider_key_configured;visionConfigured=s.openai_key_configured;$('brainPill').textContent=brainConfigured?'Model: '+s.model:'API key required';$('coreModel').textContent=s.model+' / configured';$('testProvider').disabled=!brainConfigured||providerTesting;
       if(!brainConfigured)$('coreModel').textContent='Selected model API key missing';
+      window.dispatchEvent(new CustomEvent('sonic:overview',{detail:{kind:'model',configured:s.provider_key_configured,model:s.model}}));
       const providerLabel=providerLabels[s.provider]||'Unknown provider';
       const states=[['Owner authentication',s.owner_configured],['Persistent database',s.database_connected],['Selected '+providerLabel+' key configured (not a live test)',s.provider_key_configured],['PC credential configured',s.device_credential_configured],['TRADEVICEPC heartbeat',s.device_online]];
       $('setupList').replaceChildren();for(const [label,ready] of states){const row=el('div','memory-item');row.append(el('span','',label),el('strong','',ready?'Ready':'Pending'));$('setupList').append(row);}
@@ -487,7 +492,7 @@
   }
   liveVoice=new window.SonicVoice({api:API,onActions:applyGraphActions,onProposal:showVoiceProposal,onError:notify,
     onInputStart:()=>window.sonicWorkspace?.captureContext(),
-    onState:state=>{window.sonicRealtimeActive=state!=='idle';$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
+    onState:state=>{window.sonicRealtimeActive=state!=='idle';window.dispatchEvent(new CustomEvent('sonic:voice-state',{detail:{state}}));$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
     onConnected:info=>{$('coreModel').textContent=info.model+' / realtime';},
     onTranscript:async(role,text,meta={})=>{
       if(!text.trim())return {handled:false};
@@ -541,7 +546,7 @@
     liveVoice.start().catch(error=>{notify(error.message);if(wake?.enabled)wake.resume();});
   });
   $('voiceConsentForm').addEventListener('submit',async e=>{e.preventDefault();if(!$('voiceAgree').checked)return;$('voiceConsent').close();wake?.pause();speech?.stop();window.speechSynthesis?.cancel();try{await liveVoice.start();}catch(error){notify(error.message);}});
-  $('voiceStop').addEventListener('click',()=>liveVoice.stop());$('voiceHide').addEventListener('click',()=>{$('voiceSessionBar').classList.toggle('compact');$('voiceHide').textContent=$('voiceSessionBar').classList.contains('compact')?'Expand':'Minimize';});$('voiceMute').addEventListener('click',()=>liveVoice.mute());$('voiceResume').addEventListener('click',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
+  $('voiceStop').addEventListener('click',()=>{liveVoice.stop();window.sonicMotion?.returnHome();});$('voiceHide').addEventListener('click',()=>{$('voiceSessionBar').classList.toggle('compact');$('voiceHide').textContent=$('voiceSessionBar').classList.contains('compact')?'Expand':'Minimize';});$('voiceMute').addEventListener('click',()=>liveVoice.mute());$('voiceResume').addEventListener('click',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
   $('refreshRuns').addEventListener('click',loadRuns);
   document.addEventListener('visibilitychange',()=>{if(document.hidden){if(liveVoice.active)liveVoice.stop('page_hidden');wake?.stop();}});
   window.addEventListener('pagehide',()=>{if(liveVoice.active)liveVoice.stop('page_hidden');wake?.stop();});

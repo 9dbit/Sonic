@@ -27,7 +27,7 @@ with sync_playwright() as pw:
     browser = pw.chromium.launch(headless=True, args=["--no-sandbox", "--enable-unsafe-swiftshader"])
     for name, viewport in (("desktop", {"width": 1440, "height": 900}),
                            ("mobile", {"width": 390, "height": 844})):
-        with tempfile.TemporaryDirectory(prefix="sonic-passkey-qa-") as folder:
+        with tempfile.TemporaryDirectory(prefix="sonic-passkey-qa-", ignore_cleanup_errors=os.name == "nt") as folder:
             with socket.socket() as sock:
                 sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]
             origin = f"http://localhost:{port}"

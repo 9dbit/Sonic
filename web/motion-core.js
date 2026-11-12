@@ -1,4 +1,5 @@
-/* SONIC V0.7.2 Motion Core: 5880 sharp cyan-blue points on transparent Canvas2D.
+/* SONIC Orbit V1.4: expression-driven orb; legacy gesture API retained.
+   Previous renderer: 5880 sharp cyan-blue points on transparent Canvas2D.
    No glow, additive blending, gradients per dot, video, or WebGL dependency.
    Speed and breathing remain tied to actual application and voice states. */
 (()=>{'use strict';
@@ -20,27 +21,20 @@
    this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
    this.focused=false;this.lastTap=-Infinity;this.home=null;this.running=true;this.paused=false;this.lastTime=0;this.time=0;
-   this.visual=math.PARTICLE_VISUAL;
-   this.palette=Array.from({length:this.visual.paletteSteps},(_,i)=>{
-     const rgb=math.cyanBlueRGB(i/(this.visual.paletteSteps-1));
-     return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
-   });
-   const particleCount=this.visual.count;
-   this.points=Array.from({length:particleCount},(_,i)=>{
-     const f=i+.5,y=1-2*f/particleCount,r=Math.sqrt(Math.max(0,1-y*y)),theta=i*2.39996322972865;
-     return [Math.cos(theta)*r,y,Math.sin(theta)*r,i];
-   });
+   this.renderer='orb-v140';
    document.body.append(this.float);this.updateHome(true);this.attach();
    this.frameRequest=requestAnimationFrame(t=>this.frame(t));
   }
   attach(){
    const press=()=>{const now=performance.now();if(math.doubleTap(this.lastTap,now)){this.lastTap=-Infinity;this.setFocus(true);window.dispatchEvent(new CustomEvent('sonic:invoke',{detail:{consent:'double_tap'}}));}else{this.lastTap=now;this.float.classList.add('preview');clearTimeout(this.tapTimer);this.tapTimer=setTimeout(()=>this.float.classList.remove('preview'),1100);}};
    this.float.addEventListener('click',e=>{e.stopPropagation();press();});
+   el('sonicHeaderOrb')?.addEventListener('click',e=>{e.stopPropagation();press();});
    this.float.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();press();}else if(e.key==='Escape')this.returnHome();});
    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.focused)this.returnHome();});
    window.addEventListener('resize',()=>{this.updateHome(!this.focused);if(this.focused)this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));});
    window.addEventListener('scroll',()=>this.updateHome(!this.focused),{passive:true});
    document.addEventListener('visibilitychange',()=>{this.paused=document.hidden;});
+   window.matchMedia?.('(prefers-reduced-motion: reduce)')?.addEventListener('change',e=>{this.reduced=e.matches;this.draw();});
    // When switching between panels, the anchor may have zero dimensions.
    const observer=new MutationObserver(()=>{if(!this.focused)this.updateHome(true);this.prioritizePanels();});
    for(const node of [this.anchor.closest('section'),el('graphInspector'),el('graphFilters')])if(node)observer.observe(node,{attributes:true,attributeFilter:['class','style']});
@@ -63,56 +57,43 @@
   setFocus(on){if(on===this.focused)return;this.updateHome(false);this.focused=on;
    this.float.classList.toggle('focused',on);this.float.classList.remove('preview');this.float.setAttribute('aria-pressed',String(on));
    document.body.classList.toggle('sonic-focused',on);this.focusControls.hidden=!on;
-   if(on){this.backgroundInert=new Map();for(const node of document.querySelectorAll('.panel,.sidebar,.topbar,#nodeDetailPopup')){this.backgroundInert.set(node,node.inert);node.inert=true;}}
+   if(on){this.backgroundInert=new Map();for(const node of document.querySelectorAll('.panel,.sidebar,.topbar,.orbit-overview,#nodeDetailPopup')){this.backgroundInert.set(node,node.inert);node.inert=true;}}
    else{for(const [node,prior] of this.backgroundInert||[])node.inert=prior;this.backgroundInert=null;}
+   window.dispatchEvent(new CustomEvent('sonic:focus',{detail:{focused:on}}));
    if(on){this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));this.float.focus({preventScroll:true});}
    else this.place(this.home);
   }
   returnHome(){this.setFocus(false);}
   handleCommand(text){if(math.returnIntent(text)){this.returnHome();return true;}return false;}
-  setState(state){this.state=state;this.float.dataset.state=state;}
+  setState(state){this.state=state;this.float.dataset.state=state;window.dispatchEvent(new CustomEvent('sonic:activity',{detail:{state}}));}
   dimensions(){const w=this.canvas.clientWidth,h=this.canvas.clientHeight,dpr=clamp(devicePixelRatio||1,1,2),nw=Math.max(1,Math.round(w*dpr)),nh=Math.max(1,Math.round(h*dpr));
    if(this.canvas.width!==nw||this.canvas.height!==nh){this.canvas.width=nw;this.canvas.height=nh;}return [nw,nh];
   }
   draw(){
    const ctx=this.ctx;if(!ctx)return;
-   const [width,height]=this.dimensions();if(width<2||height<2)return;
-   ctx.clearRect(0,0,width,height);
-   // Default source-over compositing, no shadows or filters: the canvas stays
-   // transparent and individual tiny dots remain sharply defined.
-   ctx.globalCompositeOperation='source-over';
-   const radius=Math.min(width,height)*.443,centerX=width*.5,centerY=height*.5;
-   const a=this.time*.38,ca=Math.cos(a),sa=Math.sin(a);
-   const tilt=.12*Math.sin(this.time*.44),ct=Math.cos(tilt),st=Math.sin(tilt);
-   const speaking=this.state==='speaking'?1:this.state==='listening'?.32:0;
-   this.energy+=(speaking-this.energy)*.065;
-   const palette=this.palette,lastColor=palette.length-1;
-   // Fibonacci sphere, existing orbit, breathing waveform and concavity.
-   for(let i=0;i<this.points.length;i++){
-     const [ox,oy,oz]=this.points[i];
-     const swirl=ox*ca-oz*sa,depth=ox*sa+oz*ca;
-     const z=depth*ct+oy*st,y=oy*ct-depth*st;
-     const wave=Math.sin(ox*8.2+this.time*1.18+oy*3.7)*Math.cos(oy*7.2-this.time*.71+oz*2.5);
-     const warp=1+.135*wave+.042*Math.sin(this.time*.7+ox*5)+this.energy*.065*Math.sin(this.time*2.6+oy*9);
-     const contour=1-.12*Math.pow(Math.max(0,y),2);
-     const x=swirl*warp*contour,y2=y*warp;
-     const perspective=1+.15*z,px=centerX+x*radius*perspective,py=centerY+y2*radius*perspective;
-     if(px<0||py<0||px>=width||py>=height)continue;
-     const light=clamp(.48+.27*z+.31*(x*.55-y2*.65),.12,1);
-     // Gradient follows 3D depth and vertical position. Each point itself is
-     // a single opaque-hue square, not a radial glow or blurred sprite.
-     const hueT=clamp(.5-.38*z-.12*y2,0,1);
-     const colorIndex=Math.min(lastColor,Math.max(0,Math.round(hueT*lastColor)));
-     const size=math.particleDiameter(width,light);
-     ctx.fillStyle=palette[colorIndex];
-     ctx.globalAlpha=clamp(.37+.51*light+.04*z+.03*this.energy,.38,.92);
-     ctx.fillRect(Math.round(px),Math.round(py),size,size);
-   }
-   ctx.globalAlpha=1;
+   const [w,h]=this.dimensions();if(w<2||h<2)return;
+   const pose=window.SonicOrbitMath.pose(this.reduced?0:this.time,this.reduced,this.state);
+   ctx.clearRect(0,0,w,h);ctx.save();
+   const scale=Math.min(w,h)/200,r=65*scale;
+   const cx=w/2,cy=h*.48-(this.focused?0:pose.jump*7*scale);
+   ctx.translate(cx,cy);ctx.scale(pose.pulse,pose.pulse);
+   const circle=(radius,fill)=>{ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();};
+   const halo=ctx.createRadialGradient(0,0,r*.75,0,0,r*1.4);
+   halo.addColorStop(0,'rgba(109,86,255,0)');halo.addColorStop(.55,'rgba(108,92,244,.26)');halo.addColorStop(1,'rgba(89,127,255,0)');circle(r*1.4,halo);
+   const rim=ctx.createLinearGradient(-r,-r,r,r);rim.addColorStop(0,'#d4e1ff');rim.addColorStop(.3,'#9e8aff');rim.addColorStop(.62,'#7754c0');rim.addColorStop(.85,'#55b2e1');rim.addColorStop(1,'#b47fe9');circle(r,rim);
+   const face=ctx.createRadialGradient(-r*.35,-r*.65,0,r*.25,r*.3,r*1.55);face.addColorStop(0,'#a0b4df');face.addColorStop(.28,'#353e62');face.addColorStop(.49,'#111525');face.addColorStop(.73,'#100b1e');face.addColorStop(1,'#5e225d');circle(r*.9,face);
+   const blush=ctx.createRadialGradient(r*.55,r*.6,0,r*.25,r*.3,r*1.1);blush.addColorStop(0,'rgba(135,47,119,.5)');blush.addColorStop(1,'rgba(135,47,119,0)');circle(r*.89,blush);
+   ctx.beginPath();ctx.arc(0,0,r*.98,Math.PI*1.05,Math.PI*1.72);ctx.strokeStyle='rgba(230,233,255,.55)';ctx.lineWidth=scale*.7;ctx.stroke();
+   ctx.save();ctx.translate(pose.look*8*scale,-r*.13);ctx.scale(1,pose.blink);
+   const eye=ctx.createLinearGradient(0,-23*scale,0,23*scale);eye.addColorStop(0,'#f7f9ff');eye.addColorStop(1,'#acb9e5');ctx.fillStyle=eye;
+   for(const x of [-24,7]){ctx.beginPath();ctx.roundRect(x*scale,-19*scale,15*scale,39*scale,8*scale);ctx.fill();}ctx.restore();
+   ctx.fillStyle='#bfd0ff';for(const [x,y,size] of [[76,-70,1.4],[-79,35,1.1],[56,78,.85]]){ctx.beginPath();ctx.arc(x*scale,y*scale,size*scale,0,Math.PI*2);ctx.fill();}
+   ctx.restore();
   }
   frame(timestamp){if(!this.running)return;const dt=this.lastTime?clamp((timestamp-this.lastTime)/1000,0,.12):0;this.lastTime=timestamp;
    const desired=math.targetSpeed(this.state,this.reduced);this.speed+=(desired-this.speed)*clamp(dt*4,0,1);
-   if(!this.paused){this.time+=dt*this.speed;this.draw();}
+   if(!this.paused&&!this.reduced)this.time+=dt*this.speed;
+   if(!this.paused&&this.float.offsetWidth>0&&(!this.lastDraw||timestamp-this.lastDraw>=(this.reduced?500:33))){this.draw();this.lastDraw=timestamp;}
    this.frameRequest=requestAnimationFrame(t=>this.frame(t));
   }
   stop(){this.returnHome();this.running=false;cancelAnimationFrame(this.frameRequest);clearTimeout(this.tapTimer);this.observer?.disconnect();this.float.remove();this.shade.remove();this.focusControls.remove();}
