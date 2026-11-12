@@ -6,7 +6,6 @@ atomically consumed in SQL. No biometric, private key or setup link is stored.
 """
 from __future__ import annotations
 
-import hashlib
 import hmac
 import json
 import secrets
@@ -16,7 +15,7 @@ from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import DateTime, Integer, String, Text, delete, func, select, update
+from sqlalchemy import BigInteger, DateTime, Integer, String, Text, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from webauthn import (base64url_to_bytes, generate_authentication_options,
@@ -41,7 +40,7 @@ class OwnerPasskey(Base):
     __tablename__ = "owner_passkeys_v130"
     credential_id: Mapped[str] = mapped_column(String(512), primary_key=True)
     public_key: Mapped[str] = mapped_column(Text, nullable=False)
-    sign_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sign_count: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -169,7 +168,6 @@ def _consume(db: Session, request: Request, cid: str, purpose: str, authority: s
     binding = request.cookies.get(_cookie(purpose), "")
     if not 32 <= len(binding) <= 128:
         raise HTTPException(401, "Start verification again on this browser")
-    # DELETE RETURNING is one atomic claim across SQLite/PostgreSQL and replicas.
     value = db.scalar(delete(PasskeyChallenge).where(
         PasskeyChallenge.id == cid, PasskeyChallenge.purpose == purpose,
         PasskeyChallenge.binding == auth.sha256(binding),
@@ -208,8 +206,8 @@ def _cross_origin(credential: dict):
         raise HTTPException(400, "Invalid browser verification") from None
 
 
-def _session(response: Response):
-    session, csrf = auth.issue_session()
+def _session(response: Response, credential_id: str):
+    session, csrf = auth.issue_session(passkey_id=credential_id)
     response.set_cookie(auth.COOKIE, session, httponly=True, samesite="strict",
         secure=public_url().startswith("https://"), max_age=auth.SESSION_SECONDS, path="/")
     return {"authenticated": True, "csrf": csrf}
@@ -260,14 +258,12 @@ def register_verify(payload: Ceremony, request: Request, response: Response,
     credential_id = bytes_to_base64url(result.credential_id)
     if len(credential_id) > 512:
         raise HTTPException(400, "Unsupported credential identifier")
-    # Serialize the final enrollment gate and key-count check across replicas.
     db.execute(_insert(db, PasskeyGate).values(id=1, revision=0).on_conflict_do_nothing())
     db.execute(update(PasskeyGate).where(PasskeyGate.id == 1).values(revision=PasskeyGate.revision + 1))
     try:
         if db.scalar(select(func.count()).select_from(OwnerPasskey)) >= MAX_KEYS:
             raise HTTPException(409, "At most eight passkeys may be registered")
         if authority.startswith("setup:"):
-            # Recheck after acquiring the SQL lock: two setup ceremonies cannot win.
             _authority(request, db, payload.enrollment_key)
             db.add(PasskeyEnrollment(digest=authority[6:]))
         if db.get(OwnerPasskey, credential_id) is not None:
@@ -282,8 +278,7 @@ def register_verify(payload: Ceremony, request: Request, response: Response,
         db.rollback()
         raise
     response.delete_cookie(_cookie("register"), path="/api/passkeys")
-    # A setup link alone never issues a session; verified possession + UV is required.
-    session = _session(response) if authority.startswith("setup:") else {}
+    session = _session(response, credential_id) if authority.startswith("setup:") else {}
     return {"registered": True, **session}
 
 
@@ -334,7 +329,7 @@ def login_verify(payload: Ceremony, request: Request, response: Response,
         raise HTTPException(409, "Passkey changed during verification; sign in again")
     db.commit()
     response.delete_cookie(_cookie("login"), path="/api/passkeys")
-    return _session(response)
+    return _session(response, credential_id)
 
 
 @router.get("/manage")
@@ -360,7 +355,6 @@ def revoke(credential_id: str, request: Request, _: dict = Depends(auth.require_
         db.rollback()
         raise HTTPException(404, "Passkey not found")
     db.delete(row)
-    # Explicit revocation invalidates all previously issued owner cookies.
     db.execute(delete(OwnerSession))
     db.commit()
     return {"deleted": True, "sessions_revoked": True}

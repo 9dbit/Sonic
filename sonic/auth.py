@@ -1,4 +1,4 @@
-"""Single owner session cookies, CSRF enforcement and separately-scoped device tokens."""
+"""Owner session cookies, CSRF enforcement and separately-scoped device tokens."""
 from __future__ import annotations
 import base64
 import binascii
@@ -53,13 +53,22 @@ def verify_login(token: str, remote_address: str) -> bool:
     return True
 
 
-def issue_session() -> tuple[str, str]:
+def _passkey_active(db, credential_id):
+    from .passkeys import OwnerPasskey
+    return (isinstance(credential_id, str) and 1 <= len(credential_id) <= 512
+            and db.get(OwnerPasskey, credential_id) is not None)
+
+
+def issue_session(*, passkey_id: str | None = None) -> tuple[str, str]:
     csrf = secrets.token_urlsafe(24)
-    body = _b64(json.dumps({"exp": int(time.time()) + SESSION_SECONDS, "csrf": csrf, "sid": secrets.token_urlsafe(32)},
-                           separators=(",", ":")).encode())
+    data = {"exp": int(time.time()) + SESSION_SECONDS, "csrf": csrf, "sid": secrets.token_urlsafe(32)}
+    if passkey_id is not None:
+        data["passkey_id"] = passkey_id
+    body = _b64(json.dumps(data, separators=(",", ":")).encode())
     mac = _b64(hmac.new(setting("SONIC_SESSION_SECRET").encode(), body.encode(), hashlib.sha256).digest())
-    data = json.loads(_unb64(body))
     with session_factory()() as db:
+        if passkey_id is not None and not _passkey_active(db, passkey_id):
+            raise HTTPException(401, "Passkey was revoked; sign in again")
         db.execute(delete(OwnerSession).where(OwnerSession.expires_at <= utcnow()))
         db.add(OwnerSession(id=sha256(data["sid"]), expires_at=datetime.fromtimestamp(data["exp"], timezone.utc).replace(tzinfo=None)))
         db.commit()
@@ -88,6 +97,10 @@ def read_session(request: Request) -> dict:
             active = db.get(OwnerSession, sha256(sid))
             if active is None or active.expires_at <= utcnow():
                 raise ValueError("revoked session")
+            # Also closes a revocation/login race after signature verification:
+            # a cookie associated with a removed passkey can never authorize use.
+            if "passkey_id" in payload and not _passkey_active(db, payload["passkey_id"]):
+                raise ValueError("revoked passkey")
         return payload
     except (ValueError, KeyError, TypeError, UnicodeDecodeError, json.JSONDecodeError, binascii.Error):
         raise HTTPException(status_code=401, detail="Login required")
@@ -102,7 +115,6 @@ def require_owner_write(request: Request) -> dict:
     received = request.headers.get("X-Sonic-CSRF", "")
     if not received or not hmac.compare_digest(received, payload["csrf"]):
         raise HTTPException(status_code=403, detail="CSRF token required")
-    # Same-site session cookies + CSRF header block external browser mutations.
     return payload
 
 
@@ -116,7 +128,7 @@ def require_device(request: Request) -> None:
 
 
 def revoke_session(payload: dict) -> None:
-    """Persist revocation so replaying a logged-out cookie fails on every replica."""
+    """Persist revocation so logged-out cookies fail on every replica."""
     with session_factory()() as db:
         db.execute(delete(OwnerSession).where(OwnerSession.id == sha256(payload["sid"])))
         db.commit()
