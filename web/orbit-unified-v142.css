@@ -320,3 +320,24 @@ body.orbit-v140.sonic-open-preview #wsStatus{
     margin-top:16px!important;font-size:9px!important;padding:8px 9px!important;
   }
 }
+
+/* Keep the 3D toolbar clear of contextual node detail actions on both screen sizes. */
+body.orbit-v140 #nodeDetailPopup.sonic-popup:not(.hidden){
+  top:clamp(340px,42vh,430px)!important;
+  bottom:auto!important;
+  max-height:min(34vh,300px)!important;
+  overflow:auto!important;
+  background:linear-gradient(150deg,#292039,#171425)!important;
+  border:1px solid rgba(178,139,240,.18)!important;
+  color:#eae2fa!important;
+  border-radius:21px!important;
+}
+body.orbit-v140 #nodeDetailPopup .popup-actions button{
+  border-radius:999px!important;
+}
+@media(max-width:720px){
+  body.orbit-v140 #nodeDetailPopup.sonic-popup:not(.hidden){
+    top:calc(360px + env(safe-area-inset-top,0px))!important;
+    max-height:30vh!important;
+  }
+}
