@@ -127,3 +127,37 @@ def test_preview_paid_flag_gates_all_provider_calls(client, monkeypatch):
     body={"message":"hi","provider":"deepseek","model":"deepseek-flash"}
     assert client.post("/api/preview/chat",json=body,headers=headers).status_code==503
     assert client.get("/api/preview/models").json()["enabled"] is False
+
+
+def test_guest_cookie_does_not_rotate_when_multiple_components_poll_session(
+        guest_session, monkeypatch):
+    client, headers = guest_session
+    from sonic import preview
+    first_cookie = client.cookies.get(preview.COOKIE)
+    first_csrf = headers["X-Sonic-Preview-CSRF"]
+    for _ in range(4):
+        current = client.get("/api/session")
+        assert current.status_code == 200
+        assert current.json()["preview_csrf"] == first_csrf
+        assert client.cookies.get(preview.COOKIE) == first_cookie
+        assert "set-cookie" not in current.headers
+    # A browser that refetches session after page load must still be able to
+    # call paid models using the original CSRF + same-site cookie.
+    from sonic import preview as p
+    async def stub(_client, request, selection):
+        return {"output": [{"type": "message", "content": [
+            {"type": "output_text", "text": "stable"}]}]}
+    monkeypatch.setattr(p, "complete", stub)
+    body = {"message": "Ping", "provider": "deepseek", "model": "deepseek-flash"}
+    result = client.post("/api/preview/chat", json=body, headers=headers)
+    assert result.status_code == 200, result.text
+    assert result.json()["reply"] == "stable"
+
+    # A signed cookie is not eternal even if a client replays it manually.
+    old_now = int(p.time())
+    monkeypatch.setattr(p, "time", lambda: float(old_now + p.COOKIE_SECONDS + 2))
+    denied = client.post("/api/preview/chat", json=body, headers=headers)
+    assert denied.status_code == 403
+    refreshed = client.get("/api/session").json()
+    assert refreshed["preview_csrf"] != first_csrf
+    assert client.cookies.get(preview.COOKIE) != first_cookie

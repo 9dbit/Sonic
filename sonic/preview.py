@@ -11,7 +11,7 @@ import hmac
 import json
 import secrets
 from datetime import timedelta
-from time import monotonic
+from time import time
 from uuid import UUID
 
 import httpx
@@ -53,14 +53,31 @@ def _mac(text: str) -> str:
     return hmac.new(secret.encode(), text.encode(), hashlib.sha256).hexdigest()
 
 
+def _verified_guest_cookie(cookie: str) -> str | None:
+    """Stable, signed, expiring guest identity across repeated session probes."""
+    if not cookie or len(cookie) > 200 or cookie.count(".") != 2:
+        return None
+    raw, supplied_signature = cookie.rsplit(".", 1)
+    if len(supplied_signature) != 64 or not hmac.compare_digest(
+            supplied_signature, _mac("guest:" + raw)):
+        return None
+    issued, _, nonce = raw.partition(".")
+    if not issued.isdigit() or len(nonce) < 24:
+        return None
+    age = int(time()) - int(issued)
+    return raw if 0 <= age < COOKIE_SECONDS else None
+
+
 def issue_browser_guest(request: Request, response: Response, selected: Selection) -> dict:
     if not preview_active():
         raise HTTPException(404, "Preview mode is unavailable")
-    raw = secrets.token_urlsafe(24)
-    signature = _mac("guest:" + raw)
-    response.set_cookie(COOKIE, raw + "." + signature, max_age=COOKIE_SECONDS,
-                        httponly=True, samesite="strict",
-                        secure=public_url().startswith("https://"), path="/")
+    raw = _verified_guest_cookie(request.cookies.get(COOKIE, ""))
+    if raw is None:
+        raw = str(int(time())) + "." + secrets.token_urlsafe(24)
+        signature = _mac("guest:" + raw)
+        response.set_cookie(COOKIE, raw + "." + signature, max_age=COOKIE_SECONDS,
+                            httponly=True, samesite="strict",
+                            secure=public_url().startswith("https://"), path="/")
     return {"authenticated": False, "preview": True, "preview_csrf": _mac("csrf:" + raw),
             "provider": selected.provider, "model": selected.model,
             "capabilities": (["preview-ui", "preview-chat", "preview-voice"]
@@ -71,12 +88,9 @@ def issue_browser_guest(request: Request, response: Response, selected: Selectio
 def guest(request: Request) -> dict:
     if not preview_active():
         raise HTTPException(404, "Preview is disabled")
-    cookie = request.cookies.get(COOKIE, "")
-    if len(cookie) > 200 or cookie.count(".") != 1:
-        raise HTTPException(403, "Open this SONIC page before starting a preview action")
-    raw, signature = cookie.split(".", 1)
-    if not raw or not hmac.compare_digest(signature, _mac("guest:" + raw)):
-        raise HTTPException(403, "Invalid preview browser")
+    raw = _verified_guest_cookie(request.cookies.get(COOKIE, ""))
+    if raw is None:
+        raise HTTPException(403, "Invalid or expired preview browser. Refresh the page.")
     origin = request.headers.get("origin", "")
     expected = public_url().rstrip("/") or str(request.base_url).rstrip("/")
     if origin != expected:

@@ -11,7 +11,7 @@ The 1.4.1 open-preview mode hid authentication but set `csrf=null`, bypassed gra
 
 ## Real provider routes without owner authority
 - `SONIC_OPEN_PREVIEW=true` and `SONIC_PREVIEW_PAID_ACTIONS=true` enable anonymous guest chat / Realtime audio **on staging only**, still no public owner session.
-- An HttpOnly SameSite signed guest cookie and CSRF token (delivered via `/api/session`) authenticate the **guest browser only**, with no user-visible login or passkey prompt. Requests enforce exact same-origin Origin and reject cross-site operations.
+- An HttpOnly SameSite signed guest cookie and CSRF token (delivered via `/api/session`) authenticate the **guest browser only**, with no user-visible login or passkey prompt. The signed guest cookie is reused across repeated session checks and expires server-side after 24 hours, avoiding stale-CSRF failures during chat and voice sessions. Requests enforce exact same-origin Origin and reject cross-site operations.
 - `GET /api/preview/models` lists only configured preview-allowlisted DeepSeek Flash and OpenAI GPT-4.1 options; the UI selector switches the actual backend provider for subsequent text turns, not the owner's persisted preference.
 - `POST /api/preview/chat` reuses the real SONIC `providers.complete` adapter, with a short, isolated single-turn context, no tools, no private memory, no account/PC context and no persistent owner chat history. No hidden fallback between providers.
 - `POST /api/preview/voice/sessions` and `.../stop` reuse WebRTC/Realtime transport with OpenAI-only voice, **all functions/tools disabled**, no owner context, 60 seconds per session and consent initiated by the owner gesture. Provider voice is independent of selected text model.
