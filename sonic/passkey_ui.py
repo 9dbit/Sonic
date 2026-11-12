@@ -5,9 +5,10 @@ replaces the login panel, but retains hidden legacy element IDs so the existing
 controller remains compatible. The token endpoint separately rejects login.
 """
 from .passkeys import enabled
+from .config import setting
 
 LOGIN = '''<div class="login-overlay" id="loginOverlay"><div class="login-card">
-<div class="login-orb"><img src="/assets/sonic-mark.svg?v=1.4.0" width="68" height="68" alt="SONIC logo"></div>
+<div class="login-orb"><img src="/assets/sonic-mark.svg?v=1.4.1" width="68" height="68" alt="SONIC logo"></div>
 <span class="eyebrow">SONIC / PRIVATE INTELLIGENCE</span>
 <h2>Your world.<br><span class="gradient-heading">One tap away.</span></h2>
 <p>Masuk tanpa mengetik token. Gunakan passkey dengan Face ID, Touch ID, Windows Hello, atau kunci keamanan.</p>
@@ -29,6 +30,10 @@ MANAGE = '''<section class="passkey-manage" aria-label="Passkey dan akses perang
 def render(html: str, version: str) -> str:
     html = html.replace("<b>V1.2.0</b>", f"<b>V{version}</b>")
     html = html.replace("VERSION 1.2.0", f"VERSION {version}")
+    if setting("SONIC_OPEN_PREVIEW", "false").lower() == "true":
+        html = html.replace('<div class="login-overlay" id="loginOverlay">',
+                            '<div class="login-overlay hidden" id="loginOverlay">', 1)
+        return html
     if not enabled():
         return html
     start = html.index('  <div class="login-overlay" id="loginOverlay">')

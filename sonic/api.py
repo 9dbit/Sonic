@@ -23,7 +23,7 @@ from .passkeys import router as passkey_router, enabled as passwordless_enabled
 from .passkey_ui import render as render_passkey_page
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.4.0'
+VERSION = '1.4.1'
 
 
 @asynccontextmanager
@@ -78,6 +78,11 @@ class DeviceResult(BaseModel):
     result: dict = Field(default_factory=dict)
 
 
+def open_preview_enabled() -> bool:
+    """UI-only staging preview. It never grants an owner session or CSRF token."""
+    return setting("SONIC_OPEN_PREVIEW", "false").lower() == "true"
+
+
 def check_db():
     if not database_ready():
         raise HTTPException(503, "Durable database not configured for hosted deployment")
@@ -110,7 +115,14 @@ def session_status(request: Request):
     try:
         owner = auth.read_session(request)
     except HTTPException:
-        return {"authenticated": False}
+        if not open_preview_enabled():
+            return {"authenticated": False}
+        from .db import session_factory
+        with session_factory()() as db:
+            selection = selected_model(db)
+        return {"authenticated": False, "preview": True, "provider": selection.provider,
+                "model": selection.model, "version": VERSION,
+                "capabilities": ["preview-ui"]}
     from .db import session_factory
     with session_factory()() as db:
         selection = selected_model(db)
@@ -121,6 +133,8 @@ def session_status(request: Request):
 
 @app.post("/api/login")
 def login(payload: LoginForm, request: Request, response: Response):
+    if open_preview_enabled():
+        raise HTTPException(403, "Owner login is disabled while open staging preview is active.")
     if passwordless_enabled():
         raise HTTPException(403, "Owner token login is disabled. Sign in with a passkey.")
     address = request.client.host if request.client else "unknown"

@@ -1,4 +1,4 @@
-/* SONIC Orbit UI v1.4.0: scoped presentation layer, no backend or permission changes. */
+/* SONIC Orbit UI v1.4.1: scoped presentation layer, no backend or permission changes. */
 :root{--sonic-orbit-violet:#9874f8;--sonic-orbit-indigo:#5d55e9;--sonic-orbit-blue:#48b5fd;--sonic-orbit-soft:#d1c5fb;--sonic-orbit-night:#090913}
 html{color-scheme:dark}
 body.orbit-v140,body.orbit-v140 .app{background:#07070f!important;color:#f9f7ff!important}
@@ -166,4 +166,16 @@ body.orbit-v140 .app button:is(.icon-button,.voice-button):not(.nav):not(.plain)
     width:240px!important;max-width:240px!important;
     background:rgba(38,28,60,.89)!important;border:1px solid rgba(170,140,244,.14)!important
   }
+}
+
+body.sonic-open-preview .orbit-preview-pill{
+  background:rgba(116,83,205,.18)!important;
+  border:1px solid rgba(181,150,255,.28)!important;
+  color:#d9c8ff!important;
+  letter-spacing:.12em;
+  font:700 9px/1 ui-monospace,Consolas,monospace;
+}
+body.sonic-open-preview button:disabled{
+  opacity:.42;
+  cursor:not-allowed!important;
 }

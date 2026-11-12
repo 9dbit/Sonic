@@ -1,4 +1,4 @@
-# SONIC Orbit UI 1.4.0
+# SONIC Orbit UI 1.4.1
 
 ## Scope
 
@@ -21,8 +21,9 @@ Software Manager and PC action approval routes remain in place.
 - Chat model and OpenAI voice are labeled separately.
 - Dashboard cards clear on expired authentication and ignore late private data.
 - Desktop navigation and the six-route mobile floating dock preserve all actions.
-- Existing passkey login gets the new entry design. No anonymous access, auth
-  bypass, credential change, enrollment reset or database migration is introduced.
+- Staging may set `SONIC_OPEN_PREVIEW=true` to hide the login/passkey overlay and
+  allow UI/navigation review without issuing an owner session or CSRF token.
+  Private data, chat/voice providers, settings writes and PC actions remain denied.
 - Reduced-motion preference disables SVG bounce/eyes and edge ribbons; the orb
   renders a static pose. Canvas updates are capped at 30 fps and paused when the
   document is hidden. No external asset/CDN or animation dependency is added.
@@ -45,7 +46,7 @@ blocked or mocked. No live TRADEVICEPC operation is issued by these tests.
 
 Target only `SONIC / staging / sonic-web`. Wait for the reviewed commit's CI,
 then stage and apply that exact source. Confirm terminal deployment SUCCESS and
-HTTP 200 at `/api/health` with version 1.4.0 and public assets before claiming live.
+HTTP 200 at `/api/health` with version 1.4.1 and public assets before claiming live.
 No Windows Companion change or restart of Postgres/TRADEVICEPC is required.
 
 Rollback to `650196c9fcc06870be42597bc5e0845afaa7962e` restores the previous UI while

@@ -97,5 +97,31 @@ with local_server(settings={'SONIC_PASSWORDLESS_LOGIN':'true'}) as (url,_),sync_
         assert page.request.post(url+'/api/login',data={'token':'not-an-owner'}).status!=200
         page.close()
     browser.close()
+# Open staging preview: no login/passkey UI and no private backend authority.
+with local_server(settings={'SONIC_OPEN_PREVIEW':'true','SONIC_PASSWORDLESS_LOGIN':'false'}) as (url,_),sync_playwright() as pw:
+    browser=pw.chromium.launch(headless=True,args=['--no-sandbox'])
+    for label,size in [('desktop',{'width':1440,'height':960}),('mobile',{'width':390,'height':844})]:
+        page=browser.new_page(viewport=size)
+        errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+        page.goto(url,wait_until='networkidle')
+        expect(page.locator('#loginOverlay')).to_be_hidden()
+        expect(page.locator('.orbit-preview-pill')).to_have_text('OPEN PREVIEW')
+        expect(page.locator('#talkSonic')).to_be_disabled()
+        expect(page.locator('#devicePill')).to_have_text('PC protected')
+        expect(page.locator('#orbitMemory')).to_have_text('Preview')
+        expect(page.locator('#orbitDevice')).to_have_text('Protected')
+        for tab,panel in [('chat','#chatPanel'),('workspace','#workspacePanel'),('memory','#memoryPanel'),('devices','#devicesPanel'),('setup','#setupPanel'),('brain','#brainPanel')]:
+            page.locator('.nav[data-tab="'+tab+'"]').click()
+            expect(page.locator(panel)).to_be_visible()
+        page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(50);page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(100)
+        assert page.evaluate('sonicMotion.focused') is False
+        assert page.request.get(url+'/api/history').status==401
+        assert page.request.post(url+'/api/chat',data={'message':'hello'}).status==401
+        assert page.request.post(url+'/api/login',data={'token':'not-an-owner'}).status==403
+        assert not errors,(label,errors)
+        page.screenshot(path=str(OUT/f'{label}-open-preview.png'))
+        report.append({'viewport':label,'openPreview':True,'privateRoutesLocked':True,'errors':errors})
+        page.close()
+    browser.close()
 (OUT/'report.json').write_text(json.dumps(report,indent=2))
 print(json.dumps(report,indent=2))
