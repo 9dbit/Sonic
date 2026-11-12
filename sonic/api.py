@@ -7,7 +7,7 @@ import json
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
@@ -19,9 +19,11 @@ from .config import database_ready, model_name, owner_ready, setting, public_url
 from .providers import any_configured, selected_model
 from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_messages, utcnow
 from .memory import save_note, delete_note, record
+from .passkeys import router as passkey_router, enabled as passwordless_enabled
+from .passkey_ui import render as render_passkey_page
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.2.0'
+VERSION = '1.3.0'
 
 
 @asynccontextmanager
@@ -92,7 +94,8 @@ def safe_device_id(value: str):
 
 @app.get("/")
 def home():
-    return FileResponse(ROOT / "web" / "index.html", headers={"Cache-Control": "no-store"})
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(render_passkey_page(html, VERSION), headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/health")
@@ -118,6 +121,8 @@ def session_status(request: Request):
 
 @app.post("/api/login")
 def login(payload: LoginForm, request: Request, response: Response):
+    if passwordless_enabled():
+        raise HTTPException(403, "Owner token login is disabled. Sign in with a passkey.")
     address = request.client.host if request.client else "unknown"
     if not auth.verify_login(payload.token, address):
         raise HTTPException(401, "Invalid owner access token")
@@ -153,7 +158,6 @@ async def chat(payload: ChatForm, owner: dict = Depends(auth.require_owner_write
     from .engine import execute_chat
     return await execute_chat(db, text, payload.selected_node_id, owner, request_id=payload.request_id,
                               approval_request_id=payload.approval_request_id)
-
 
 
 @app.get("/api/memories")
@@ -285,6 +289,7 @@ from .operator import router as operator_router
 from .speech import router as speech_router
 from .persona import router as persona_router
 from .model_control import router as model_router
+app.include_router(passkey_router)
 app.include_router(model_router)
 app.include_router(activation_router)
 from .engine import router as engine_router
