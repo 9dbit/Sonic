@@ -90,11 +90,13 @@ with local_server(settings=settings) as (url,owner),sync_playwright() as p:
         assert summary['selected']=='integration:hub',summary
         assert summary['inspectorVisible'],summary
         assert summary['extraWidth']<=5,summary
-        command_deck=page.locator('body').evaluate("el=>el.classList.contains('sonic-shell-v100')")
-        # R1 intentionally renders a near-black layered panel rather than
-        # the previous flat black surface. Executor and authorization checks
-        # above remain unchanged and must still pass.
-        assert summary['bg']==('rgb(5, 10, 18)' if command_deck else 'rgb(0, 0, 0)'),summary
+        body_classes=page.locator('body').evaluate("el=>({orbit:el.classList.contains('orbit-v140'),deck:el.classList.contains('sonic-shell-v100')})")
+        # The Orbit V1.4 lavender-charcoal panel supersedes Command Deck R1's
+        # blue-black gradient. Keep authorization and executor assertions above.
+        expected_bg=('rgb(17, 16, 28)' if body_classes['orbit']
+                     else 'rgb(5, 10, 18)' if body_classes['deck']
+                     else 'rgb(0, 0, 0)')
+        assert summary['bg']==expected_bg,summary
         assert not errors,errors
         page.screenshot(path=str(OUT/('integration-'+viewport+'.png')),full_page=False)
         report.append({'viewport':viewport,**summary,'pageErrors':errors})
