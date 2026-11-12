@@ -250,7 +250,8 @@ def test_open_preview_skips_login_without_granting_owner_access(client, monkeypa
     body = session.json()
     assert body["authenticated"] is False
     assert body["preview"] is True
-    assert body["capabilities"] == ["preview-ui"]
+    assert "preview-ui" in body["capabilities"]
+    assert "preview_csrf" in body
     assert "csrf" not in body
     html = client.get("/").text
     assert 'class="login-overlay hidden" id="loginOverlay"' in html

@@ -97,30 +97,87 @@ with local_server(settings={'SONIC_PASSWORDLESS_LOGIN':'true'}) as (url,_),sync_
         assert page.request.post(url+'/api/login',data={'token':'not-an-owner'}).status!=200
         page.close()
     browser.close()
-# Open staging preview: no login/passkey UI and no private backend authority.
-with local_server(settings={'SONIC_OPEN_PREVIEW':'true','SONIC_PASSWORDLESS_LOGIN':'false'}) as (url,_),sync_playwright() as pw:
+# Public staging: configured fake keys for UI only. Provider HTTP must never be sent.
+with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
+                            'SONIC_PASSWORDLESS_LOGIN':'false',
+                            'SONIC_PREVIEW_PAID_ACTIONS':'true',
+                            'SONIC_BRAIN_PROVIDER':'deepseek',
+                            'SONIC_DEEPSEEK_MODEL':'deepseek-flash',
+                            'DEEPSEEK_API_KEY':'SYNTHETIC-NO-CALLS',
+                            'OPENAI_API_KEY':'SYNTHETIC-NO-CALLS',
+                            'SONIC_REALTIME_ENABLED':'true'}) as (url,_),sync_playwright() as pw:
     browser=pw.chromium.launch(headless=True,args=['--no-sandbox'])
-    for label,size in [('desktop',{'width':1440,'height':960}),('mobile',{'width':390,'height':844})]:
+    for label,size in [('desktop',{'width':1440,'height':960}),
+                       ('tablet',{'width':820,'height':980}),
+                       ('mobile',{'width':390,'height':844}),
+                       ('small',{'width':360,'height':780})]:
         page=browser.new_page(viewport=size)
-        errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+        errors=[]; calls=[]
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        def fake_chat(route):
+            calls.append(route.request.post_data_json)
+            route.fulfill(status=200,json={'reply':'SONIC preview model replied.',
+                'operator_jobs':[],'operator_proposals':[],'memory_events':[],
+                'memory_references':[],'ui_actions':[]})
+        page.route('**/api/preview/chat',fake_chat)
+        page.route('**/api/preview/voice/**',lambda route:route.fulfill(status=503,json={'detail':'Offline synthetic voice test'}))
         page.goto(url,wait_until='networkidle')
         expect(page.locator('#loginOverlay')).to_be_hidden()
-        expect(page.locator('.orbit-preview-pill')).to_have_text('OPEN PREVIEW')
-        expect(page.locator('#talkSonic')).to_be_disabled()
+        expect(page.locator('.orbit-preview-pill')).to_have_text('STAGING')
+        expect(page.locator('#previewModelPicker select')).to_be_visible()
+        assert page.locator('#previewModelPicker option').count()>=2
+        expect(page.locator('#talkSonic')).to_be_enabled()
         expect(page.locator('#devicePill')).to_have_text('PC protected')
-        expect(page.locator('#orbitMemory')).to_have_text('Preview')
+        expect(page.locator('#orbitMemory')).to_have_text('Private')
         expect(page.locator('#orbitDevice')).to_have_text('Protected')
-        for tab,panel in [('chat','#chatPanel'),('workspace','#workspacePanel'),('memory','#memoryPanel'),('devices','#devicesPanel'),('setup','#setupPanel'),('brain','#brainPanel')]:
+        assert page.locator('#graphStage').get_attribute('data-nodes')=='24'
+        assert page.evaluate('sonicGraph.nodes.length')==24
+        assert page.evaluate('sonicGraph.is3D') is True
+        page.wait_for_timeout(250)
+        layout(page,label+'-preview-brain')
+        page.screenshot(path=str(OUT/f'{label}-preview-neural.png'))
+        # Both text composers call only the bounded public provider adapter.
+        page.locator('#brainMessage').fill('Hello SONIC')
+        page.locator('#brainSend').click()
+        expect(page.locator('#brainAnswerText')).to_have_text('SONIC preview model replied.',timeout=10000)
+        assert calls[-1]['provider']=='deepseek'
+        page.locator('#previewModelPicker select').select_option('openai|gpt-4.1-mini')
+        expect(page.locator('#brainPill')).to_contain_text('gpt-4.1-mini')
+        page.locator('.nav[data-tab="chat"]').click()
+        page.locator('#message').fill('Test OpenAI')
+        page.locator('#send').click()
+        expect(page.locator('#chatFeed .message.assistant .body').last).to_have_text(
+            'SONIC preview model replied.',timeout=10000)
+        assert calls[-1]['provider']=='openai' and calls[-1]['model']=='gpt-4.1-mini'
+        # Prove the gesture connects to the existing voice controller without
+        # fetching user microphone/audio or charging the provider in CI.
+        page.evaluate("""()=>{window.__previewStarts=0;
+           SonicVoice.prototype.start=async function(){window.__previewStarts++;this.setState('listening');};}""")
+        page.locator('.nav[data-tab="brain"]').click()
+        page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(60)
+        assert page.evaluate('window.__previewStarts')==0
+        page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(150)
+        assert page.evaluate('window.__previewStarts')==1
+        assert page.evaluate('sonicMotion.focused') is True
+        expect(page.locator('#voiceStop')).to_be_visible()
+        page.locator('#voiceStop').click()
+        assert page.evaluate('sonicMotion.focused') is False
+        # Every tab remains navigable; owner data and PC ops stay protected.
+        for tab,panel in [('workspace','#workspacePanel'),('memory','#memoryPanel'),
+                          ('devices','#devicesPanel'),('setup','#setupPanel'),('brain','#brainPanel')]:
             page.locator('.nav[data-tab="'+tab+'"]').click()
             expect(page.locator(panel)).to_be_visible()
-        page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(50);page.locator('#sonicHeaderOrb').click();page.wait_for_timeout(100)
-        assert page.evaluate('sonicMotion.focused') is False
+            layout(page,label+'-preview-'+tab)
+            if tab in ('workspace','memory','devices','setup'):
+                page.screenshot(path=str(OUT/f'{label}-preview-{tab}.png'))
+        expect(page.locator('#memoryInput')).to_be_disabled()
+        expect(page.locator('#deviceBadge')).to_have_text('Protected')
         assert page.request.get(url+'/api/history').status==401
         assert page.request.post(url+'/api/chat',data={'message':'hello'}).status==401
         assert page.request.post(url+'/api/login',data={'token':'not-an-owner'}).status==403
         assert not errors,(label,errors)
-        page.screenshot(path=str(OUT/f'{label}-open-preview.png'))
-        report.append({'viewport':label,'openPreview':True,'privateRoutesLocked':True,'errors':errors})
+        report.append({'viewport':label,'openPreview':True,'realAdapterRouting':True,
+                       'brainNodes':24,'voiceStarts':1,'privateRoutesLocked':True,'errors':errors})
         page.close()
     browser.close()
 (OUT/'report.json').write_text(json.dumps(report,indent=2))

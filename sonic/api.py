@@ -21,9 +21,10 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 from .passkeys import router as passkey_router, enabled as passwordless_enabled
 from .passkey_ui import render as render_passkey_page
+from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.4.1'
+VERSION = '1.4.2'
 
 
 @asynccontextmanager
@@ -111,18 +112,16 @@ def health():
 
 
 @app.get("/api/session")
-def session_status(request: Request):
-    try:
-        owner = auth.read_session(request)
-    except HTTPException:
-        if not open_preview_enabled():
-            return {"authenticated": False}
+def session_status(request: Request, response: Response):
+    if preview_active():
         from .db import session_factory
         with session_factory()() as db:
             selection = selected_model(db)
-        return {"authenticated": False, "preview": True, "provider": selection.provider,
-                "model": selection.model, "version": VERSION,
-                "capabilities": ["preview-ui"]}
+        return {**issue_browser_guest(request, response, selection), "version": VERSION}
+    try:
+        owner = auth.read_session(request)
+    except HTTPException:
+        return {"authenticated": False}
     from .db import session_factory
     with session_factory()() as db:
         selection = selected_model(db)
@@ -314,6 +313,7 @@ app.include_router(knowledge_router)
 app.include_router(integrations_router)
 app.include_router(operator_router)
 app.include_router(speech_router)
+app.include_router(preview_router)
 app.include_router(persona_router)
 from .workspace import router as workspace_router
 app.include_router(workspace_router)

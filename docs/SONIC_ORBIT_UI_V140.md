@@ -1,53 +1,33 @@
-# SONIC Orbit UI 1.4.1
+# SONIC Orbit UI 1.4.2: unified design and functional open staging
 
-## Scope
+## Root cause and constraints
+The 1.4.1 open-preview mode hid authentication but set `csrf=null`, bypassed graph and configuration initialization, disabled every chat and voice control, and left old button colors on non-brain screens. This release does not replace the authenticated SONIC owner engine. No passkey or password is requested in staging.
 
-Implements the owner's supplied orb and purple-blue interface references on the
-existing application. Based on deployed passkey release `650196c9`, not the older
-DeepSeek-only branch. Existing chat, voice, graph, workspace, model selection,
-Software Manager and PC action approval routes remain in place.
+## Visual design
+- Reusable orb mascot continues bouncing, blinking and shifting gaze. Double tap summons the center orb and non-blocking purple/blue edge aura.
+- Unified charcoal/violet language on Neural Brain, Chat, Workspace, Memory Vault, Devices and Setup. iPhone header wraps across two rows; model selector and voice are visible.
+- Native original WebGL/Canvas perspective renderer is used for a 24-node / 43-link public **SONIC architecture** map. Rotate/pan, 2D/3D, selection, and zoom work. These are architecture metadata, **not** an assertion that private Memory Vault items were fetched or replaced.
+- Private Memory, TRADEVICEPC, workspace and PC command controls show explicit **Protected** status rather than fabricated offline/empty metrics. Owner data is never exposed.
 
-- Reusable animated SVG logo: repeating small jump, blink and left/right gaze.
-- Existing motion controller now draws a matching glossy orb instead of the
-  superseded 5,880-point sphere. The gesture API and knowledge graph are retained.
-- Double tapping the header logo or brain orb centers SONIC and invokes the
-  existing explicit voice-start path. A single tap never invokes the microphone.
-- Purple-blue edge ribbons appear only in the summoned state. They cannot
-  intercept clicks. Stop/Mute remain above the effect; Stop also returns the orb.
-- Escape/Return minimizes the orb; it does not silently change microphone state.
-- The state caption follows actual voice events, not visual animation timing.
-- Cards show authenticated saved-note count, device connectivity/telemetry and
-  selected chat model. No invented sample data from the concept board is used.
-- Chat model and OpenAI voice are labeled separately.
-- Dashboard cards clear on expired authentication and ignore late private data.
-- Desktop navigation and the six-route mobile floating dock preserve all actions.
-- Staging may set `SONIC_OPEN_PREVIEW=true` to hide the login/passkey overlay and
-  allow UI/navigation review without issuing an owner session or CSRF token.
-  Private data, chat/voice providers, settings writes and PC actions remain denied.
-- Reduced-motion preference disables SVG bounce/eyes and edge ribbons; the orb
-  renders a static pose. Canvas updates are capped at 30 fps and paused when the
-  document is hidden. No external asset/CDN or animation dependency is added.
+## Real provider routes without owner authority
+- `SONIC_OPEN_PREVIEW=true` and `SONIC_PREVIEW_PAID_ACTIONS=true` enable anonymous guest chat / Realtime audio **on staging only**, still no public owner session.
+- An HttpOnly SameSite signed guest cookie and CSRF token (delivered via `/api/session`) authenticate the **guest browser only**, with no user-visible login or passkey prompt. Requests enforce exact same-origin Origin and reject cross-site operations.
+- `GET /api/preview/models` lists only configured preview-allowlisted DeepSeek Flash and OpenAI GPT-4.1 options; the UI selector switches the actual backend provider for subsequent text turns, not the owner's persisted preference.
+- `POST /api/preview/chat` reuses the real SONIC `providers.complete` adapter, with a short, isolated single-turn context, no tools, no private memory, no account/PC context and no persistent owner chat history. No hidden fallback between providers.
+- `POST /api/preview/voice/sessions` and `.../stop` reuse WebRTC/Realtime transport with OpenAI-only voice, **all functions/tools disabled**, no owner context, 60 seconds per session and consent initiated by the owner gesture. Provider voice is independent of selected text model.
+- Durable global quotas: 80 chats/day and 6 Realtime sessions/day. Per-network: 12 chats/day and 2 sessions/day. Limits reserve budget before upstream calls and persist across restarts; no raw prompts or IP addresses stored in the quota table. Provider bills and credits may impose lower limits. Voice session closing is explicit; expiry/housekeeping is retained.
+- All regular owner endpoints, memory writes/reads, settings mutations, signed Windows tasks, software installs, inbox, workspace and private operational telemetry remain under their original `auth.require_owner`/`auth.require_owner_write` checks. Live owner engine is unchanged.
+- `SONIC_PREVIEW_PAID_ACTIONS=false` immediately disables public paid actions while preserving open UI and 3D graph. `SONIC_OPEN_PREVIEW=false` restores the previous login flow. **Never set open preview in production.**
 
-## Validation
+## Validation scope
+- Pure backend tests use synthetic model/provider responses and no real API key. They check guest cookie and CSRF, model routing, origin rejection, owner-route denial, durable budget enforcement, synthetic WebRTC startup/stop with no tools, and disabled flag behavior.
+- Playwright tests run 4 viewports (1440, 820, 390, 360), including native 3D graph with 24 nodes, model switching, text send routing to fake provider, double-tap voice transport single-start, six working navigation tabs, protected endpoints, and browser JS errors. Existing owner route tests continue separately.
+- A REAL iPhone microphone, live OpenAI WebRTC audio and DeepSeek billable response must be evaluated independently after staging is live; synthetic passing tests do not prove audio playback or sufficient API credit.
 
-Local Python: 549 passed, six skipped because disposable PostgreSQL is not
-configured. Local JavaScript: 59 passed. Dedicated browser acceptance covers
-1440, 820, 390 and 360 px viewports, actual orb pixels, no horizontal page overflow,
-all six routes, one voice start per double tap, click-through decoration, real
-Stop hit testing, reduced motion and locked-session data clearing.
+## Deployment
+1. Publish this code to GitHub and wait for CI.
+2. In SONIC Railway **staging only**, stage both reviewed commit and `SONIC_PREVIEW_PAID_ACTIONS=true`.
+3. Observe terminal Railway deployment SUCCESS, check `/api/health` version 1.4.2, `/api/session` guest mode, `/api/preview/models`, and public HTML assets.
+4. Verify unauthenticated `/api/history`, owner `/api/chat`, `/api/device/status` and login remain locked. A single bounded provider text request can verify production API response. Do not claim microphone tested until user tests it on device.
 
-Existing passkey enrollment/login/logout with Chromium virtual authenticators,
-workspace CRUD/conflicts/voice routing and shell regression passed locally.
-Virtual authenticator and synthetic voice results are not a real biometric or
-provider-audio test. All browser test data is disposable and provider calls are
-blocked or mocked. No live TRADEVICEPC operation is issued by these tests.
-
-## Release
-
-Target only `SONIC / staging / sonic-web`. Wait for the reviewed commit's CI,
-then stage and apply that exact source. Confirm terminal deployment SUCCESS and
-HTTP 200 at `/api/health` with version 1.4.1 and public assets before claiming live.
-No Windows Companion change or restart of Postgres/TRADEVICEPC is required.
-
-Rollback to `650196c9fcc06870be42597bc5e0845afaa7962e` restores the previous UI while
-retaining the same passkey-capable authentication backend and existing data.
+TRADEVICEPC Windows Companion, Markstudios and Chatvice remain untouched.

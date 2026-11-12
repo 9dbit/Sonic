@@ -5,14 +5,14 @@
   const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   const providerLabels={openai:'OpenAI',openrouter:'OpenRouter',deepseek:'DeepSeek'};
-  let csrf=null,openPreview=false,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
+  let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const watchingJobs=new Set();
   const taskLabels={awaiting_approval:'Menunggu persetujuan',pending:'Menunggu persetujuan',queued:'Menunggu Windows',leased:'Sedang berjalan',running:'Sedang berjalan',completed:'Selesai',done:'Selesai',failed:'Gagal',cancelled:'Dibatalkan',expired:'Kedaluwarsa',rejected:'Tidak dijalankan',approved:'Persetujuan dicatat',needs_clarification:'Perlu nama dan tujuan yang jelas'};
   const taskLabel=status=>taskLabels[status]||status;
   const filters=new Set(Object.keys(categoryNames));
   const graph=new window.SonicGraph($('graphStage'),{
-    onSelect:(node,path)=>{renderInspector(node,path);if(node&&innerWidth<=650)toggleInspector(true);if(node?.category==='device')showDevicePopup().catch(e=>notify(e.message));else if(node&&node.category!=='integration')showNodePopup(node);},
+    onSelect:(node,path)=>{renderInspector(node,path);if(node&&innerWidth<=650)toggleInspector(true);if(openPreview&&node){showNodePopup(node);return;}if(node?.category==='device')showDevicePopup().catch(e=>notify(e.message));else if(node&&node.category!=='integration')showNodePopup(node);},
     onRender:info=>{$('graphEngine').textContent=info.engine+' / '+info.nodes+' visible';}
   });
   // Useful for local browser QA, contains only the already-authorized graph, no tokens.
@@ -33,8 +33,17 @@
     graphData={nodes:[],edges:[],counts:{categories:{},memories:0}};graphFingerprint='';$('chatFeed').replaceChildren();$('memoryList').replaceChildren();$('brainAnswerText').textContent='';$('brainReceipt').replaceChildren();$('brainAnswer').classList.add('hidden');renderInspector(null);$('searchResults').replaceChildren();$('topHubs').replaceChildren();
   }
   async function API(path,opts={}){
-    if(openPreview&&path!=='/api/session'&&path!=='/api/health'){const error=Error('Open staging preview: private actions are disabled.');error.status=403;throw error;}
-    const headers={'Content-Type':'application/json',...(opts.headers||{})};if(csrf&&opts.method&&opts.method!=='GET')headers['X-Sonic-CSRF']=csrf;
+    if(openPreview&&path!=='/api/session'&&path!=='/api/health'){
+      if(path==='/api/chat'){
+        path='/api/preview/chat';
+        const body=JSON.parse(opts.body||'{}');
+        opts={...opts,body:JSON.stringify({message:body.message,provider:previewModel.provider,model:previewModel.model})};
+      }else if(path.startsWith('/api/voice/sessions'))path=path.replace('/api/voice/sessions','/api/preview/voice/sessions');
+      else if(!['/api/preview/models'].includes(path)){const error=Error('Private SONIC data and PC actions are protected in open preview.');error.status=403;throw error;}
+    }
+    const headers={'Content-Type':'application/json',...(opts.headers||{})};
+    if(openPreview&&opts.method&&opts.method!=='GET')headers['X-Sonic-Preview-CSRF']=previewCsrf;
+    else if(csrf&&opts.method&&opts.method!=='GET')headers['X-Sonic-CSRF']=csrf;
     const response=await fetch(path,{credentials:'same-origin',...opts,headers});
     const body=await response.json().catch(()=>({}));
     if(response.status===401&&path!=='/api/login'&&!openPreview){csrf=null;clearPrivateUI();$('loginOverlay').classList.remove('hidden');}
@@ -137,7 +146,7 @@
     if(node.category==='device')host.append(el('p','small-note','Status: '+node.state));
     if(path.length)host.append(el('p','trace-note','Path: '+path.map(id=>graph.lookup.get(id)?.label||id).join(' > ')));
     const actions=el('div','node-actions');actions.append(button('Focus',()=>graph.select(node.id,{focus:true})),button('Trace path',()=>{graph.traceArmed=true;toggleInspector(false);notify('Pilih node kedua untuk menelusuri jalur.');}));
-    if(node.category==='memory')actions.append(button('Connect note',()=>renderLinkForm(node,host)));
+    if(!openPreview&&node.category==='memory')actions.append(button('Connect note',()=>renderLinkForm(node,host)));
     host.append(actions);
     const relations=graphData.edges.filter(e=>e.kind==='owner_link'&&(e.source===node.id||e.target===node.id));
     for(const e of relations){const other=graph.lookup.get(e.source===node.id?e.target:e.source),row=el('div','saved-link');
@@ -159,7 +168,7 @@
   }
   function brainAnswer(text,error=false,events=[]){$('brainAnswer').classList.remove('hidden');$('brainAnswer').classList.toggle('error',error);$('brainAnswerText').textContent=text;$('brainReceipt').replaceChildren();events.forEach(e=>appendReceipt($('brainReceipt'),e));}
   function setWaiting(value){waiting=value;$('send').disabled=value;$('brainSend').disabled=value;}
-  async function send(source,options={}){if(openPreview){notify('Open staging preview: chat AI belum diaktifkan.');return;}if(liveVoice?.active){notify('Stop sesi suara sebelum mengirim chat teks.');return;}const input=$(source==='brain'?'brainMessage':'message'),text=String(options.overrideText??input.value).trim();if(!text||waiting)return;
+  async function send(source,options={}){if(liveVoice?.active){notify('Stop sesi suara sebelum mengirim chat teks.');return;}const input=$(source==='brain'?'brainMessage':'message'),text=String(options.overrideText??input.value).trim();if(!text||waiting)return;
     const requestId=options.requestId||crypto.randomUUID();
     if(window.sonicMotion?.handleCommand(text)){input.value='';notify('SONIC Motion Core kembali ke posisi semula.');return;}
     setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');if(!options.overrideText)input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
@@ -315,24 +324,125 @@
       const states=[['Owner authentication',s.owner_configured],['Persistent database',s.database_connected],['Selected '+providerLabel+' key configured (not a live test)',s.provider_key_configured],['PC credential configured',s.device_credential_configured],['TRADEVICEPC heartbeat',s.device_online]];
       $('setupList').replaceChildren();for(const [label,ready] of states){const row=el('div','memory-item');row.append(el('span','',label),el('strong','',ready?'Ready':'Pending'));$('setupList').append(row);}
     }catch(error){$('setupMessage').textContent=error.message;}}
-  function applyOpenPreview(r){
-    openPreview=true;csrf=null;document.body.classList.add('sonic-open-preview');$('loginOverlay').classList.add('hidden');
-    $('pageSubtitle').textContent='Open staging preview · private actions disabled.';
-    if(!document.querySelector('.orbit-preview-pill')){const badge=el('span','pill orbit-preview-pill','OPEN PREVIEW');document.querySelector('.top-right')?.prepend(badge);}
-    $('coreModel').textContent=(r.model||'Preview')+' / preview';
-    $('brainPill').textContent='Preview · '+(r.model||'UI only');$('brainPill').className='pill muted';
+  function setPreviewModel(next){
+    previewModel={provider:next.provider,model:next.model};
+    const label=providerLabels[next.provider]+' / '+next.model;
+    $('brainPill').textContent=label;$('brainPill').className='pill muted';
+    $('coreModel').textContent=label+' / guest demo';
+    for(const selector of document.querySelectorAll('.preview-model-select')){
+      selector.value=next.provider+'|'+next.model;
+    }
+    window.dispatchEvent(new CustomEvent('sonic:overview',{detail:{kind:'model',configured:true,model:next.model}}));
+    if(graphData.preview)loadPreviewTopology();
+  }
+  function loadPreviewTopology(){
+    if(!window.SonicPreviewTopology)return;
+    graphData=window.SonicPreviewTopology.build(previewModel);
+    graph.setData(graphData);$('graphEmpty').classList.add('hidden');
+    $('graphCounts').textContent=graphData.counts.nodes+' architecture nodes / '+graphData.edges.length+' 3D connections';
+    $('graphLimit').textContent='Public topology only. Saved owner memory stays private.';
+    $('graphHint').textContent='Drag to orbit / pinch to zoom / tap a module';
+    renderFilters();renderHubs();renderSearch();renderInspector(graph.lookup.get(graph.selected)||null);
+  }
+  function renderPreviewModelPicker(host){
+    const select=el('select','preview-model-select');
+    select.setAttribute('aria-label','Pilih AI model untuk chat preview');
+    for(const model of previewModels?.models||[]){
+      const option=el('option','',(providerLabels[model.provider]||model.provider)+' / '+model.model);
+      option.value=model.provider+'|'+model.model;select.append(option);
+    }
+    select.value=previewModel.provider+'|'+previewModel.model;
+    select.addEventListener('change',()=>{const [provider,model]=select.value.split('|');
+      setPreviewModel({provider,model});notify('Chat preview model: '+(providerLabels[provider]||provider)+' / '+model);
+    });
+    select.disabled=!previewModels?.enabled||!select.options.length;
+    host.append(select);
+    return select;
+  }
+  function renderPreviewControls(){
+    if(!document.querySelector('.orbit-preview-pill')){
+      document.querySelector('.top-right')?.prepend(el('span','pill orbit-preview-pill','STAGING'));
+    }
+    if(!document.querySelector('#previewModelPicker')) {
+      const picker=el('div','preview-model-picker');picker.id='previewModelPicker';
+      renderPreviewModelPicker(picker);
+      document.querySelector('.top-right')?.insertBefore(picker,$('talkSonic'));
+    }
+    const notice=el('section','orbit-preview-settings');
+    notice.id='orbitPreviewSettings';
+    notice.append(el('span','eyebrow','LIVE CHAT / PREVIEW PROVIDERS'),
+      el('h3','','Model AI aktif'),
+      el('p','', 'Pilih AI untuk percakapan. Perubahan ini hanya untuk tab preview dan tidak mengubah default model pemilik.'));
+    renderPreviewModelPicker(notice);
+    notice.append(el('p','small-note','VOICE: OpenAI Realtime, bukan DeepSeek. Batas 60 detik/sesi dan kuota demo harian. No PC tools or private memory.'));
+    $('setupPanel').prepend(notice);
+    $('brainModelControl')?.classList.add('hidden');
+    $('setupMessage').textContent='Staging demo: selected-provider adapter live; owner settings, files and private engine isolated.';
+    $('voiceReadiness').textContent=previewModels?.voice?.enabled?
+      'OpenAI Realtime siap dicoba. Tap Talk to SONIC atau double tap orb untuk izin mikrofon.':
+      'OpenAI Realtime provider belum siap di staging.';
+    const states=[['Open preview / no login',true],
+      ['Selected text provider',!!previewModels?.models?.length],
+      ['OpenAI Realtime audio',!!previewModels?.voice?.enabled],
+      ['Private PC control',false],['Owner Memory / Files',false]];
+    $('setupList').replaceChildren();
+    for(const [label,ready] of states){
+      const row=el('div','memory-item');row.append(el('span','',label),
+        el('strong','',ready?'Available':'Protected'));$('setupList').append(row);
+    }
+  }
+  function previewPrivacyUi(){
+    $('pageSubtitle').textContent='Live AI demo, private data protected.';
     $('devicePill').textContent='PC protected';$('devicePill').className='pill muted';
-    for(const id of ['talkSonic','wakeToggle','send','brainSend','snapshotDevice','refreshDevice','refreshSetup','testProvider','voice','brainVoice','mic','brainMic','camera','brainCamera','screen','brainScreen','image','brainImage']){
-      const node=$(id);if(!node)continue;node.disabled=true;node.title='Disabled in open staging preview.';
+    $('deviceName').textContent='TRADEVICEPC / PRIVATE';
+    $('deviceDetail').textContent='Connection status hidden in public staging preview.';
+    $('deviceBadge').textContent='Protected';$('deviceBadge').className='pill muted';
+    $('telemetrySource').textContent='No private Windows telemetry is exposed in open preview.';
+    $('deviceRAM').disabled=true;
+    $('memoryTotal').textContent='PRIVATE';
+    $('memoryInput').placeholder='Personal memory is protected in public preview';
+    $('memoryInput').disabled=true;
+    $('memoryForm').querySelector('button[type=submit]').disabled=true;
+    $('memoryStatus').textContent='Your existing saved memories are unchanged and never shown to public visitors.';
+    $('memoryList').replaceChildren(el('p','empty-list','Memory Vault remains private. Public preview displays only AI and architectural visualization.'));
+    $('workspacePanel').classList.add('preview-private-workspace');
+    const wsDescription=$('workspacePanel').querySelector('.ws-heading p');
+    if(wsDescription)wsDescription.textContent='Workspace pemilik tetap terlindungi. Mode publik hanya untuk review UI, AI chat dan voice.';
+    if($('wsStatus'))$('wsStatus').textContent='PRIVATE PREVIEW / File, folder dan operasi Windows hanya tersedia untuk owner.';
+    for(const id of ['wsNewFolder','wsNewNote','wsPcCloudTab','wsPcDeviceTab','wsCloud','wsPc','wsTrash','wsSearch','wsRefresh','refreshDevice','snapshotDevice','refreshSetup','testProvider','deviceRAM','refreshExecutionTasks','stopExecution']){
+      const node=$(id);if(!node)continue;
+      node.addEventListener('click',event=>{if(!openPreview)return;event.preventDefault();event.stopImmediatePropagation();
+        notify('Owner files, memory, telemetry and PC controls stay private in open staging preview.');
+      },true);
     }
     for(const id of ['logout','setupLogout'])if($(id))$(id).hidden=true;
-    if($('orbitMemory'))$('orbitMemory').textContent='Preview';
-    if($('orbitDevice'))$('orbitDevice').textContent='Protected';
-    if($('orbitTelemetry'))$('orbitTelemetry').textContent='TRADEVICEPC controls disabled';
-    window.dispatchEvent(new CustomEvent('sonic:overview',{detail:{kind:'model',configured:true,model:r.model||'Preview'}}));
+    for(const id of ['wakeToggle','camera','brainCamera','screen','brainScreen','image','brainImage']){
+      const node=$(id);if(node){node.disabled=true;node.title='Private feature. Chat and live voice are available in the open preview.';}
+    }
+    $('orbitMemory').textContent='Private';$('orbitDevice').textContent='Protected';
+    $('orbitTelemetry').textContent='PC operations require owner access';
+    $('brainMessage').placeholder='Ask SONIC about anything...';
+    $('message').placeholder='Chat dengan SONIC...';
+    document.querySelector('.chat-panel .disclaimer').textContent=
+      'Live AI demo: no PC commands or owner memory. Voice uses OpenAI Realtime, chat uses your selected provider.';
+    if($('graphEmpty'))$('graphEmpty').classList.add('hidden');
+  }
+  async function applyOpenPreview(r){
+    openPreview=true;previewCsrf=r.preview_csrf||null;csrf=null;
+    document.body.classList.add('sonic-open-preview');$('loginOverlay').classList.add('hidden');
+    previewModel={provider:r.provider||'deepseek',model:r.model||'deepseek-flash'};
+    previewPrivacyUi();
+    try{previewModels=await API('/api/preview/models');}
+    catch(e){previewModels={enabled:false,models:[],voice:{enabled:false}};notify(e.message);}
+    const selected=(previewModels.models||[]).find(m=>m.provider===previewModel.provider&&m.model===previewModel.model)||
+                   previewModels.models?.[0];
+    if(selected)previewModel={provider:selected.provider,model:selected.model};
+    renderPreviewControls();
+    setPreviewModel(previewModel);
+    loadPreviewTopology();
     setTab(currentTab);
   }
-  async function initialize(){const r=await API('/api/session');if(r.preview===true){applyOpenPreview(r);return;}$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
+  async function initialize(){const r=await API('/api/session');if(r.preview===true){await applyOpenPreview(r);return;}$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
     const initialTab=currentTab;
     csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(brainConfigured?'brain':'setup'):currentTab);
     await loadTasks(true);
@@ -344,6 +454,12 @@
     speechAudio?.pause();window.speechSynthesis?.cancel();const words=String(text).slice(0,1600);
     if(!words)return;
     activityState('speaking');
+    if(openPreview){
+      if(!window.speechSynthesis){activityState('idle');notify('Browser speech is unavailable. Use Talk to SONIC for Realtime voice.');return;}
+      const utterance=new SpeechSynthesisUtterance(words);utterance.lang='id-ID';
+      utterance.onend=utterance.onerror=()=>activityState('idle');
+      window.speechSynthesis.speak(utterance);return;
+    }
     try{
       const response=await fetch('/api/voice/speak',{method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json','X-Sonic-CSRF':csrf},body:JSON.stringify({text:words,consent:true})});
@@ -403,7 +519,7 @@
   }
   $('stopExecution').addEventListener('click',async()=>{const b=$('stopExecution');b.disabled=true;try{const r=await API('/api/engine/stop',{method:'POST',body:'{}'});notify(r.notice);await loadTasks();}catch(e){notify(e.message);}finally{b.disabled=false;}});
   $('refreshExecutionTasks').addEventListener('click',()=>loadTasks());
-  async function loadVoiceStatus(){const status=await API('/api/voice/status');$('voiceReadiness').textContent=(status.enabled&&status.configured?'Configured, live audio not yet verified. ':'Not enabled. ')+status.model+' / '+status.max_session_seconds+' sec / '+status.sessions_started_today_utc+' of '+(status.daily_limit_enabled?status.daily_session_limit+' sessions today (UTC)':'No SONIC daily session cap')+'.';return status;}
+  async function loadVoiceStatus(){if(openPreview){const voice=previewModels?.voice||{};const status={enabled:!!voice.enabled,configured:!!voice.enabled,model:voice.model||'OpenAI Realtime',max_session_seconds:60,daily_limit_enabled:true,daily_session_limit:6,sessions_started_today_utc:0,active_session:null};$('voiceReadiness').textContent=voice.enabled?'OpenAI Realtime: live guest voice (60s per session, global budget).':'Voice provider unavailable on staging.';return status;}const status=await API('/api/voice/status');$('voiceReadiness').textContent=(status.enabled&&status.configured?'Configured, live audio not yet verified. ':'Not enabled. ')+status.model+' / '+status.max_session_seconds+' sec / '+status.sessions_started_today_utc+' of '+(status.daily_limit_enabled?status.daily_session_limit+' sessions today (UTC)':'No SONIC daily session cap')+'.';return status;}
   async function openVoiceDialog(){
     if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
     if(waiting){notify('Tunggu respons chat selesai sebelum memulai suara.');return;}
@@ -519,7 +635,8 @@
         item.append(el('small','execution-note','Spoken response / not automatically saved'));
         brainAnswer(text);return {handled:false};
       }
-      if(handleVoiceSessionCommand(text))return {handled:true,silent:true};
+      if(openPreview){item.append(el('small','execution-note','Realtime demo / no PC actions'));return {handled:false};}
+       if(handleVoiceSessionCommand(text))return {handled:true,silent:true};
       const workspace=await window.sonicWorkspace?.handleVoice(text,meta.inputContext||null);
       if(workspace?.handled){line('assistant',workspace.reply);return workspace;}
       const result=await dispatchSpokenPC(meta.sessionId,meta.itemId,text);
@@ -556,7 +673,7 @@
   // owner's application consent. Browser/OS permission still applies.
   window.addEventListener('sonic:invoke',event=>{
     if(event.detail?.consent!=='double_tap')return;
-    if(!csrf){window.sonicMotion?.returnHome();notify(openPreview?'Open staging preview: voice provider belum diaktifkan.':'Masuk ke SONIC sebelum memulai mikrofon.');return;}
+    if(!csrf&&!openPreview){window.sonicMotion?.returnHome();notify('Masuk ke SONIC sebelum memulai mikrofon.');return;}
     $('voiceSessionBar').classList.remove('compact');$('voiceHide').textContent='Minimize';
     if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
     if(waiting){notify('Tunggu respons chat selesai, lalu double tap lagi.');return;}
