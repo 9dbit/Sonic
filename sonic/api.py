@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
+from html import escape as html_escape
 import json
 from uuid import uuid4
 
@@ -24,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.4.4'
+VERSION = '1.4.5'
 
 
 @asynccontextmanager
@@ -101,7 +102,24 @@ def safe_device_id(value: str):
 @app.get("/")
 def home():
     html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(render_passkey_page(html, VERSION), headers={"Cache-Control": "no-store"})
+    rendered = render_passkey_page(html, VERSION)
+    rendered = rendered.replace("__SONIC_PUBLIC_URL__", html_escape(public_url(), quote=True))
+    return HTMLResponse(rendered, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse(ROOT / "web" / "favicon.ico", media_type="image/x-icon")
+
+
+@app.get("/apple-touch-icon.png")
+def apple_touch_icon():
+    return FileResponse(ROOT / "web" / "apple-touch-icon.png", media_type="image/png")
+
+
+@app.get("/site.webmanifest")
+def web_manifest():
+    return FileResponse(ROOT / "web" / "site.webmanifest", media_type="application/manifest+json")
 
 
 @app.get("/api/health")
