@@ -36,3 +36,13 @@ TRADEVICEPC Windows Companion, Markstudios and Chatvice remain untouched.
 - Four parallel browser components may request /api/session before the first cookie settles. Their responses can establish different signed guest cookies; the app's first CSRF token can then be stale. Backend cookies are persistent across repeated requests, but first-load concurrency still requires reconciliation.
 - Client retries a paid preview POST once only upon exact server-generated guest CSRF/expiry rejection; it re-reads the same-origin /api/session and updates the signed guest CSRF for chat and WebRTC. The initial 403 reserves no upstream budget or API cost.
 - End-to-end browser test injects the exact 403 for both chat and voice, verifies retry and no tools/provider execution, and checks 24-node 3D rendering across desktop/tablet/phones.
+
+
+## v1.4.4: Safari / 5G Realtime voice resilience
+- On iPhone Safari, the staging server accepted two Realtime session starts (HTTP 200), with stop calls a few seconds later. This shows the upstream session initialized; server logs alone do not prove whether Safari, radio/network transport, or a page-visibility transition caused the disconnect.
+- The WebRTC client now treats transient peer/ICE disconnect or data-channel errors as a recoverable seven-second grace period; it resumes the original connection if the channel and ICE recover. A permanently closed channel cannot be reused. No automatic new provider session is created, avoiding hidden audio recording and unexpected paid retries.
+- The centered SONIC orb overlays show Live/Connecting/Reconnecting status and include Stop mikrofon, Aktifkan audio (when browser playback is blocked), and Coba suara lagi only after a user-visible interruption. The retry requires a fresh explicit tap; there is no unattended reactivation.
+- Safari remote audio is now attached as a real inline media element in document.body, instead of an unattached element, while retaining playback permissions and manual Enable audio fallback.
+- Each guest /stop request may supply a restricted non-sensitive stop reason code (e.g. rtc_disconnected, channel_closed, page_hidden); the database tracks reason in close_reason for future debugging. It never stores recordings, SDP, transcript, or a raw JS error string.
+- Tests cover network interruption followed by ICE recovery without new microphone or provider session, terminal data-channel close and resource cleanup, manual stop while reconnecting, provider reason allowlist, and mobile UI controls.
+- This is a staging-only fix, not a guarantee of flawless audio over every mobile network. Live Safari iPhone audio playback and carrier network changes still require direct device verification.

@@ -168,8 +168,10 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
         page.evaluate("""()=>{window.__previewStarts=0;
            SonicVoice.prototype.start=async function(){
              window.__previewStarts++;
+              this.sessionId=crypto.randomUUID();
+              this.requestStarted=true;
              await this.options.api('/api/voice/sessions',{
-               method:'POST',body:JSON.stringify({session_id:crypto.randomUUID(),sdp:'synthetic',consent:true})
+               method:'POST',body:JSON.stringify({session_id:this.sessionId,sdp:'synthetic',consent:true})
              });
              this.setState('listening');
            };}""")
@@ -180,8 +182,21 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
         assert page.evaluate('window.__previewStarts')==1
         assert len(voice_calls)==2, 'CSRF voice denial must retry exactly once'
         assert page.evaluate('sonicMotion.focused') is True
-        expect(page.locator('#voiceStop')).to_be_visible()
-        page.locator('#voiceStop').click()
+        expect(page.locator('#sonicVoiceFocusStop')).to_be_visible()
+        expect(page.locator('#sonicVoiceRetry')).to_be_hidden()
+        page.locator('#sonicVoiceFocusStop').click()
+        expect(page.locator('#sonicVoiceFocusStop')).to_be_hidden()
+        page.wait_for_timeout(80)
+        assert page.evaluate('window.__previewStarts')==1
+        page.evaluate("""()=>sonicMotion.voiceFeedback(
+          'Safari connection dropped. Tap Coba suara lagi.',{retry:true})""")
+        expect(page.locator('#sonicVoiceRetry')).to_be_visible()
+        page.screenshot(path=str(OUT/f'{label}-voice-retry.png'))
+        page.locator('#sonicVoiceRetry').click()
+        expect(page.locator('#sonicVoiceFocusStop')).to_be_visible()
+        assert page.evaluate('window.__previewStarts')==2
+        page.locator('#sonicVoiceFocusStop').click()
+        page.get_by_role('button',name='Kembali ke posisi awal').click()
         assert page.evaluate('sonicMotion.focused') is False
         # Every tab remains navigable; owner data and PC ops stay protected.
         for tab,panel in [('workspace','#workspacePanel'),('memory','#memoryPanel'),
@@ -198,7 +213,7 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
         assert page.request.post(url+'/api/login',data={'token':'not-an-owner'}).status==403
         assert not errors,(label,errors)
         report.append({'viewport':label,'openPreview':True,'realAdapterRouting':True,
-                       'brainNodes':24,'voiceStarts':1,'privateRoutesLocked':True,'errors':errors})
+                       'brainNodes':24,'voiceStarts':page.evaluate('window.__previewStarts'),'privateRoutesLocked':True,'errors':errors})
         page.close()
     browser.close()
 (OUT/'report.json').write_text(json.dumps(report,indent=2))

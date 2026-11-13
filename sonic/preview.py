@@ -6,6 +6,8 @@ durable global and per-network daily paid-provider quotas.
 """
 from __future__ import annotations
 
+from typing import Literal
+
 import hashlib
 import hmac
 import json
@@ -144,6 +146,18 @@ def take_budget(db: Session, kind: str, network: str) -> None:
     db.commit()
 
 
+class PreviewStop(BaseModel):
+    # Only bounded transport state codes, never user speech or arbitrary error text.
+    model_config = ConfigDict(extra="forbid", strict=True)
+    reason: Literal[
+        "owner_stop", "channel_closed", "channel_error", "rtc_disconnected",
+        "rtc_failed", "rtc_closed", "ice_disconnected", "ice_failed",
+        "microphone_ended", "page_hidden", "start_failed", "connect_timeout",
+        "duration_limit", "provider_error", "persona_changed", "voice_command",
+        "voice_stop_all", "tool_limit", "session_expired", "logout"
+    ] = "owner_stop"
+
+
 class PreviewChat(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     message: str = Field(min_length=1, max_length=1000)
@@ -280,7 +294,8 @@ async def preview_voice_start(payload: voice.StartVoice, visitor: dict = Depends
 
 
 @router.post("/api/preview/voice/sessions/{session_id}/stop")
-async def preview_voice_stop(session_id: str, visitor: dict = Depends(guest),
-                             db: Session = Depends(get_db)):
+async def preview_voice_stop(session_id: str, payload: PreviewStop | None = None,
+                             visitor: dict = Depends(guest), db: Session = Depends(get_db)):
     row = voice.owned_session(db, session_id, visitor)
-    return await voice.close_call(db, row, "preview_owner_stop")
+    reason = payload.reason if payload else "owner_stop"
+    return await voice.close_call(db, row, "preview_" + reason)

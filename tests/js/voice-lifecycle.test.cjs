@@ -15,3 +15,71 @@ test('Stop while microphone permission is pending disposes late tracks',async()=
 test('provider failure immediately closes microphone',async()=>{const f=fixture({api:async()=>{throw Error('provider rejected');}});await f.voice.start();assert.equal(f.voice.active,false);assert.ok(f.tracks.every(t=>t.stopped));});
 test('duplicate realtime function event executes once and returns one result',async()=>{const f=fixture();await f.voice.start();const event={type:'response.function_call_arguments.done',call_id:'f1',name:'memory_search',arguments:'{"query":"bakso"}'};f.voice.event(event,f.voice.generation);f.voice.event(event,f.voice.generation);await f.voice.toolChain;assert.equal(f.requests.filter(r=>r[0].endsWith('/tools')).length,1);assert.equal(f.sent.filter(e=>e.item?.type==='function_call_output').length,1);await f.voice.stop();});
 test('late tools after Stop cannot apply a graph change or restart response',async()=>{let release;let applied=0;const f=fixture();await f.voice.start();assert.equal(f.voice.active,true);const original=f.voice.options.api;f.voice.options.api=(p,o)=>p.endsWith('/tools')?new Promise(r=>{release=r;}):original(p,o);f.voice.options.onActions=()=>{applied++;};f.voice.toolEvent({call_id:'f1',name:'graph_reset',arguments:'{}'},f.voice.generation);await Promise.resolve();await f.voice.stop();release({output:{prepared:true},ui_actions:[{type:'graph.reset'}]});await f.voice.toolChain;assert.equal(applied,0);assert.equal(f.sent.filter(e=>e.type==='response.create').length,0);});
+
+
+test('mobile ICE flap enters reconnecting then resumes original session without reopening the microphone',async()=>{
+  const f=fixture();
+  await f.voice.start();
+  const firstGeneration=f.voice.generation;
+  const firstSession=f.voice.sessionId;
+  f.voice.pc.connectionState='disconnected';
+  f.voice.pc.onconnectionstatechange();
+  assert.equal(f.voice.state,'reconnecting');
+  assert.equal(f.voice.active,true);
+  assert.equal(f.tracks[0].stopped,false);
+  assert.equal(f.requests.filter(r=>r[0]==='/api/voice/sessions').length,1);
+  f.voice.pc.connectionState='connected';
+  f.voice.pc.onconnectionstatechange();
+  assert.equal(f.voice.state,'listening');
+  assert.equal(f.voice.recoveryTimer,null);
+  assert.equal(f.voice.sessionId,firstSession);
+  assert.equal(f.voice.generation,firstGeneration);
+  assert.equal(f.mediaCalls,1);
+  await f.voice.stop();
+});
+
+test('data channel error has bounded recovery; permanent channel close releases microphone and provider',async()=>{
+  const f=fixture();
+  await f.voice.start();
+  f.voice.dc.onerror?.();
+  assert.equal(f.voice.state,'reconnecting');
+  assert.equal(f.tracks[0].stopped,false);
+  f.voice.dc.onclose?.();
+  await new Promise(resolve=>setTimeout(resolve,5));
+  assert.equal(f.voice.state,'idle');
+  assert.equal(f.tracks[0].stopped,true);
+  assert.equal(f.voice.recoveryTimer,null);
+  const stops=f.requests.filter(r=>r[0].endsWith('/stop'));
+  assert.equal(stops.length,1);
+  assert.equal(JSON.parse(stops[0][1].body).reason,'channel_closed');
+});
+
+test('manual Stop during reconnect closes the same session with no automatic paid-provider retry',async()=>{
+  const f=fixture();
+  await f.voice.start();
+  f.voice.pc.iceConnectionState='disconnected';
+  f.voice.pc.oniceconnectionstatechange();
+  assert.equal(f.voice.state,'reconnecting');
+  await f.voice.stop('owner_stop');
+  assert.equal(f.voice.active,false);
+  assert.equal(f.voice.recoveryTimer,null);
+  assert.equal(f.mediaCalls,1);
+  assert.equal(f.requests.filter(r=>r[0]==='/api/voice/sessions').length,1);
+});
+
+
+test('a failed peer is not marked recovered because of stale ICE connected telemetry',async()=>{
+  const f=fixture();
+  await f.voice.start();
+  f.voice.pc.iceConnectionState='connected';
+  f.voice.pc.connectionState='failed';
+  f.voice.pc.onconnectionstatechange();
+  assert.equal(f.voice.state,'reconnecting');
+  f.voice.pc.oniceconnectionstatechange?.();
+  assert.equal(f.voice.state,'reconnecting');
+  assert.equal(f.voice.transportReady(),false);
+  f.voice.pc.connectionState='connected';
+  f.voice.pc.onconnectionstatechange();
+  assert.equal(f.voice.state,'listening');
+  await f.voice.stop();
+});

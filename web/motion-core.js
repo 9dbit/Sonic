@@ -14,9 +14,27 @@
    this.float.title='Double tap untuk memulai mikrofon dan pemrosesan audio OpenAI';
    this.shade=document.createElement('div');this.shade.id='sonicFocusShade';this.shade.setAttribute('aria-hidden','true');
    this.focusControls=document.createElement('div');this.focusControls.className='sonic-focus-controls';this.focusControls.hidden=true;
-   const hint=document.createElement('p');hint.textContent='SONIC · Double tap memulai mikrofon dan audio OpenAI';
+   const hint=document.createElement('p');hint.id='sonicVoiceFocusHint';
+    hint.setAttribute('role','status');hint.setAttribute('aria-live','polite');
+    hint.textContent='SONIC: Double tap untuk berbicara lewat OpenAI.';this.voiceHint=hint;hint.textContent='SONIC · Double tap memulai mikrofon dan audio OpenAI';
    const home=document.createElement('button');home.type='button';home.textContent='Kembali ke posisi awal';home.addEventListener('click',()=>this.returnHome());
-   this.focusControls.append(hint,home);document.body.append(this.shade,this.focusControls);
+   this.retryVoice=document.createElement('button');this.retryVoice.type='button';this.retryVoice.id='sonicVoiceRetry';
+    this.retryVoice.textContent='Coba suara lagi';this.retryVoice.hidden=true;
+    this.retryVoice.addEventListener('click',()=>{
+      this.retryVoice.hidden=true;this.voiceHint.textContent='Menyambungkan kembali suara...';
+      window.dispatchEvent(new CustomEvent('sonic:invoke',{detail:{consent:'manual_retry'}}));
+    });
+    this.resumeVoiceAudio=document.createElement('button');this.resumeVoiceAudio.type='button';
+    this.resumeVoiceAudio.id='sonicVoiceResumeAudio';this.resumeVoiceAudio.textContent='Aktifkan audio';
+    this.resumeVoiceAudio.hidden=true;
+    this.resumeVoiceAudio.addEventListener('click',()=>{
+      window.dispatchEvent(new CustomEvent('sonic:resume-audio'));
+    });
+    this.stopVoice=document.createElement('button');this.stopVoice.type='button';
+    this.stopVoice.id='sonicVoiceFocusStop';this.stopVoice.textContent='Stop mikrofon';this.stopVoice.hidden=true;
+    this.stopVoice.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('sonic:stop-voice')));
+    this.focusControls.append(hint,this.retryVoice,this.resumeVoiceAudio,this.stopVoice,home);
+    document.body.append(this.shade,this.focusControls);
    this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');this.float.append(this.canvas);
    this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
@@ -64,6 +82,12 @@
    else this.place(this.home);
   }
   returnHome(){this.setFocus(false);}
+  voiceFeedback(message,{retry=false,audio=false,stop=false}={}){
+    if(this.voiceHint&&message)this.voiceHint.textContent=String(message).slice(0,240);
+    if(this.retryVoice)this.retryVoice.hidden=!retry;
+    if(this.resumeVoiceAudio)this.resumeVoiceAudio.hidden=!audio;
+    if(this.stopVoice)this.stopVoice.hidden=!stop;
+  }
   handleCommand(text){if(math.returnIntent(text)){this.returnHome();return true;}return false;}
   setState(state){this.state=state;this.float.dataset.state=state;window.dispatchEvent(new CustomEvent('sonic:activity',{detail:{state}}));}
   dimensions(){const w=this.canvas.clientWidth,h=this.canvas.clientHeight,dpr=clamp(devicePixelRatio||1,1,2),nw=Math.max(1,Math.round(w*dpr)),nh=Math.max(1,Math.round(h*dpr));

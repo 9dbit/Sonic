@@ -640,8 +640,14 @@
     const reject=button('Discard',async()=>{try{await API('/api/voice/sessions/'+sessionId+'/memories/'+proposal.proposal_id+'/reject',{method:'POST',body:'{}'});card.remove();}catch(e){notify(e.message);}},'plain');controls.append(save,reject);card.append(controls);host.append(card);
   }
   liveVoice=new window.SonicVoice({api:API,onActions:applyGraphActions,onProposal:showVoiceProposal,onError:notify,
+    onTransportWarning:message=>window.sonicMotion?.voiceFeedback(message,{stop:true}),
+    onTransportRecovered:()=>window.sonicMotion?.voiceFeedback('Koneksi suara tersambung kembali.',{stop:true}),
     onInputStart:()=>window.sonicWorkspace?.captureContext(),
-    onState:state=>{window.sonicRealtimeActive=state!=='idle';window.dispatchEvent(new CustomEvent('sonic:voice-state',{detail:{state}}));$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
+    onState:state=>{window.sonicRealtimeActive=state!=='idle';
+      if(state==='connecting')window.sonicMotion?.voiceFeedback('Menghubungkan mikrofon dan audio...', {stop:true});
+      else if(state==='reconnecting')window.sonicMotion?.voiceFeedback('Sinyal suara terputus sementara. Mencoba pulih...', {stop:true});
+      else if(['listening','thinking','speaking','muted'].includes(state))
+        window.sonicMotion?.voiceFeedback(({listening:'SONIC mendengarkan...',thinking:'SONIC sedang memproses...',speaking:'SONIC sedang berbicara...',muted:'Mikrofon dimatikan sementara.'})[state],{stop:true});window.dispatchEvent(new CustomEvent('sonic:voice-state',{detail:{state}}));$('voiceSessionBar').classList.toggle('hidden',state==='idle');$('talkSonic').classList.toggle('active',state!=='idle');$('voiceStateText').textContent=({connecting:'Connecting...',listening:'Listening',thinking:'Thinking',speaking:'Speaking',muted:'Mic muted',reconnecting:'Reconnecting...',idle:'Stopped'})[state]||state;activityState(['listening','thinking','speaking'].includes(state)?state:'idle');$('voiceMute').textContent=liveVoice?.muted?'Unmute':'Mute';$('voiceMute').setAttribute('aria-pressed',String(!!liveVoice?.muted));},
     onConnected:info=>{$('coreModel').textContent=info.model+' / realtime';},
     onTranscript:async(role,text,meta={})=>{
       if(!text.trim())return {handled:false};
@@ -663,9 +669,31 @@
     },
     onReferences:refs=>renderReferences($('brainReceipt'),refs),
     onTick:seconds=>{$('voiceCountdown').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');},
-    onPlaybackBlocked:()=>{$('voiceResume').classList.remove('hidden');notify('Tekan Enable audio untuk mengizinkan suara pada browser ini.');},
-    onPlaybackResumed:()=>$('voiceResume').classList.add('hidden'),
-    onStopped:()=>{$('voiceProposalHost').replaceChildren();$('voiceResume').classList.add('hidden');if(csrf)loadSetup();if(wake?.enabled&&!document.hidden)wake.resume();}
+    onPlaybackBlocked:()=>{
+      $('voiceResume').classList.remove('hidden');
+      window.sonicMotion?.voiceFeedback('Safari meminta izin output audio. Tap Aktifkan audio.',{audio:true,stop:true});
+      notify('Ketuk Aktifkan audio agar jawaban SONIC terdengar.');
+    },
+    onPlaybackResumed:()=>{
+      $('voiceResume').classList.add('hidden');
+      window.sonicMotion?.voiceFeedback('Audio SONIC sudah aktif.',{stop:true});
+    },
+    onStopped:reason=>{
+      $('voiceProposalHost').replaceChildren();$('voiceResume').classList.add('hidden');
+      if(csrf)loadSetup();if(wake?.enabled&&!document.hidden)wake.resume();
+      const interrupted=['channel_closed','channel_error','rtc_disconnected','rtc_failed',
+          'rtc_closed','ice_disconnected','ice_failed','microphone_ended','page_hidden'].includes(reason);
+      if(interrupted){
+        const message=reason==='page_hidden'?'Sesi dihentikan ketika Safari berpindah tab atau layar.' :
+          reason==='microphone_ended'?'Mikrofon dihentikan Safari atau perangkat.' :
+          'Sesi suara terputus di jaringan WebRTC. Ketuk Coba suara lagi.';
+        window.sonicMotion?.voiceFeedback(message,{retry:true});notify(message);
+      }else if(reason==='duration_limit'){
+        window.sonicMotion?.voiceFeedback('Durasi sesi voice selesai. Kuota demo mungkin berlaku.',{retry:true});
+      }else if(reason==='start_failed'){
+        window.sonicMotion?.voiceFeedback('Gagal memulai suara. Periksa pesan error sebelum coba lagi.',{retry:true});
+      }else window.sonicMotion?.voiceFeedback('Sesi suara berhenti. Double tap untuk mulai lagi.');
+    }
   });
   window.sonicWorkspace=new window.SonicWorkspace({api:API,notify,open:()=>setTab('workspace'),read:text=>{if(liveVoice.active)liveVoice.verifiedPCReceipt(text);else speak(text,{force:true});}});
   window.sonicPCWorkspace=new window.SonicPCWorkspace({api:API,notify,cloud:window.sonicWorkspace});
@@ -687,7 +715,7 @@
   // Runs in the second tap's event stack, before any await: that tap is the
   // owner's application consent. Browser/OS permission still applies.
   window.addEventListener('sonic:invoke',event=>{
-    if(event.detail?.consent!=='double_tap')return;
+    if(!['double_tap','manual_retry'].includes(event.detail?.consent))return;
     if(!csrf&&!openPreview){window.sonicMotion?.returnHome();notify('Masuk ke SONIC sebelum memulai mikrofon.');return;}
     $('voiceSessionBar').classList.remove('compact');$('voiceHide').textContent='Minimize';
     if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
@@ -696,6 +724,8 @@
     liveVoice.start().catch(error=>{notify(error.message);if(wake?.enabled)wake.resume();});
   });
   $('voiceConsentForm').addEventListener('submit',async e=>{e.preventDefault();if(!$('voiceAgree').checked)return;$('voiceConsent').close();wake?.pause();speech?.stop();window.speechSynthesis?.cancel();try{await liveVoice.start();}catch(error){notify(error.message);}});
+  window.addEventListener('sonic:stop-voice',()=>liveVoice.stop('owner_stop'));
+  window.addEventListener('sonic:resume-audio',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
   $('voiceStop').addEventListener('click',()=>{liveVoice.stop();window.sonicMotion?.returnHome();});$('voiceHide').addEventListener('click',()=>{$('voiceSessionBar').classList.toggle('compact');$('voiceHide').textContent=$('voiceSessionBar').classList.contains('compact')?'Expand':'Minimize';});$('voiceMute').addEventListener('click',()=>liveVoice.mute());$('voiceResume').addEventListener('click',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
   $('refreshRuns').addEventListener('click',loadRuns);
   document.addEventListener('visibilitychange',()=>{if(document.hidden){if(liveVoice.active)liveVoice.stop('page_hidden');wake?.stop();}});

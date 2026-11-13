@@ -112,9 +112,16 @@ def test_preview_voice_creates_no_tools_and_does_not_allow_pc_calls(guest_sessio
     assert "memory_search" not in json.dumps(payload)
     assert client.post("/api/voice/sessions/"+session_id+"/tools",json={
         "call_id":"x","name":"device_metrics","arguments":{}}).status_code==401
-    stop=client.post("/api/preview/voice/sessions/"+session_id+"/stop",json={},headers=headers)
+    stop_url="/api/preview/voice/sessions/"+session_id+"/stop"
+    invalid=client.post(stop_url,json={"reason":"microphone transcript or secret"},headers=headers)
+    assert invalid.status_code==422
+    stop=client.post(stop_url,json={"reason":"channel_closed"},headers=headers)
     assert stop.status_code==200,stop.text
     assert stop.json()["provider_close_confirmed"] is True
+    from sonic.db import session_factory, VoiceSession
+    with session_factory()() as db:
+        row=db.get(VoiceSession,session_id)
+        assert row.close_reason=="preview_channel_closed"
 
 
 def test_preview_paid_flag_gates_all_provider_calls(client, monkeypatch):
