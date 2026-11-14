@@ -173,7 +173,8 @@ def store_telemetry(db:Session,data):
     row=db.get(DeviceTelemetry,data.device_id)
     if row is None:row=DeviceTelemetry(device_id=data.device_id);db.add(row)
     row.agent_version=data.agent_version
-    row.capabilities_json=json.dumps(sorted(set(data.capabilities)&(ACTIONS|{'system.status','system.metrics'})))
+    from .productivity import DIAGNOSTICS
+    row.capabilities_json=json.dumps(sorted(set(data.capabilities)&(ACTIONS|DIAGNOSTICS|{'system.status','system.metrics'})))
     row.metrics_json=json.dumps(clean_metrics(data.metrics))
     targets=[]
     for target in data.gui_targets[:5]:

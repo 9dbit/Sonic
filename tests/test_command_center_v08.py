@@ -159,5 +159,5 @@ def test_full_v08_heartbeat_capabilities_accepted(client):
     h=login(client)
     cap=client.get('/api/operator/capabilities').json()
     assert set(full).issubset(set(cap['capabilities']))
-    denied=heartbeat(client,full+['unrecognized.action']*12)
+    denied=heartbeat(client,full+['unrecognized.action']*33)
     assert denied.status_code==422
