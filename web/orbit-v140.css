@@ -1,0 +1,181 @@
+/* SONIC Orbit UI v1.4.1: scoped presentation layer, no backend or permission changes. */
+:root{--sonic-orbit-violet:#9874f8;--sonic-orbit-indigo:#5d55e9;--sonic-orbit-blue:#48b5fd;--sonic-orbit-soft:#d1c5fb;--sonic-orbit-night:#090913}
+html{color-scheme:dark}
+body.orbit-v140,body.orbit-v140 .app{background:#07070f!important;color:#f9f7ff!important}
+body.orbit-v140 .app{background:radial-gradient(ellipse 54% 38% at 70% -20%,rgba(104,61,201,.12),transparent 84%),#07070f!important}
+body.orbit-v140 .content{background:radial-gradient(ellipse 76% 48% at 70% 10%,rgba(97,52,199,.10),transparent 80%),#070711!important;min-width:0}
+body.orbit-v140 .sidebar{background:#080710!important;border-color:rgba(165,121,242,.11)!important}
+body.orbit-v140 .sidebar:before{background:linear-gradient(180deg,rgba(151,119,255,.39),transparent 42%,rgba(89,183,255,.24))}
+body.orbit-v140 .sidebar .brand-symbol,body.orbit-v140 .hero-mark img{filter:drop-shadow(0 0 12px rgba(141,101,255,.26))}
+body.orbit-v140 .brand-words strong{letter-spacing:.18em;font-weight:750}
+body.orbit-v140 .brand-words small{color:#b2a1d4!important}
+body.orbit-v140 .sidebar-caption{color:#a79cbd;border-color:rgba(158,117,233,.12)}
+body.orbit-v140 .sidebar-content .nav{border-radius:999px!important;transition:background-color .2s,box-shadow .2s,color .2s}
+body.orbit-v140 .sidebar-content .nav.active{background:linear-gradient(110deg,#6545ad,#43348c)!important;color:#fff!important;box-shadow:0 11px 28px rgba(101,69,193,.19)!important}
+body.orbit-v140 .sidebar-content .nav.active:before{display:none!important}
+body.orbit-v140 .topbar{background:rgba(7,7,14,.94)!important;border-bottom-color:rgba(153,121,228,.12)!important;gap:13px}
+body.orbit-v140 .topbar .eyebrow{color:#c3acff!important}
+body.orbit-v140 .top-title h1{color:#fff}
+body.orbit-v140 .top-subtitle{color:#a59dba}
+body.orbit-v140 .topbar .talk-button,
+body.orbit-v140 .app button.talk-button:not(.nav):not(.plain):not(.logout){background:linear-gradient(120deg,#a882fc,#6351da)!important;border-color:rgba(207,176,255,.30)!important;box-shadow:0 6px 28px rgba(100,71,203,.25)!important;color:#fff!important;border-radius:999px!important}
+body.orbit-v140 .app button.wake-pill:not(.nav):not(.plain):not(.logout){background:rgba(35,28,54,.82)!important;border-color:rgba(145,116,201,.16)!important;color:#c9c0dc!important}
+body.orbit-v140 .pill{border-color:rgba(161,133,214,.16)!important;background:rgba(31,25,47,.82)!important}
+body.orbit-v140 .orbit-header-orb{appearance:none;display:grid;place-items:center;width:57px;height:65px;flex:none;overflow:visible;border:0!important;padding:0!important;background:transparent!important;cursor:pointer;border-radius:50%!important;box-shadow:none!important;touch-action:manipulation}
+body.orbit-v140 .orbit-header-orb img{display:block;width:53px;height:60px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(153,120,252,.34))}
+body.orbit-v140 .orbit-header-orb:focus-visible{outline:2px solid #bda4ff;outline-offset:1px}
+body.orbit-v140 .orbit-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;padding:14px 19px 0;z-index:1;position:relative;flex:none;min-width:0}
+body.orbit-v140 .orbit-overview[hidden]{display:none!important}
+body.orbit-v140 .orbit-overview-card{display:flex;flex-direction:column;align-items:stretch;text-align:left;justify-content:space-between;gap:8px;min-width:0;min-height:105px;max-width:100%;padding:15px 19px!important;border:1px solid rgba(171,143,237,.12)!important;border-radius:22px!important;background:linear-gradient(125deg,#262035 0%,#151422 86%)!important;color:#fff!important;box-shadow:inset 0 1px rgba(232,207,255,.035)!important;cursor:pointer}
+body.orbit-v140 .orbit-overview-card:nth-child(2){background:linear-gradient(130deg,#1d2231,#141825)!important}
+body.orbit-v140 .orbit-overview-card:nth-child(3){background:linear-gradient(130deg,#322344,#21172b)!important}
+body.orbit-v140 .orbit-overview-card:hover{border-color:rgba(183,153,255,.36)!important;transform:translateY(-2px)}
+body.orbit-v140 .orbit-overview-card:focus-visible{outline:2px solid #b79dff;outline-offset:3px}
+body.orbit-v140 .orbit-card-top{font:650 10px/1.3 ui-monospace,Consolas,monospace;letter-spacing:.05em;color:#d5c5fc;display:flex;justify-content:space-between;align-items:center;gap:5px}
+body.orbit-v140 .orbit-card-top small{color:#998bb0;font-size:9px}
+body.orbit-v140 .orbit-overview-card strong{font:700 clamp(18px,2vw,26px)/1.1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.045em;color:#fff;overflow-wrap:anywhere}
+body.orbit-v140 .orbit-card-foot{color:#b2acc1;font:500 10px/1.4 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.orbit-v140 .brain-panel,body.orbit-v140 .chat-panel,body.orbit-v140 .workspace-panel,body.orbit-v140 .info-panel{border-color:rgba(151,118,229,.13)!important;box-shadow:0 22px 76px rgba(0,0,0,.31)!important}
+body.orbit-v140 .brain-panel{background:
+  radial-gradient(ellipse 55% 65% at 55% 47%,rgba(63,39,123,.19),transparent 75%),
+  radial-gradient(ellipse 34% 42% at 87% 53%,rgba(71,44,121,.12),transparent 75%),
+  radial-gradient(circle at 1px 1px,rgba(166,141,235,.052) .8px,transparent 1.4px),
+  #11101c!important;background-size:auto,auto,18px 18px,auto!important}
+body.orbit-v140 .brain-side,
+body.orbit-v140 .graph-toolbar,
+body.orbit-v140 .filter-panel{background:linear-gradient(160deg,rgba(31,25,48,.96),rgba(17,15,29,.95))!important;border-color:rgba(158,129,214,.12)!important;backdrop-filter:blur(22px)}
+body.orbit-v140 .graph-toolbar{border-radius:999px!important}
+body.orbit-v140 .graph-toolbar button{border-radius:999px!important}
+body.orbit-v140 .graph-toolbar button.active,body.orbit-v140 .graph-toolbar button[aria-pressed=true]{background:rgba(122,91,200,.27)!important}
+body.orbit-v140 .node-inspector,
+body.orbit-v140 .graph-search{background:#121020!important;border-color:rgba(153,120,211,.12)!important}
+body.orbit-v140 .neural-field-label{color:#d0bbfc}
+body.orbit-v140 .neural-field-glyph{color:#ad90fd}
+body.orbit-v140 .neural-field-line{background:rgba(157,112,248,.32)}
+body.orbit-v140 .assistant-core{background:transparent!important;box-shadow:none!important}
+body.orbit-v140 .core-state i{background:#a995fb!important}
+body.orbit-v140 .core-state,body.orbit-v140 .model-label{color:#cec2ec}
+body.orbit-v140 .graph-empty{background:rgba(34,27,52,.91)!important;border-color:rgba(169,131,232,.17)!important}
+body.orbit-v140 .brain-console .composer,body.orbit-v140 .chat-panel .composer{background:#252036!important;border:1px solid rgba(161,128,225,.12)!important;border-radius:25px!important;box-shadow:0 16px 48px #0006!important}
+body.orbit-v140 .composer textarea{color:#eee9f9!important}
+body.orbit-v140 .composer .send-button{border-radius:50%!important;background:linear-gradient(150deg,#a578ff,#694de5)!important;border:1px solid rgba(220,193,255,.2)!important;box-shadow:0 3px 20px rgba(123,85,233,.2)!important}
+body.orbit-v140 .composer .icon-button,body.orbit-v140 .composer .voice-button{border-radius:999px!important;background:#322945!important;color:#c9c0df!important}
+body.orbit-v140 .chat-panel{background:radial-gradient(ellipse at 52% 24%,rgba(86,45,154,.2),transparent 65%),#0e0c19!important}
+body.orbit-v140 .chat-panel .hero h2 span,body.orbit-v140 .gradient-heading{background:linear-gradient(100deg,#e2d6ff,#9e7df8,#5aaefc)!important;background-clip:text!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent}
+body.orbit-v140 .message.user .body{background:#25203a!important;border-color:rgba(160,128,225,.12)!important}
+body.orbit-v140 .info-panel,body.orbit-v140 .workspace-panel{background:linear-gradient(145deg,#151222,#0c0c15 83%)!important}
+body.orbit-v140 .memory-item,body.orbit-v140 .device-card,body.orbit-v140 .operator-panel,body.orbit-v140 .device-telemetry,body.orbit-v140 .pc-window-manager{background:linear-gradient(145deg,#221d31,#171521)!important;border-color:rgba(158,122,216,.12)!important}
+body.orbit-v140 .login-overlay{background:radial-gradient(ellipse 50% 54% at 50% 33%,rgba(87,53,150,.20),transparent 84%),#07070ff7!important}
+body.orbit-v140 .login-card{max-width:465px!important;background:linear-gradient(155deg,#211a30,#11101d)!important;border-color:rgba(157,117,233,.11)!important;border-radius:32px!important;box-shadow:0 24px 95px #000b!important;text-align:center;padding:35px!important}
+body.orbit-v140 .login-orb{margin:0 auto 18px!important;width:108px!important;height:112px!important}
+body.orbit-v140 .login-orb img{width:105px!important;height:113px!important;object-fit:contain}
+body.orbit-v140 .login-card h2{font-size:clamp(30px,5vw,41px)!important}
+body.orbit-v140 .login-card p{color:#bdb1cc!important;font-size:12px;line-height:1.7}
+body.orbit-v140 .login-card .eyebrow{color:#c3a5fa!important}
+body.orbit-v140 .login-card .passkey-primary{background:linear-gradient(105deg,#9976e8,#5766dd)!important;color:white!important;border-radius:999px!important;min-height:50px}
+body.orbit-v140 .login-card .passkey-message{color:#bfb2d2}
+body.orbit-v140 .login-card small{color:#8f82a4!important}
+body.orbit-v140 .passkey-manage{background:linear-gradient(140deg,#261e38,#171321)!important}
+body.orbit-v140 .passkey-manage button{background:linear-gradient(95deg,#865cdd,#5b53d4)!important;color:#fff!important;border-radius:999px!important}
+
+/* Focus effect: fixed, decorative, and behind every voice control. */
+#sonicWaveAura{position:fixed;inset:0;z-index:38;overflow:hidden;opacity:0;pointer-events:none;transition:opacity .5s ease;background:radial-gradient(ellipse 70% 60% at 50% 43%,transparent 35%,rgba(62,52,150,.12) 89%,rgba(65,55,149,.19))}
+body.sonic-focused #sonicWaveAura{opacity:1}
+#sonicWaveAura .orbit-aura-ribbon{position:absolute;display:block;pointer-events:none;opacity:.94;border:2px solid rgba(164,124,255,.64);filter:drop-shadow(0 0 16px rgba(111,89,252,.78));box-shadow:0 0 27px rgba(107,83,252,.45),inset 0 0 20px rgba(77,145,255,.31);background:transparent;animation:sonic-wave-breathe 3.3s ease-in-out infinite alternate}
+#sonicWaveAura .orbit-aura-top,#sonicWaveAura .orbit-aura-bottom{left:-20%;width:140%;height:18%;border-radius:50%}
+#sonicWaveAura .orbit-aura-top{top:-10%;border-top-color:rgba(81,159,255,.45);animation-delay:-.7s}
+#sonicWaveAura .orbit-aura-bottom{bottom:-10%;border-bottom-color:rgba(115,80,245,.67);animation-delay:-2.2s}
+#sonicWaveAura .orbit-aura-left,#sonicWaveAura .orbit-aura-right{top:-20%;height:140%;width:19%;border-radius:50%}
+#sonicWaveAura .orbit-aura-left{left:-12%;border-left-color:rgba(125,87,248,.68);animation-delay:-1.1s}
+#sonicWaveAura .orbit-aura-right{right:-12%;border-right-color:rgba(99,160,255,.62);animation-delay:-2.7s}
+@keyframes sonic-wave-breathe{0%{transform:scale(.985);opacity:.60;filter:drop-shadow(0 0 8px rgba(111,83,247,.49))}100%{transform:scale(1.035);opacity:1;filter:drop-shadow(0 0 23px rgba(120,106,255,.93))}}
+body.sonic-focused #sonicFocusShade{background:radial-gradient(circle at 50% 50%,#111025,#080713 60%,#05050c)!important}
+body.sonic-focused .sonic-motion-float.focused{z-index:39!important}
+.orbit-voice-caption{position:fixed;z-index:41;top:calc(50% + min(27vw,180px));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;align-items:center;pointer-events:none;color:#f8f3ff;text-align:center;white-space:nowrap}
+.orbit-voice-caption[hidden]{display:none!important}
+.orbit-voice-caption strong{font:750 clamp(15px,2.2vw,26px)/1.2 Inter,system-ui,sans-serif;letter-spacing:.45em;text-indent:.45em}
+.orbit-voice-caption span{color:#d9c7ff;font:600 11px ui-monospace,Consolas,monospace;letter-spacing:.22em;text-transform:uppercase}
+.orbit-voice-caption small{color:#a3a0c1;letter-spacing:.22em;font-size:9px}
+body.orbit-v140 .sonic-focus-controls button{background:#33234c!important;color:#e7dcff!important;border-radius:999px!important}
+body.orbit-v140 .voice-session-bar{background:rgba(29,22,47,.97)!important;border-color:rgba(150,126,229,.20)!important;z-index:44!important}
+body.orbit-v140.sonic-focused .voice-session-bar{z-index:44!important}
+@media(min-width:1200px){
+  body.orbit-v140 .brain-panel{margin-top:15px!important}
+  body.orbit-v140 .brain-right{top:20px}
+}
+@media(max-width:1020px){
+  body.orbit-v140 .orbit-overview{gap:10px;padding:11px 12px 0}
+  body.orbit-v140 .orbit-overview-card{padding:13px!important;min-height:94px}
+  body.orbit-v140 .orbit-card-top{font-size:9px}
+}
+@media(max-width:720px){
+  body.orbit-v140 .topbar{height:69px!important;min-height:69px!important;padding:0 10px!important;gap:4px!important}
+  body.orbit-v140 .orbit-header-orb{width:46px;height:57px;padding:0!important}
+  body.orbit-v140 .orbit-header-orb img{width:43px;height:51px}
+  body.orbit-v140 .topbar-intro{min-width:0;gap:0;flex:1}
+  body.orbit-v140 .top-title h1{font-size:17px!important}
+  body.orbit-v140 .topbar .eyebrow{font-size:7px!important;letter-spacing:.055em!important}
+  body.orbit-v140 .top-right{gap:5px!important}
+  body.orbit-v140 .orbit-overview{padding:6px 8px 0;gap:7px}
+  body.orbit-v140 .orbit-overview-card{min-height:91px;padding:10px 9px!important;border-radius:17px!important;gap:4px}
+  body.orbit-v140 .orbit-card-top{font-size:7.5px;letter-spacing:0;line-height:1.35;white-space:nowrap}
+  body.orbit-v140 .orbit-card-top small{display:none}
+  body.orbit-v140 .orbit-overview-card strong{font-size:clamp(13px,3.6vw,17px);letter-spacing:-.035em}
+  body.orbit-v140 .orbit-card-foot{font-size:8.5px;line-height:1.3}
+  body.orbit-v140 .brain-panel,body.orbit-v140 .chat-panel,body.orbit-v140 .workspace-panel,body.orbit-v140 .info-panel{margin:8px 8px 10px!important;border-radius:23px!important}
+  body.orbit-v140 .sidebar{position:fixed!important;left:10px!important;right:10px!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;top:auto!important;width:calc(100% - 20px)!important;height:66px!important;min-height:66px!important;padding:6px!important;border:1px solid rgba(137,110,209,.20)!important;border-radius:24px!important;background:rgba(28,22,42,.96)!important;box-shadow:0 15px 40px #0009!important;backdrop-filter:blur(20px);z-index:25}
+  body.orbit-v140 .sidebar-content{height:52px!important;width:100%!important;gap:0!important;justify-content:space-around}
+  body.orbit-v140 .sidebar .nav{min-height:52px!important;height:52px!important;max-width:none!important;border-radius:18px!important;gap:5px!important}
+  body.orbit-v140 .sidebar .nav svg{width:19px;height:19px}
+  body.orbit-v140 .sidebar .nav span{font-size:9px!important}
+  body.orbit-v140 .app{padding-bottom:calc(82px + env(safe-area-inset-bottom))!important}
+  body.orbit-v140 .brain-console .composer,body.orbit-v140 .chat-panel .composer{border-radius:23px!important}
+  body.orbit-v140 .neural-field-label{font-size:8px}
+  body.orbit-v140 .brain-side{background:rgba(29,23,44,.98)!important}
+  body.orbit-v140 .graph-toolbar{border-radius:999px!important}
+  body.orbit-v140 .login-card{width:calc(100% - 40px)!important;padding:30px 21px!important;border-radius:30px!important}
+  .orbit-voice-caption{top:calc(50% + min(37vw,151px));gap:7px}
+}
+@media(max-width:390px){
+  body.orbit-v140 .orbit-overview-card{padding:9px 8px!important}
+  body.orbit-v140 .orbit-overview-card strong{font-size:14px!important}
+  body.orbit-v140 .topbar .wake-pill{font-size:9px!important;padding:7px!important}
+  body.orbit-v140 .sidebar .nav span{font-size:8px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  body.orbit-v140 .orbit-overview-card,body.orbit-v140 .orbit-header-orb{transition:none!important}
+  #sonicWaveAura .orbit-aura-ribbon{animation:none!important;filter:none!important}
+  body.sonic-focused #sonicWaveAura{opacity:0!important}
+}
+
+/* Command Deck's legacy generic button rule is intentionally stronger than
+   ordinary class selectors; these narrowly scoped overrides keep the new
+   overview and mascot from turning into solid bright-blue buttons. */
+body.orbit-v140 .app button.orbit-overview-card:not(.nav):not(.plain):not(.logout){display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:space-between!important;text-align:left!important;background:linear-gradient(130deg,#282038,#171424 87%)!important;color:#f9f6ff!important;box-shadow:inset 0 1px rgba(235,210,255,.055)!important;border:1px solid rgba(167,139,228,.14)!important}
+body.orbit-v140 .app button.orbit-overview-card:nth-child(2):not(.nav):not(.plain):not(.logout){background:linear-gradient(125deg,#222536,#171a26 87%)!important}
+body.orbit-v140 .app button.orbit-overview-card:nth-child(3):not(.nav):not(.plain):not(.logout){background:linear-gradient(120deg,#30223e,#20192d 89%)!important}
+body.orbit-v140 .app button#sonicHeaderOrb:not(.nav):not(.plain):not(.logout){background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+body.orbit-v140 .app button.send-button:not(.nav):not(.plain):not(.logout){background:linear-gradient(135deg,#a67cff,#664ae0)!important;border-color:rgba(205,179,252,.28)!important;color:#fff!important;border-radius:999px!important}
+body.orbit-v140 .app button:is(.icon-button,.voice-button):not(.nav):not(.plain):not(.logout){background:#30263f!important;border:1px solid rgba(163,134,223,.10)!important;color:#d6c9ef!important;border-radius:999px!important}
+
+/* Keep the empty-brain explanation away from the live orb and model status. */
+@media(min-width:1021px){
+  body.orbit-v140 .brain-panel .graph-empty{
+    left:50%!important;right:auto!important;top:auto!important;bottom:165px!important;
+    transform:translateX(-50%)!important;text-align:center!important;
+    width:240px!important;max-width:240px!important;
+    background:rgba(38,28,60,.89)!important;border:1px solid rgba(170,140,244,.14)!important
+  }
+}
+
+body.sonic-open-preview .orbit-preview-pill{
+  background:rgba(116,83,205,.18)!important;
+  border:1px solid rgba(181,150,255,.28)!important;
+  color:#d9c8ff!important;
+  letter-spacing:.12em;
+  font:700 9px/1 ui-monospace,Consolas,monospace;
+}
+body.sonic-open-preview button:disabled{
+  opacity:.42;
+  cursor:not-allowed!important;
+}

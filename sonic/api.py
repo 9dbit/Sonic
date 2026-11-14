@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
+from html import escape as html_escape
 import json
 from uuid import uuid4
 
@@ -21,9 +22,10 @@ from .db import Device, DeviceJob, MemoryNote, MemorySource, get_db, recent_mess
 from .memory import save_note, delete_note, record
 from .passkeys import router as passkey_router, enabled as passwordless_enabled
 from .passkey_ui import render as render_passkey_page
+from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.3.0'
+VERSION = '1.4.7'
 
 
 @asynccontextmanager
@@ -78,6 +80,11 @@ class DeviceResult(BaseModel):
     result: dict = Field(default_factory=dict)
 
 
+def open_preview_enabled() -> bool:
+    """UI-only staging preview. It never grants an owner session or CSRF token."""
+    return setting("SONIC_OPEN_PREVIEW", "false").lower() == "true"
+
+
 def check_db():
     if not database_ready():
         raise HTTPException(503, "Durable database not configured for hosted deployment")
@@ -95,7 +102,24 @@ def safe_device_id(value: str):
 @app.get("/")
 def home():
     html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(render_passkey_page(html, VERSION), headers={"Cache-Control": "no-store"})
+    rendered = render_passkey_page(html, VERSION)
+    rendered = rendered.replace("__SONIC_PUBLIC_URL__", html_escape(public_url(), quote=True))
+    return HTMLResponse(rendered, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse(ROOT / "web" / "favicon.ico", media_type="image/x-icon")
+
+
+@app.get("/apple-touch-icon.png")
+def apple_touch_icon():
+    return FileResponse(ROOT / "web" / "apple-touch-icon.png", media_type="image/png")
+
+
+@app.get("/site.webmanifest")
+def web_manifest():
+    return FileResponse(ROOT / "web" / "site.webmanifest", media_type="application/manifest+json")
 
 
 @app.get("/api/health")
@@ -106,7 +130,12 @@ def health():
 
 
 @app.get("/api/session")
-def session_status(request: Request):
+def session_status(request: Request, response: Response):
+    if preview_active():
+        from .db import session_factory
+        with session_factory()() as db:
+            selection = selected_model(db)
+        return {**issue_browser_guest(request, response, selection), "version": VERSION}
     try:
         owner = auth.read_session(request)
     except HTTPException:
@@ -121,6 +150,8 @@ def session_status(request: Request):
 
 @app.post("/api/login")
 def login(payload: LoginForm, request: Request, response: Response):
+    if open_preview_enabled():
+        raise HTTPException(403, "Owner login is disabled while open staging preview is active.")
     if passwordless_enabled():
         raise HTTPException(403, "Owner token login is disabled. Sign in with a passkey.")
     address = request.client.host if request.client else "unknown"
@@ -300,6 +331,7 @@ app.include_router(knowledge_router)
 app.include_router(integrations_router)
 app.include_router(operator_router)
 app.include_router(speech_router)
+app.include_router(preview_router)
 app.include_router(persona_router)
 from .workspace import router as workspace_router
 app.include_router(workspace_router)

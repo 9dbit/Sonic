@@ -4,6 +4,7 @@ import hashlib
 import json
 import secrets
 import time
+from types import SimpleNamespace
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
@@ -206,7 +207,12 @@ def test_oversized_and_extra_fields_rejected(pc):
     assert result.status_code == 422
 
 
-def test_durable_rate_limit(pc):
+def test_durable_rate_limit(pc, monkeypatch):
+    from sonic import passkeys
+    # Freeze only this module's 5-minute bucket, not global system time.
+    # CI may otherwise cross a UTC 5-minute boundary between 30 requests.
+    fixed_time = time.time()
+    monkeypatch.setattr(passkeys, 'time', SimpleNamespace(time=lambda: fixed_time))
     for _ in range(30):
         assert post(pc, "login/options").status_code == 409
     assert post(pc, "login/options").status_code == 429
@@ -240,3 +246,23 @@ def test_passwordless_html_and_public_metadata_do_not_expose_secrets(pc):
     assert SETUP not in html
     assert "credential_id" not in pc.get("/api/passkeys/status").text
     assert SETUP not in pc.get("/api/passkeys/status").text
+
+
+def test_open_preview_skips_login_without_granting_owner_access(client, monkeypatch):
+    monkeypatch.setenv("SONIC_OPEN_PREVIEW", "true")
+    monkeypatch.setenv("SONIC_PASSWORDLESS_LOGIN", "false")
+    session = client.get("/api/session")
+    assert session.status_code == 200
+    body = session.json()
+    assert body["authenticated"] is False
+    assert body["preview"] is True
+    assert "preview-ui" in body["capabilities"]
+    assert "preview_csrf" in body
+    assert "csrf" not in body
+    html = client.get("/").text
+    assert 'class="login-overlay hidden" id="loginOverlay"' in html
+    assert 'id="passkeyLogin"' not in html
+    assert client.get("/api/history").status_code == 401
+    assert client.get("/api/device/status").status_code == 401
+    assert client.post("/api/chat", json={"message": "hello"}).status_code == 401
+    assert client.post("/api/login", json={"token": "owner-test-token"}).status_code == 403

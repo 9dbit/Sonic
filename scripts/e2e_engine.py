@@ -18,7 +18,7 @@ FAKE_PEER='''(() => {
  class Peer {
   constructor(){this.iceGatheringState='complete';this.connectionState='new';}
   createDataChannel(){const dc={readyState:'connecting',sent:[],send(x){this.sent.push(JSON.parse(x));},close(){this.readyState='closed';}};window.qaDC=this.dc=dc;return dc;}
-  addTrack(){} async createOffer(){return {sdp:'v=0\\r\\nm=audio 9 UDP/TLS/RTP/SAVPF 111\\r\\n'};}
+  addTrack(){} async createOffer(){return {sdp:'v=0\\r\\nm=audio 9 UDP/TLS/RTP/SAVPF 111\\r\\na=candidate:1 1 UDP 1 192.0.2.1 1234 typ host\\r\\n'};}
   async setLocalDescription(x){this.localDescription=x;}
   async setRemoteDescription(x){this.dc.readyState='open';setTimeout(()=>this.dc.onopen?.(),5);}
   close(){this.connectionState='closed';} addEventListener(){} removeEventListener(){}

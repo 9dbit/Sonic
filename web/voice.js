@@ -7,15 +7,59 @@
       this.stream=null;this.audio=null;this.sessionId=null;this.seen=new Set();this.toolChain=Promise.resolve();
       this.activeResponse=false;this.pendingTools=0;this.continueNeeded=false;this.inputSpeaking=false;this.muted=false;
       this.tick=null;this.connectTimer=null;this.speaking=false;this.requestStarted=false;this.turnChain=Promise.resolve();this.verifiedSpeech=[];this.transcriptsSeen=new Set();
-      this.inputContexts=new Map();
+      this.inputContexts=new Map();this.recoveryTimer=null;this.recoveryReason=null;this.lastGoodState='listening';
     }
     get active(){return this.state!=='idle';}
-    setState(state){this.state=state;this.options.onState?.(state);}
+    setState(state){this.state=state;if(['listening','thinking','speaking','muted'].includes(state))this.lastGoodState=state;this.options.onState?.(state);}
     send(event){if(this.dc?.readyState==='open')this.dc.send(JSON.stringify(event));}
+    transportReady(){
+      const pc=this.pc;
+      return this.dc?.readyState==='open' && pc &&
+        !['closed','failed','disconnected'].includes(pc.connectionState) &&
+        (pc.connectionState==='connected'||['connected','completed'].includes(pc.iceConnectionState));
+    }
+    healTransport(generation){
+      if(generation!==this.generation||!this.recoveryTimer||!this.transportReady())return;
+      clearTimeout(this.recoveryTimer);this.recoveryTimer=null;this.recoveryReason=null;
+      this.setState(this.lastGoodState||'listening');this.options.onTransportRecovered?.();
+    }
+    scheduleTransportRecovery(reason,generation){
+      if(generation!==this.generation||!this.active||this.recoveryTimer)return;
+      this.recoveryReason=reason;this.setState('reconnecting');
+      this.options.onTransportWarning?.('Koneksi suara tidak stabil. Mencoba menyambung kembali...');
+      this.recoveryTimer=setTimeout(()=>{
+        this.recoveryTimer=null;
+        if(generation!==this.generation||!this.active)return;
+        if(this.transportReady()){
+          this.recoveryReason=null;this.setState(this.lastGoodState||'listening');
+          this.options.onTransportRecovered?.();return;
+        }
+        this.stop(reason);
+      },7000);
+    }
+    async waitForIceGathering(pc,generation,timeoutMs=10000){
+      // Unified OpenAI WebRTC signaling sends one SDP offer, not trickle ICE.
+      // An incomplete offer is especially fragile on Safari / mobile networks.
+      if(pc.iceGatheringState==='complete')return;
+      await new Promise((resolve,reject)=>{
+        let timer;
+        const cleanup=()=>{clearTimeout(timer);pc.removeEventListener('icegatheringstatechange',onChange);};
+        const onChange=()=>{
+          if(generation!==this.generation){cleanup();reject(Error('Voice start was cancelled'));return;}
+          if(pc.iceGatheringState==='complete'){cleanup();resolve();}
+        };
+        pc.addEventListener('icegatheringstatechange',onChange);
+        timer=setTimeout(()=>{
+          cleanup();
+          reject(Error('Pengumpulan koneksi ICE terlalu lama. Coba Mode suara kompatibel untuk Safari.'));
+        },timeoutMs);
+        onChange();
+      });
+    }
     async start(){
       if(this.active)return;
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){throw Error('Realtime voice memerlukan HTTPS dan browser dengan WebRTC.');}
-      const generation=++this.generation;this.setState('connecting');this.toolChain=Promise.resolve();this.seen.clear();this.pendingTools=0;this.continueNeeded=false;this.muted=false;this.requestStarted=false;
+      const generation=++this.generation;clearTimeout(this.recoveryTimer);this.recoveryTimer=null;this.recoveryReason=null;this.setState('connecting');this.toolChain=Promise.resolve();this.seen.clear();this.pendingTools=0;this.continueNeeded=false;this.muted=false;this.requestStarted=false;
       this.sessionId=crypto.randomUUID();this.turnChain=Promise.resolve();this.verifiedSpeech=[];this.transcriptsSeen.clear();const sessionId=this.sessionId;
       this.inputContexts.clear();
       try{
@@ -24,17 +68,38 @@
         this.stream=media;
         const pc=this.pc=new RTCPeerConnection();
         this.audio=document.createElement('audio');this.audio.autoplay=true;this.audio.setAttribute('playsinline','');
+        this.audio.setAttribute('webkit-playsinline','');this.audio.setAttribute('aria-hidden','true');
+        if(this.audio.style)this.audio.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1';
+        document.body?.appendChild(this.audio);
         pc.ontrack=e=>{if(generation!==this.generation)return;this.audio.srcObject=e.streams[0]||new MediaStream([e.track]);this.audio.play().catch(()=>this.options.onPlaybackBlocked?.());};
         for(const track of this.stream.getAudioTracks()){track.onended=()=>{if(generation===this.generation)this.stop('microphone_ended');};pc.addTrack(track,this.stream);}
-        pc.onconnectionstatechange=()=>{if(generation!==this.generation)return;if(['failed','closed','disconnected'].includes(pc.connectionState))this.stop('connection_ended');};
+        pc.onconnectionstatechange=()=>{
+          if(generation!==this.generation)return;
+          const state=pc.connectionState;
+          if(['disconnected','failed'].includes(state))this.scheduleTransportRecovery('rtc_'+state,generation);
+          else if(state==='connected')this.healTransport(generation);
+          else if(state==='closed')this.stop('rtc_closed');
+        };
+        pc.oniceconnectionstatechange=()=>{
+          if(generation!==this.generation)return;
+          const ice=pc.iceConnectionState;
+          if(['disconnected','failed'].includes(ice))this.scheduleTransportRecovery('ice_'+ice,generation);
+          else if(['connected','completed'].includes(ice))this.healTransport(generation);
+        };
         const dc=this.dc=pc.createDataChannel('oai-events');
-        dc.onopen=()=>{if(generation!==this.generation)return;clearTimeout(this.connectTimer);this.setState('listening');};
+        dc.onopen=()=>{
+          if(generation!==this.generation)return;
+          clearTimeout(this.connectTimer);
+          if(this.recoveryTimer){this.healTransport(generation);if(this.recoveryTimer)return;}
+          this.setState('listening');
+        };
         dc.onclose=()=>{if(generation===this.generation)this.stop('channel_closed');};
-        dc.onerror=()=>{if(generation===this.generation){this.options.onError?.('Koneksi suara terputus.');this.stop('channel_error');}};
+        dc.onerror=()=>{if(generation===this.generation)this.scheduleTransportRecovery('channel_error',generation);};
         dc.onmessage=e=>{if(generation!==this.generation||typeof e.data!=='string'||e.data.length>65536)return;try{this.event(JSON.parse(e.data),generation);}catch(_){this.options.onError?.('Event suara tidak dapat diproses.');}};
         const offer=await pc.createOffer();await pc.setLocalDescription(offer);
-        await new Promise(resolve=>{if(pc.iceGatheringState==='complete'){resolve();return;}const done=()=>{clearTimeout(timer);pc.removeEventListener('icegatheringstatechange',changed);resolve();};const changed=()=>{if(pc.iceGatheringState==='complete')done();};const timer=setTimeout(done,2000);pc.addEventListener('icegatheringstatechange',changed);});
+        await this.waitForIceGathering(pc,generation);
         if(generation!==this.generation)return;
+        if(!/a=candidate:/m.test(pc.localDescription?.sdp||''))throw Error('ICE tidak menghasilkan kandidat media. Pilih Mode suara kompatibel.');
         this.requestStarted=true;
         const response=await this.options.api('/api/voice/sessions',{method:'POST',body:JSON.stringify({session_id:sessionId,sdp:pc.localDescription.sdp,consent:true})});
         if(generation!==this.generation){await this.closeRemote(sessionId);return;}
@@ -44,7 +109,7 @@
         this.tick=setInterval(()=>{const seconds=Math.max(0,Math.ceil((this.expires-Date.now())/1000));this.options.onTick?.(seconds);if(seconds===0)this.stop('duration_limit');},1000);
         this.connectTimer=setTimeout(()=>{if(this.state==='connecting'){this.options.onError?.('Koneksi audio tidak terbentuk. Mikrofon dihentikan.');this.stop('connect_timeout');}},15000);
       }catch(error){
-        if(generation===this.generation){if(error.status===429||error.status===422||error.status===503)this.requestStarted=false;await this.stop('start_failed');this.options.onError?.(error.name==='NotAllowedError'?'Izin mikrofon ditolak. Tidak ada sesi suara aktif.':error.message);}
+        if(generation===this.generation){if([409,429,422,503].includes(error.status))this.requestStarted=false;await this.stop(error.status===409?'session_conflict':'start_failed');this.options.onError?.(error.name==='NotAllowedError'?'Izin mikrofon ditolak. Tidak ada sesi suara aktif.':error.message);}
       }
     }
     event(event,generation){
@@ -158,18 +223,19 @@
     memoryReceipt(receipt){this.send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'SAVED_MEMORY_RECEIPT from the SONIC application: '+JSON.stringify(receipt)}]}});this.continueNeeded=true;this.continueResponse();}
     mute(){if(!this.stream)return;this.muted=!this.muted;for(const t of this.stream.getAudioTracks())t.enabled=!this.muted;if(this.muted)this.send({type:'input_audio_buffer.clear'});this.setState(this.muted?'muted':'listening');}
     async resumeAudio(){if(this.audio){await this.audio.play();this.options.onPlaybackResumed?.();}}
-    async closeRemote(id){try{const r=await this.options.api('/api/voice/sessions/'+id+'/stop',{method:'POST',body:'{}',keepalive:true});if(!r.provider_close_confirmed)this.options.onError?.('Mikrofon lokal berhenti; penutupan sesi provider belum terkonfirmasi.');}catch(_){this.options.onError?.('Mikrofon lokal berhenti. Penutupan provider belum terkonfirmasi; server akan mencoba cleanup.');}}
+    async closeRemote(id,reason='owner_stop'){try{const r=await this.options.api('/api/voice/sessions/'+id+'/stop',{method:'POST',body:JSON.stringify({reason}),keepalive:true});if(!r.provider_close_confirmed)this.options.onError?.('Mikrofon lokal berhenti; penutupan sesi provider belum terkonfirmasi.');}catch(_){this.options.onError?.('Mikrofon lokal berhenti. Penutupan provider belum terkonfirmasi; server akan mencoba cleanup.');}}
     async stop(reason='owner_stop'){
       const id=this.sessionId,started=this.requestStarted;
-      ++this.generation;clearInterval(this.tick);clearTimeout(this.connectTimer);this.tick=null;this.connectTimer=null;
+      ++this.generation;clearInterval(this.tick);clearTimeout(this.connectTimer);clearTimeout(this.recoveryTimer);this.tick=null;this.connectTimer=null;this.recoveryTimer=null;this.recoveryReason=null;
       const stream=this.stream;this.stream=null;stream?.getTracks().forEach(t=>{t.onended=null;t.stop();});
       if(this.dc){this.dc.onclose=null;this.dc.onerror=null;this.dc.onmessage=null;this.dc.close();this.dc=null;}
       if(this.pc){this.pc.onconnectionstatechange=null;this.pc.ontrack=null;this.pc.close();this.pc=null;}
       if(this.audio){this.audio.pause();this.audio.srcObject=null;this.audio.remove();this.audio=null;}
       this.sessionId=null;this.requestStarted=false;this.pendingTools=0;this.continueNeeded=false;this.activeResponse=false;this.speaking=false;this.inputSpeaking=false;this.verifiedSpeech=[];this.transcriptsSeen.clear();
       this.inputContexts.clear();
-      this.setState('idle');this.options.onStopped?.(reason);
-      if(id&&started)await this.closeRemote(id);
+      this.setState('idle');
+      if(id&&started)await this.closeRemote(id,reason);
+      this.options.onStopped?.(reason);
     }
   }
   window.SonicVoice=SonicVoice;

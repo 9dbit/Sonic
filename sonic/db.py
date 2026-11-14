@@ -327,3 +327,12 @@ class BrainUsage(Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reported_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
+
+
+class PreviewBudget(Base):
+    """Durable, UTC-day paid-preview budgets; never stores prompts or raw IPs."""
+    __tablename__ = "preview_budget_v142"
+    id: Mapped[str] = mapped_column(String(90), primary_key=True)
+    chat_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    voice_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)

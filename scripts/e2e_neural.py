@@ -25,7 +25,7 @@ ARTIFACTS = ROOT / 'artifacts'
 
 @contextlib.contextmanager
 def local_server():
-    with tempfile.TemporaryDirectory(prefix='sonic-neural-qa-') as temp:
+    with tempfile.TemporaryDirectory(prefix='sonic-neural-qa-', ignore_cleanup_errors=os.name == 'nt') as temp:
         owner = secrets.token_urlsafe(32)
         with socket.socket() as s:
             s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
