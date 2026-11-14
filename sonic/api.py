@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.4.7'
+VERSION = '1.4.8'
 
 
 @asynccontextmanager
@@ -68,7 +68,7 @@ class DeviceHeartbeat(BaseModel):
     hostname: str = Field(max_length=120)
     platform: str = Field(max_length=200)
     agent_version: str = Field(default='', max_length=30)
-    capabilities: list[str] = Field(default_factory=list, max_length=24)
+    capabilities: list[str] = Field(default_factory=list, max_length=32)
     metrics: dict = Field(default_factory=dict)
     gui_targets: list[dict] = Field(default_factory=list, max_length=5)
 
@@ -289,9 +289,10 @@ def device_result(payload: DeviceResult, request: Request, db: Session = Depends
     job = db.get(DeviceJob, payload.job_id)
     if not job or job.device_id != payload.device_id or job.state != "leased":
         raise HTTPException(409, "Job not in leased state")
-    if job.action != "system.status":
+    from .productivity import DIAGNOSTICS
+    if job.action != "system.status" and job.action not in DIAGNOSTICS:
         raise HTTPException(403, "Action forbidden")
-    if len(json.dumps(payload.result)) > 2048:
+    if len(json.dumps(payload.result)) > (4096 if job.action in DIAGNOSTICS else 2048):
         raise HTTPException(413, "Result too large")
     job.state = "done" if payload.success else "failed"
     job.result_json = json.dumps(payload.result)
@@ -335,6 +336,8 @@ app.include_router(preview_router)
 app.include_router(persona_router)
 from .workspace import router as workspace_router
 app.include_router(workspace_router)
+from .productivity import router as productivity_router
+app.include_router(productivity_router)
 
 
 @app.middleware("http")

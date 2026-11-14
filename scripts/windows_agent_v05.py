@@ -23,6 +23,7 @@ import windows_command_v08 as command_broker
 import windows_workspace_v082 as workspace_actions
 import windows_window_v090 as window_control
 import windows_software
+import windows_diagnostics_v148
 import threading
 
 HERE=Path(__file__).resolve().parent
@@ -483,6 +484,7 @@ def run_once(only_heartbeat=False):
     capabilities=['system.status','system.metrics','shell.run','file.read','file.list','file.mkdir','desktop.mkdir',
                   'process.list','window.list','mouse.click','keyboard.type','keyboard.key',
                   'shell.inspect','process.terminate']
+    capabilities.extend(sorted(windows_diagnostics_v148.ACTIONS))
     if shell_enabled:capabilities.append('powershell.exec')
     if window_enabled:capabilities.extend(['window.open','window.focus','window.close'])
     # Installer preflight is a candidate, not the running task. Do not advertise
@@ -503,6 +505,14 @@ def run_once(only_heartbeat=False):
         if job.get('action')=='system.status':
             output=system_status()
             api('/api/device/result',{'device_id':DEVICE,'job_id':job['id'],'success':True,'result':output})
+        elif job.get('action') in windows_diagnostics_v148.ACTIONS:
+            try:
+                output=windows_diagnostics_v148.run(job['action'])
+                success=True
+            except Exception as exc:
+                output={'error':type(exc).__name__,'kind':job['action']}
+                success=False
+            api('/api/device/result',{'device_id':DEVICE,'job_id':job['id'],'success':success,'result':output})
     operator=api('/api/device/operator/next',{}).get('job')
     if operator:
         lease={'request_id':operator['id'],'lease':operator['lease']}

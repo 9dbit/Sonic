@@ -1,0 +1,25 @@
+/* Owner-only SONIC productivity extension; dark theme consistent with Orbit UI */
+.prod-hub{margin-top:28px;padding:20px;border-radius:20px;background:#17171d;color:#e6e7ef;border:1px solid #33313d}
+.prod-hub[hidden]{display:none!important}
+.prod-hub h3{margin:0;font-size:22px;color:#f3f1ff}
+.prod-hub h4{font-size:16px;color:#e6e2ff;margin:0 0 12px}
+.prod-hub p{color:#b2adbf;font-size:13px;overflow-wrap:anywhere}
+.prod-header{margin-bottom:18px}
+.prod-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+.prod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+.prod-card{background:#22212a;border-radius:16px;padding:16px;min-width:0;margin:12px 0}
+.prod-hub input,.prod-hub textarea{display:block;width:100%;box-sizing:border-box;color:#eee;background:#101015;border:1px solid #484354;border-radius:12px;padding:12px;margin:9px 0;font:inherit}
+.prod-hub label{color:#c4bed5}
+.prod-hub #prodProject{width:200px;max-width:100%}
+.prod-hub textarea{resize:vertical}
+.prod-hub .prod-btn{padding:9px 13px;color:white;background:#4941a2;border:0;border-radius:999px;cursor:pointer;white-space:normal}
+.prod-hub .prod-btn:hover{background:#6257d1}
+.prod-hub .prod-btn:disabled{opacity:.42;cursor:not-allowed}
+.prod-items{max-height:370px;overflow:auto}
+.prod-item{border-top:1px solid #464151;padding:12px 0;overflow-wrap:anywhere}
+.prod-item strong{font-size:14px;color:#f0ebff}
+.prod-item ol{font-size:12px;line-height:1.7;padding-left:20px}
+.prod-item .prod-btn{font-size:12px;margin-right:7px}
+.prod-result{border-radius:12px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;background:#111018;color:#c7daff;font-size:12px}
+.prod-status{color:#c3b6ff!important;min-height:24px}
+@media(max-width:700px){.prod-hub{padding:12px}.prod-grid{grid-template-columns:1fr}.prod-hub h3{font-size:19px}}
