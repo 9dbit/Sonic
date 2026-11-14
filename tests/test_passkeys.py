@@ -4,6 +4,7 @@ import hashlib
 import json
 import secrets
 import time
+from types import SimpleNamespace
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
@@ -206,7 +207,12 @@ def test_oversized_and_extra_fields_rejected(pc):
     assert result.status_code == 422
 
 
-def test_durable_rate_limit(pc):
+def test_durable_rate_limit(pc, monkeypatch):
+    from sonic import passkeys
+    # Freeze only this module's 5-minute bucket, not global system time.
+    # CI may otherwise cross a UTC 5-minute boundary between 30 requests.
+    fixed_time = time.time()
+    monkeypatch.setattr(passkeys, 'time', SimpleNamespace(time=lambda: fixed_time))
     for _ in range(30):
         assert post(pc, "login/options").status_code == 409
     assert post(pc, "login/options").status_code == 429
