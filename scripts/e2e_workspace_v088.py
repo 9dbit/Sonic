@@ -24,7 +24,7 @@ MIC = r"""(() => {
  window.RTCPeerConnection=class {
   constructor(){this.iceGatheringState='complete';this.connectionState='new';}
   addTrack(){} createDataChannel(){return this.dc={readyState:'open',send(){},close(){}};}
-  async createOffer(){return {type:'offer',sdp:'synthetic-local-only'};}
+  async createOffer(){return {type:'offer',sdp:'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=candidate:1 1 UDP 1 192.0.2.1 1234 typ host\r\n'};}
   async setLocalDescription(o){this.localDescription=o;}
   async setRemoteDescription(){this.connectionState='connected';this.dc.onopen?.();}
   close(){this.connectionState='closed';}
