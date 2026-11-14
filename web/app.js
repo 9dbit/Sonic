@@ -5,7 +5,7 @@
   const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   const providerLabels={openai:'OpenAI',openrouter:'OpenRouter',deepseek:'DeepSeek'};
-  let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,wake=null,speechAudio=null;
+  let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,compatibleVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const watchingJobs=new Set();
   const taskLabels={awaiting_approval:'Menunggu persetujuan',pending:'Menunggu persetujuan',queued:'Menunggu Windows',leased:'Sedang berjalan',running:'Sedang berjalan',completed:'Selesai',done:'Selesai',failed:'Gagal',cancelled:'Dibatalkan',expired:'Kedaluwarsa',rejected:'Tidak dijalankan',approved:'Persetujuan dicatat',needs_clarification:'Perlu nama dan tujuan yang jelas'};
@@ -536,7 +536,7 @@
   $('refreshExecutionTasks').addEventListener('click',()=>loadTasks());
   async function loadVoiceStatus(){if(openPreview){const voice=previewModels?.voice||{};const status={enabled:!!voice.enabled,configured:!!voice.enabled,model:voice.model||'OpenAI Realtime',max_session_seconds:60,daily_limit_enabled:true,daily_session_limit:6,sessions_started_today_utc:0,active_session:null};$('voiceReadiness').textContent=voice.enabled?'OpenAI Realtime: live guest voice (60s per session, global budget).':'Voice provider unavailable on staging.';return status;}const status=await API('/api/voice/status');$('voiceReadiness').textContent=(status.enabled&&status.configured?'Configured, live audio not yet verified. ':'Not enabled. ')+status.model+' / '+status.max_session_seconds+' sec / '+status.sessions_started_today_utc+' of '+(status.daily_limit_enabled?status.daily_session_limit+' sessions today (UTC)':'No SONIC daily session cap')+'.';return status;}
   async function openVoiceDialog(){
-    if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
+    if(liveVoice.active||compatibleVoice?.active){$('voiceSessionBar').classList.toggle('hidden',!liveVoice.active);return;}
     if(waiting){notify('Tunggu respons chat selesai sebelum memulai suara.');return;}
     $('voiceAgree').checked=false;$('startVoice').disabled=true;$('voiceDialogStatus').textContent='Checking voice configuration...';$('voiceConsent').showModal();
     try{const status=await loadVoiceStatus();$('voiceLimits').textContent='Maksimal '+Math.round(status.max_session_seconds/60)+' menit per sesi, '+(status.daily_limit_enabled?status.daily_session_limit+' sesi/hari (UTC)':'tanpa batas harian internal SONIC')+'. Pemakaian OpenAI API dikenakan biaya dan provider masih memiliki batasnya.';
@@ -687,14 +687,37 @@
         const message=reason==='page_hidden'?'Sesi dihentikan ketika Safari berpindah tab atau layar.' :
           reason==='microphone_ended'?'Mikrofon dihentikan Safari atau perangkat.' :
           'Sesi suara terputus di jaringan WebRTC. Ketuk Coba suara lagi.';
-        window.sonicMotion?.voiceFeedback(message,{retry:true});notify(message);
+        window.sonicMotion?.voiceFeedback(message,{retry:true,compat:openPreview});notify(message);
       }else if(reason==='duration_limit'){
-        window.sonicMotion?.voiceFeedback('Durasi sesi voice selesai. Kuota demo mungkin berlaku.',{retry:true});
+        window.sonicMotion?.voiceFeedback('Durasi Realtime selesai. Coba Mode suara stabil tanpa membuka sesi WebRTC.',{retry:true,compat:openPreview});
       }else if(reason==='start_failed'){
-        window.sonicMotion?.voiceFeedback('Gagal memulai suara. Periksa pesan error sebelum coba lagi.',{retry:true});
+        window.sonicMotion?.voiceFeedback('Gagal memulai realtime. Coba Mode suara stabil untuk Safari.',{retry:true,compat:openPreview});
       }else window.sonicMotion?.voiceFeedback('Sesi suara berhenti. Double tap untuk mulai lagi.');
     }
   });
+  compatibleVoice=new window.SonicCompatibleVoice({
+    api:API,
+    onError:message=>notify(message),
+    onTranscript:(role,text)=>{const item=line(role,text);
+      item.append(el('small','execution-note','Safari voice / transcript only; no PC tools'));
+      if(role==='assistant')brainAnswer(text);
+    },
+    onState:state=>{
+      const labels={listening:'Safari mendengarkan. Ucapkan pertanyaanmu.',
+        thinking:'SONIC memproses teks dengan model AI terpilih...',
+        speaking:'SONIC membacakan jawaban melalui suara perangkat.'};
+      if(labels[state])window.sonicMotion?.voiceFeedback(labels[state],{stop:true});
+      activityState(['listening','thinking','speaking'].includes(state)?state:'idle');
+      window.dispatchEvent(new CustomEvent('sonic:compatible-voice-state',{detail:{state}}));
+    },
+    onStopped:reason=>{
+      const message=reason==='compat_answer_done'
+        ?'Jawaban selesai. Ketuk Mode suara stabil untuk bertanya lagi.'
+        :'Mode suara stabil berhenti. Ketuk untuk mencoba lagi.';
+      window.sonicMotion?.voiceFeedback(message,{compat:true});
+    }
+  });
+  window.sonicCompatibleVoice=compatibleVoice;
   window.sonicWorkspace=new window.SonicWorkspace({api:API,notify,open:()=>setTab('workspace'),read:text=>{if(liveVoice.active)liveVoice.verifiedPCReceipt(text);else speak(text,{force:true});}});
   window.sonicPCWorkspace=new window.SonicPCWorkspace({api:API,notify,cloud:window.sonicWorkspace});
   window.addEventListener('sonic:persona-applied',async event=>{
@@ -718,18 +741,33 @@
     if(!['double_tap','manual_retry'].includes(event.detail?.consent))return;
     if(!csrf&&!openPreview){window.sonicMotion?.returnHome();notify('Masuk ke SONIC sebelum memulai mikrofon.');return;}
     $('voiceSessionBar').classList.remove('compact');$('voiceHide').textContent='Minimize';
-    if(liveVoice.active){$('voiceSessionBar').classList.remove('hidden');return;}
+    if(liveVoice.active||compatibleVoice?.active){$('voiceSessionBar').classList.toggle('hidden',!liveVoice.active);return;}
     if(waiting){notify('Tunggu respons chat selesai, lalu double tap lagi.');return;}
     $('voiceConsent').close();wake?.pause();speech?.stop();window.sonicWorkspace?.stopDictation();speechAudio?.pause();window.speechSynthesis?.cancel();
     liveVoice.start().catch(error=>{notify(error.message);if(wake?.enabled)wake.resume();});
   });
   $('voiceConsentForm').addEventListener('submit',async e=>{e.preventDefault();if(!$('voiceAgree').checked)return;$('voiceConsent').close();wake?.pause();speech?.stop();window.speechSynthesis?.cancel();try{await liveVoice.start();}catch(error){notify(error.message);}});
-  window.addEventListener('sonic:stop-voice',()=>liveVoice.stop('owner_stop'));
+  window.addEventListener('sonic:voice-compatible',()=>{
+    if(!openPreview){notify('Mode ini hanya tersedia pada staging preview.');return;}
+    if(liveVoice.active){notify('Stop Realtime sebelum memakai mode suara stabil.');return;}
+    if(compatibleVoice?.active)return;
+    if(waiting){notify('Tunggu respons chat selesai sebelum berbicara.');return;}
+    window.sonicMotion?.setFocus(true);
+    speech?.stop();wake?.pause();speechAudio?.pause();
+    window.speechSynthesis?.cancel();
+    try{compatibleVoice.start();}
+    catch(error){notify(error.message);
+      window.sonicMotion?.voiceFeedback(error.message,{compat:true});}
+  });
+  window.addEventListener('sonic:stop-voice',()=>{
+    if(compatibleVoice?.active)compatibleVoice.stop('compat_owner_stop');
+    else liveVoice.stop('owner_stop');
+  });
   window.addEventListener('sonic:resume-audio',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
-  $('voiceStop').addEventListener('click',()=>{liveVoice.stop();window.sonicMotion?.returnHome();});$('voiceHide').addEventListener('click',()=>{$('voiceSessionBar').classList.toggle('compact');$('voiceHide').textContent=$('voiceSessionBar').classList.contains('compact')?'Expand':'Minimize';});$('voiceMute').addEventListener('click',()=>liveVoice.mute());$('voiceResume').addEventListener('click',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
+  $('voiceStop').addEventListener('click',()=>{if(compatibleVoice?.active)compatibleVoice.stop();else liveVoice.stop();window.sonicMotion?.returnHome();});$('voiceHide').addEventListener('click',()=>{$('voiceSessionBar').classList.toggle('compact');$('voiceHide').textContent=$('voiceSessionBar').classList.contains('compact')?'Expand':'Minimize';});$('voiceMute').addEventListener('click',()=>liveVoice.mute());$('voiceResume').addEventListener('click',()=>liveVoice.resumeAudio().catch(e=>notify(e.message)));
   $('refreshRuns').addEventListener('click',loadRuns);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(liveVoice.active)liveVoice.stop('page_hidden');wake?.stop();}});
-  window.addEventListener('pagehide',()=>{if(liveVoice.active)liveVoice.stop('page_hidden');wake?.stop();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(liveVoice.active)liveVoice.stop('page_hidden');if(compatibleVoice?.active)compatibleVoice.stop('compat_page_hidden');wake?.stop();}});
+  window.addEventListener('pagehide',()=>{if(liveVoice.active)liveVoice.stop('page_hidden');if(compatibleVoice?.active)compatibleVoice.stop('compat_page_hidden');wake?.stop();});
 
   $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';const token=$('ownerToken').value;$('ownerToken').value='';const submit=e.submitter;submit.disabled=true;
     try{const r=await API('/api/login',{method:'POST',body:JSON.stringify({token})});csrf=r.csrf;await initialize();}catch(error){$('loginError').textContent=error.message;}finally{submit.disabled=false;}});

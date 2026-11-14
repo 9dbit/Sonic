@@ -3,7 +3,7 @@ const code=fs.readFileSync('web/voice.js','utf8');
 function fixture(overrides={}){
   const tracks=[];const sent=[];const requests=[];const states=[];let mediaCalls=0;
   const stream=()=>{const t={enabled:true,stopped:false,stop(){this.stopped=true;},onended:null};tracks.push(t);return {getTracks:()=>[t],getAudioTracks:()=>[t]};};
-  class Peer{addTrack(){}constructor(){this.iceGatheringState='complete';this.connectionState='new';}createDataChannel(){return this.dc={readyState:'open',send:e=>sent.push(JSON.parse(e)),close(){this.readyState='closed';}};}async createOffer(){return {sdp:'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n'};}async setLocalDescription(v){this.localDescription=v;}async setRemoteDescription(v){this.remoteDescription=v;this.dc.onopen?.();}close(){this.closed=true;}}
+  class Peer{addTrack(){}constructor(){this.iceGatheringState=overrides.iceGatheringState||'complete';this.connectionState='new';this.listeners={};}addEventListener(k,fn){this.listeners[k]=fn;}removeEventListener(k){delete this.listeners[k];}createDataChannel(){return this.dc={readyState:'open',send:e=>sent.push(JSON.parse(e)),close(){this.readyState='closed';}};}async createOffer(){return {sdp:'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=candidate:1 1 UDP 1 192.0.2.1 1234 typ host\r\n'};}async setLocalDescription(v){this.localDescription=v;}async setRemoteDescription(v){this.remoteDescription=v;this.dc.onopen?.();}close(){this.closed=true;}}
   const api=async(path,opts)=>{requests.push([path,opts]);if(path==='/api/voice/sessions')return {sdp:'v=0',expires_at:new Date(Date.now()+300000).toISOString(),model:'synthetic'};return {closed:true,provider_close_confirmed:true,output:{results:[]},ui_actions:[]};};
   const context={window:{isSecureContext:true,RTCPeerConnection:Peer},RTCPeerConnection:Peer,crypto:{randomUUID:()=> '01234567-0123-4123-8123-012345678901'},navigator:{mediaDevices:{getUserMedia:async()=>{mediaCalls++;return overrides.media?await overrides.media(stream):stream();}}},document:{createElement:()=>({setAttribute(){},play:()=>Promise.resolve(),pause(){},remove(){}})},Date,JSON,Error,Set,Promise,setTimeout,clearTimeout,setInterval,clearInterval};
   vm.createContext(context);vm.runInContext(code,context);
@@ -81,5 +81,30 @@ test('a failed peer is not marked recovered because of stale ICE connected telem
   f.voice.pc.connectionState='connected';
   f.voice.pc.onconnectionstatechange();
   assert.equal(f.voice.state,'listening');
+  await f.voice.stop();
+});
+
+test('Safari candidate gathering waits for completion before any paid SDP exchange',async()=>{
+  const f=fixture({iceGatheringState:'gathering'});
+  const pending=f.voice.start();
+  await new Promise(r=>setTimeout(r,8));
+  assert.ok(f.voice.pc);
+  assert.equal(f.requests.length,0);
+  const pc=f.voice.pc;
+  pc.iceGatheringState='complete';
+  pc.listeners.icegatheringstatechange?.();
+  await pending;
+  assert.equal(f.requests.filter(x=>x[0]==='/api/voice/sessions').length,1);
+  await f.voice.stop();
+});
+
+test('ICE gathering timeout fails without opening a second paid session',async()=>{
+  const f=fixture();
+  await f.voice.start();
+  const initial=f.requests.filter(x=>x[0]==='/api/voice/sessions').length;
+  const pc=f.voice.pc;
+  pc.iceGatheringState='gathering';
+  await assert.rejects(f.voice.waitForIceGathering(pc,f.voice.generation,18),/ICE/);
+  assert.equal(f.requests.filter(x=>x[0]==='/api/voice/sessions').length,initial);
   await f.voice.stop();
 });

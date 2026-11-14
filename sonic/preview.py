@@ -11,6 +11,7 @@ from typing import Literal
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 from datetime import timedelta
 from time import time
@@ -298,4 +299,6 @@ async def preview_voice_stop(session_id: str, payload: PreviewStop | None = None
                              visitor: dict = Depends(guest), db: Session = Depends(get_db)):
     row = voice.owned_session(db, session_id, visitor)
     reason = payload.reason if payload else "owner_stop"
+    # Do not log guest identifiers, IP, transcripts, provider SDP, or audio.
+    logging.getLogger("uvicorn.error").info("sonic preview voice stopped; reason=%s", reason)
     return await voice.close_call(db, row, "preview_" + reason)

@@ -16,7 +16,7 @@
    this.focusControls=document.createElement('div');this.focusControls.className='sonic-focus-controls';this.focusControls.hidden=true;
    const hint=document.createElement('p');hint.id='sonicVoiceFocusHint';
     hint.setAttribute('role','status');hint.setAttribute('aria-live','polite');
-    hint.textContent='SONIC: Double tap untuk berbicara lewat OpenAI.';this.voiceHint=hint;hint.textContent='SONIC · Double tap memulai mikrofon dan audio OpenAI';
+    hint.textContent='SONIC: Double tap untuk berbicara lewat OpenAI.';this.voiceHint=hint;
    const home=document.createElement('button');home.type='button';home.textContent='Kembali ke posisi awal';home.addEventListener('click',()=>this.returnHome());
    this.retryVoice=document.createElement('button');this.retryVoice.type='button';this.retryVoice.id='sonicVoiceRetry';
     this.retryVoice.textContent='Coba suara lagi';this.retryVoice.hidden=true;
@@ -33,7 +33,17 @@
     this.stopVoice=document.createElement('button');this.stopVoice.type='button';
     this.stopVoice.id='sonicVoiceFocusStop';this.stopVoice.textContent='Stop mikrofon';this.stopVoice.hidden=true;
     this.stopVoice.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('sonic:stop-voice')));
-    this.focusControls.append(hint,this.retryVoice,this.resumeVoiceAudio,this.stopVoice,home);
+    this.compatibleVoice=document.createElement('button');
+    this.compatibleVoice.type='button';
+    this.compatibleVoice.id='sonicVoiceCompatible';
+    this.compatibleVoice.textContent='Mode suara stabil';
+    this.compatibleVoice.title='Safari Speech Recognition, model AI pilihan, dan suara perangkat. Bukan OpenAI Realtime.';
+    this.compatibleVoice.hidden=true;
+    this.compatibleVoice.addEventListener('click',()=>{
+      window.dispatchEvent(new CustomEvent('sonic:voice-compatible'));
+    });
+    this.focusControls.append(hint,this.retryVoice,this.compatibleVoice,
+      this.resumeVoiceAudio,this.stopVoice,home);
     document.body.append(this.shade,this.focusControls);
    this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');this.float.append(this.canvas);
    this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
@@ -82,9 +92,10 @@
    else this.place(this.home);
   }
   returnHome(){this.setFocus(false);}
-  voiceFeedback(message,{retry=false,audio=false,stop=false}={}){
+  voiceFeedback(message,{retry=false,compat=false,audio=false,stop=false}={}){
     if(this.voiceHint&&message)this.voiceHint.textContent=String(message).slice(0,240);
     if(this.retryVoice)this.retryVoice.hidden=!retry;
+    if(this.compatibleVoice)this.compatibleVoice.hidden=!compat;
     if(this.resumeVoiceAudio)this.resumeVoiceAudio.hidden=!audio;
     if(this.stopVoice)this.stopVoice.hidden=!stop;
   }

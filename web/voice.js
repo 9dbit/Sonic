@@ -37,6 +37,25 @@
         this.stop(reason);
       },7000);
     }
+    async waitForIceGathering(pc,generation,timeoutMs=10000){
+      // Unified OpenAI WebRTC signaling sends one SDP offer, not trickle ICE.
+      // An incomplete offer is especially fragile on Safari / mobile networks.
+      if(pc.iceGatheringState==='complete')return;
+      await new Promise((resolve,reject)=>{
+        let timer;
+        const cleanup=()=>{clearTimeout(timer);pc.removeEventListener('icegatheringstatechange',onChange);};
+        const onChange=()=>{
+          if(generation!==this.generation){cleanup();reject(Error('Voice start was cancelled'));return;}
+          if(pc.iceGatheringState==='complete'){cleanup();resolve();}
+        };
+        pc.addEventListener('icegatheringstatechange',onChange);
+        timer=setTimeout(()=>{
+          cleanup();
+          reject(Error('Pengumpulan koneksi ICE terlalu lama. Coba Mode suara kompatibel untuk Safari.'));
+        },timeoutMs);
+        onChange();
+      });
+    }
     async start(){
       if(this.active)return;
       if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){throw Error('Realtime voice memerlukan HTTPS dan browser dengan WebRTC.');}
@@ -78,8 +97,9 @@
         dc.onerror=()=>{if(generation===this.generation)this.scheduleTransportRecovery('channel_error',generation);};
         dc.onmessage=e=>{if(generation!==this.generation||typeof e.data!=='string'||e.data.length>65536)return;try{this.event(JSON.parse(e.data),generation);}catch(_){this.options.onError?.('Event suara tidak dapat diproses.');}};
         const offer=await pc.createOffer();await pc.setLocalDescription(offer);
-        await new Promise(resolve=>{if(pc.iceGatheringState==='complete'){resolve();return;}const done=()=>{clearTimeout(timer);pc.removeEventListener('icegatheringstatechange',changed);resolve();};const changed=()=>{if(pc.iceGatheringState==='complete')done();};const timer=setTimeout(done,2000);pc.addEventListener('icegatheringstatechange',changed);});
+        await this.waitForIceGathering(pc,generation);
         if(generation!==this.generation)return;
+        if(!/a=candidate:/m.test(pc.localDescription?.sdp||''))throw Error('ICE tidak menghasilkan kandidat media. Pilih Mode suara kompatibel.');
         this.requestStarted=true;
         const response=await this.options.api('/api/voice/sessions',{method:'POST',body:JSON.stringify({session_id:sessionId,sdp:pc.localDescription.sdp,consent:true})});
         if(generation!==this.generation){await this.closeRemote(sessionId);return;}

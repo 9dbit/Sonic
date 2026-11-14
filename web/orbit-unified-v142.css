@@ -396,3 +396,16 @@ body.orbit-v140 .sonic-focus-controls #sonicVoiceFocusStop{
     min-height:38px;
   }
 }
+
+/* SONIC 1.4.6 Safari-compatible voice mode: visible only by user choice. */
+body.orbit-v140 #sonicVoiceCompatible[hidden]{display:none!important;}
+body.orbit-v140 .sonic-focus-controls #sonicVoiceCompatible{
+  background:linear-gradient(115deg,#175b87,#5948b4)!important;
+  border:1px solid rgba(141,183,255,.36)!important;
+  color:#f9fbff!important;
+  box-shadow:0 6px 26px rgba(65,87,198,.18);
+  max-width:92vw;
+}
+body.orbit-v140 .sonic-focus-controls #sonicVoiceCompatible:focus-visible{
+  outline:2px solid #c9b4ff;outline-offset:3px;
+}
