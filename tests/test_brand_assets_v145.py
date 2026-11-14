@@ -20,18 +20,18 @@ def test_site_head_exposes_canonical_og_and_favicons(client,monkeypatch):
     assert "__SONIC_PUBLIC_URL__" not in html
     assert f'<link rel="canonical" href="{origin}/">' in html
     assert f'<meta property="og:url" content="{origin}/">' in html
-    expected=origin+"/assets/sonic-og-1200x630.png?v=1.4.6"
+    expected=origin+"/assets/sonic-og-1200x630.png?v=1.4.7"
     assert f'<meta property="og:image" content="{expected}">' in html
     assert f'<meta name="twitter:image" content="{expected}">' in html
     assert '<meta property="og:image:width" content="1200">' in html
     assert '<meta property="og:image:height" content="630">' in html
     assert '<meta name="twitter:card" content="summary_large_image">' in html
     assert '<link rel="apple-touch-icon" sizes="180x180"' in html
-    assert '<link rel="manifest" href="/site.webmanifest?v=1.4.6">' in html
-    assert "/favicon.ico?v=1.4.6" in html
-    assert "/assets/favicon-16.png?v=1.4.6" in html
-    assert "/assets/favicon-32.png?v=1.4.6" in html
-    assert client.get("/api/health").json()["version"]=="1.4.6"
+    assert '<link rel="manifest" href="/site.webmanifest?v=1.4.7">' in html
+    assert "/favicon.ico?v=1.4.7" in html
+    assert "/assets/favicon-16.png?v=1.4.7" in html
+    assert "/assets/favicon-32.png?v=1.4.7" in html
+    assert client.get("/api/health").json()["version"]=="1.4.7"
 
 def test_open_preview_and_other_origins_use_their_own_image_url(client,monkeypatch):
     monkeypatch.setenv("SONIC_PUBLIC_URL","https://sonic.example.net")

@@ -1,7 +1,9 @@
 """Anonymous open preview contracts: real adapter, browser CSRF, and no owner authority."""
 from __future__ import annotations
 
+import asyncio
 import json
+from datetime import timedelta
 from uuid import uuid4
 
 import pytest
@@ -122,6 +124,81 @@ def test_preview_voice_creates_no_tools_and_does_not_allow_pc_calls(guest_sessio
     with session_factory()() as db:
         row=db.get(VoiceSession,session_id)
         assert row.close_reason=="preview_channel_closed"
+
+
+def test_preview_housekeeping_preserves_live_guest_and_stops_expired_guest(guest_session, monkeypatch):
+    """Regression for the 15-second background kill that closed iPhone calls."""
+    client, headers = guest_session
+    from sonic import voice
+    from sonic.db import VoiceSession, OwnerSession, session_factory, utcnow
+    calls = []
+    async def mock_post(self, url, **kwargs):
+        calls.append(url)
+        if url.endswith('/hangup'):
+            return type('Close', (), {'status_code': 204})()
+        return type('Connect', (), {
+            'status_code': 201, 'headers': {
+                'location': '/v1/realtime/calls/rtc_preview_healthcheck'
+            }, 'text': 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n'
+        })()
+    monkeypatch.setattr('httpx.AsyncClient.post', mock_post)
+    session_id = str(uuid4())
+    offer = {'session_id': session_id,
+             'sdp': 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n',
+             'consent': True}
+    response = client.post('/api/preview/voice/sessions', json=offer, headers=headers)
+    assert response.status_code == 200, response.text
+    with session_factory()() as db:
+        row = db.get(VoiceSession, session_id)
+        assert len(row.owner_sid) == 64 and row.owner_sid.startswith('g_')
+        assert db.get(OwnerSession, row.owner_sid) is None
+    asyncio.run(voice.sweep_expired())
+    with session_factory()() as db:
+        row = db.get(VoiceSession, session_id)
+        assert row.state == 'active'
+        assert row.close_reason == ''
+    assert not any(c.endswith('/hangup') for c in calls)
+
+    with session_factory()() as db:
+        row = db.get(VoiceSession, session_id)
+        row.expires_at = utcnow() - timedelta(seconds=2)
+        db.commit()
+    asyncio.run(voice.sweep_expired())
+    with session_factory()() as db:
+        row = db.get(VoiceSession, session_id)
+        assert row.state == 'closed'
+    assert sum(c.endswith('/hangup') for c in calls) == 1
+
+
+def test_preview_409_does_not_debit_voice_budget(guest_session, monkeypatch):
+    client, headers = guest_session
+    from sonic import preview
+    from sonic.db import PreviewBudget, session_factory, utcnow
+    async def mock_post(self, url, **kwargs):
+        if url.endswith('/hangup'):
+            return type('Close', (), {'status_code': 204})()
+        return type('Connect', (), {
+            'status_code': 201, 'headers': {'location': '/v1/realtime/calls/rtc_budget_409'},
+            'text': 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n'
+        })()
+    monkeypatch.setattr('httpx.AsyncClient.post', mock_post)
+    def offer():
+        return {'session_id': str(uuid4()),
+                'sdp': 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n',
+                'consent': True}
+    first = client.post('/api/preview/voice/sessions', json=offer(), headers=headers)
+    assert first.status_code == 200, first.text
+    key = utcnow().strftime('%Y%m%d') + ':global'
+    with session_factory()() as db:
+        before = db.get(PreviewBudget, key).voice_count
+    conflict = client.post('/api/preview/voice/sessions', json=offer(), headers=headers)
+    assert conflict.status_code == 409
+    with session_factory()() as db:
+        after = db.get(PreviewBudget, key).voice_count
+    assert before == after == 1
+    stop = client.post('/api/preview/voice/sessions/' + first.json()['session_id'] + '/stop',
+                       json={'reason': 'owner_stop'}, headers=headers)
+    assert stop.status_code == 200
 
 
 def test_preview_paid_flag_gates_all_provider_calls(client, monkeypatch):

@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.4.6'
+VERSION = '1.4.7'
 
 
 @asynccontextmanager

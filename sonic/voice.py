@@ -385,12 +385,26 @@ class ConfirmMemory(StrictBody):
     confirm: Literal[True]
 
 
+def session_owner_key(owner: dict) -> str:
+    """Namespace preview visitor identities without changing the durable schema.
+
+    Owner SID hashes are 64 hex chars. Guest identities are instead a distinct
+    64-char 'g_' + 62 hex digest. A guest has a signed, time-bound browser
+    cookie, not an OwnerSession row. The namespace lets housekeeping apply
+    the correct expiry policy without leaking guest cookies into the DB.
+    """
+    sid = owner['sid']
+    digest = auth.sha256(sid)
+    return 'g_' + digest[:62] if sid.startswith('guest:') else digest
+
+
 def owned_session(db: Session, session_id: str, owner: dict, *, active=False, lock=False) -> VoiceSession:
     stmt = select(VoiceSession).where(VoiceSession.id == session_id)
     if lock:
         stmt = stmt.with_for_update()
     row = db.scalar(stmt)
-    if row is None or row.owner_sid != auth.sha256(owner['sid']):
+    if row is None or (row.owner_sid != session_owner_key(owner) and not (
+            owner['sid'].startswith('guest:') and row.owner_sid == auth.sha256(owner['sid']))):
         raise HTTPException(404, 'Voice session not found for this login')
     if active and (row.state != 'active' or row.expires_at <= utcnow()):
         raise HTTPException(409, 'Voice session ended or expired')
@@ -432,7 +446,7 @@ def reserve_session(db: Session, session_id: str, owner: dict) -> VoiceSession:
     if limits()['daily_session_limit'] > 0 and count >= limits()['daily_session_limit']:
         db.rollback()
         raise HTTPException(429, 'Daily voice session limit reached (UTC day)')
-    row = VoiceSession(id=session_id, owner_sid=auth.sha256(owner['sid']), state='starting',
+    row = VoiceSession(id=session_id, owner_sid=session_owner_key(owner), state='starting',
                        model=voice_model(), expires_at=now+timedelta(seconds=limits()['max_session_seconds']))
     db.add(row); db.commit()
     return row
@@ -659,8 +673,14 @@ async def sweep_expired() -> None:
         for row in rows:
             if row.close_attempts >= 4:
                 continue
-            owner = db.get(OwnerSession, row.owner_sid)
-            if row.expires_at <= utcnow() or owner is None or owner.expires_at <= utcnow() or row.state in ('stop_pending', 'close_unconfirmed'):
+            # Preview users authenticate with a signed guest cookie, not an
+            # OwnerSession row. Older housekeeping mistakenly interpreted every
+            # live preview as revoked and hung up its provider call every 15 s.
+            is_guest = row.owner_sid.startswith('g_')
+            owner = None if is_guest else db.get(OwnerSession, row.owner_sid)
+            owner_revoked = not is_guest and (owner is None or owner.expires_at <= utcnow())
+            if (row.expires_at <= utcnow() or owner_revoked
+                    or row.state in ('stop_pending', 'close_unconfirmed')):
                 if not row.call_id and row.created_at < utcnow()-timedelta(seconds=45):
                     row.state = 'failed'; row.close_reason = 'no_call_identifier'; db.commit()
                 else:

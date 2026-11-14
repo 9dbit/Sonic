@@ -108,3 +108,18 @@ test('ICE gathering timeout fails without opening a second paid session',async()
   assert.equal(f.requests.filter(x=>x[0]==='/api/voice/sessions').length,initial);
   await f.voice.stop();
 });
+
+test('HTTP 409 preview gate does not attempt to hang up an uncreated provider call',async()=>{
+  const paths=[];
+  const f=fixture({api:async(path)=>{
+    paths.push(path);
+    const error=Error('Another voice session is active or still closing');
+    error.status=409;
+    throw error;
+  }});
+  await f.voice.start();
+  assert.equal(f.voice.state,'idle');
+  assert.ok(f.tracks.every(track=>track.stopped));
+  assert.deepEqual(paths,['/api/voice/sessions']);
+  assert.equal(f.voice.requestStarted,false);
+});

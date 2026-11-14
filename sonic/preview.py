@@ -240,10 +240,17 @@ async def preview_voice_start(payload: voice.StartVoice, visitor: dict = Depends
     if not voice.enabled() or not setting("OPENAI_API_KEY"):
         raise HTTPException(503, "OpenAI realtime voice is not configured")
     _validate_sdp(payload)
-    take_budget(db, "voice", visitor["network"])
-    # Existing global voice gate still prevents overlapping live sessions.
+    # First acquire the session gate, then reserve a paid quota slot.
+    # A 409 from an overlapping call must not spend the guest's daily budget.
     async with voice._create_lock:
         row = voice.reserve_session(db, payload.session_id, visitor)
+        try:
+            take_budget(db, "voice", visitor["network"])
+        except HTTPException:
+            row.state = "failed"
+            row.close_reason = "preview_budget_denied"
+            db.commit()
+            raise
         row.expires_at = utcnow() + timedelta(seconds=VOICE_MAX_SECONDS)
         db.commit()
     config = voice.session_config()

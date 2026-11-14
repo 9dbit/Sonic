@@ -690,7 +690,9 @@
         window.sonicMotion?.voiceFeedback(message,{retry:true,compat:openPreview});notify(message);
       }else if(reason==='duration_limit'){
         window.sonicMotion?.voiceFeedback('Durasi Realtime selesai. Coba Mode suara stabil tanpa membuka sesi WebRTC.',{retry:true,compat:openPreview});
-      }else if(reason==='start_failed'){
+      }else if(reason==='session_conflict'){
+         window.sonicMotion?.voiceFeedback('Sesi suara masih aktif di tab atau perangkat lain. Tutup sesi tersebut sebelum mencoba lagi.',{retry:true,compat:openPreview});
+       }else if(reason==='start_failed'){
         window.sonicMotion?.voiceFeedback('Gagal memulai realtime. Coba Mode suara stabil untuk Safari.',{retry:true,compat:openPreview});
       }else window.sonicMotion?.voiceFeedback('Sesi suara berhenti. Double tap untuk mulai lagi.');
     }
