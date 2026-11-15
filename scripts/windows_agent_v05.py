@@ -25,6 +25,7 @@ import windows_window_v090 as window_control
 import windows_software
 import windows_diagnostics_v148
 import windows_uptime_v150
+import windows_pairing_v151
 import threading
 
 HERE=Path(__file__).resolve().parent
@@ -498,6 +499,12 @@ def run_once(only_heartbeat=False):
         'capabilities':capabilities,
         'metrics':m,'gui_targets':[]})
     if only_heartbeat:return
+    try:
+        result = windows_pairing_v151.process(HERE, BASE, api)
+        if result['issued']:
+            print('SONIC trusted iPhone pairing link prepared locally (15 minute TTL).', flush=True)
+    except Exception as exc:
+        print('SONIC trusted pairing unavailable:', type(exc).__name__, flush=True)
     global _LAST_UPTIME_SYNC_WARNING
     if _UPTIME_MONITOR is not None:
         try:

@@ -20,7 +20,7 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -188,8 +188,16 @@ def model_status(db: Session = Depends(get_db)):
 
 
 @router.post("/api/preview/chat")
-async def preview_chat(payload: PreviewChat, visitor: dict = Depends(guest),
+async def preview_chat(payload: PreviewChat, request: Request, visitor: dict = Depends(guest),
                        db: Session = Depends(get_db)):
+    # Paired personal preview may ask about uptime without invoking paid models.
+    from .trusted_preview import paired
+    from .uptime import is_uptime_question, report, uptime_reply
+    if paired(request, db) and is_uptime_question(payload.message):
+        reading = report(db,24)
+        return {"reply": uptime_reply(reading), "provider": "sonic", "model": "uptime-reporter",
+                "operator_jobs": [], "operator_proposals": [], "memory_events": [],
+                "memory_references": [], "ui_actions": []}
     requested = validate_model(payload.provider, payload.model)
     if (requested.provider, requested.model) not in {
         ("deepseek", "deepseek-flash"), ("openai", "gpt-4.1-mini"),
@@ -235,7 +243,8 @@ def _validate_sdp(payload: voice.StartVoice) -> None:
 
 
 @router.post("/api/preview/voice/sessions")
-async def preview_voice_start(payload: voice.StartVoice, visitor: dict = Depends(guest),
+async def preview_voice_start(payload: voice.StartVoice, request: Request,
+                              visitor: dict = Depends(guest),
                               db: Session = Depends(get_db)):
     if not voice.enabled() or not setting("OPENAI_API_KEY"):
         raise HTTPException(503, "OpenAI realtime voice is not configured")
@@ -259,8 +268,25 @@ async def preview_voice_start(payload: voice.StartVoice, visitor: dict = Depends
         "This is not an owner session. No files, memory, device, trading, actions or tools. "
         "Never claim to access or change a device or account. Keep spoken answers concise."
     )
-    config["tools"] = []
-    config["tool_choice"] = "none"
+    from .trusted_preview import paired
+    trusted_uptime = paired(request, db)
+    if trusted_uptime:
+        config["instructions"] = (
+            "You are SONIC, the personal assistant in a trusted, read-only iPhone session. "
+            "Respond concisely in Indonesian. You have ONE permission: use the internet_uptime "
+            "tool to report actual 24-hour TRADEVICEPC HTTPS uptime and coverage. "
+            "You do NOT have memory, files, device controls, trading, history, or arbitrary tools. "
+            "Never invent percentages or claim to have performed a Windows action."
+        )
+        config["tools"] = [{
+            "type": "function", "name": "internet_uptime",
+            "description": "Get actual 24-hour internet uptime, incident count, downtime and measured coverage from TRADEVICEPC. Read-only.",
+            "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+        }]
+        config["tool_choice"] = "auto"
+    else:
+        config["tools"] = []
+        config["tool_choice"] = "none"
     config["max_output_tokens"] = 300
     try:
         async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
@@ -298,7 +324,8 @@ async def preview_voice_start(payload: voice.StartVoice, visitor: dict = Depends
     return {"session_id": row.id, "sdp": answer,
             "expires_at": row.expires_at.isoformat() + "Z",
             "model": row.model, "max_seconds": VOICE_MAX_SECONDS,
-            "memory_policy": "disabled_in_public_preview"}
+            "memory_policy": "disabled_in_public_preview",
+            "personal_uptime_tools": trusted_uptime}
 
 
 @router.post("/api/preview/voice/sessions/{session_id}/stop")
@@ -309,3 +336,51 @@ async def preview_voice_stop(session_id: str, payload: PreviewStop | None = None
     # Do not log guest identifiers, IP, transcripts, provider SDP, or audio.
     logging.getLogger("uvicorn.error").info("sonic preview voice stopped; reason=%s", reason)
     return await voice.close_call(db, row, "preview_" + reason)
+
+
+
+@router.post("/api/preview/voice/sessions/{session_id}/tools")
+def trusted_preview_voice_tool(session_id: str, payload: voice.VoiceToolInput,
+                               request: Request, visitor: dict = Depends(guest),
+                               db: Session = Depends(get_db)):
+    """No owner impersonation. Only a paired visitor may invoke exactly internet_uptime."""
+    from .trusted_preview import paired
+    from .uptime import report, uptime_reply
+    from .db import VoiceToolCall
+    if not paired(request, db):
+        raise HTTPException(403, "iPhone pairing required for this read-only tool")
+    voice.owned_session(db, session_id, visitor, active=True, lock=True)
+    if payload.name != "internet_uptime" or payload.arguments != {}:
+        raise HTTPException(403, "Only the read-only internet_uptime tool is allowed")
+    key = hashlib.sha256((session_id+":"+payload.call_id).encode()).hexdigest()
+    serialized = json.dumps({"name":payload.name,"arguments":payload.arguments},
+                            separators=(",",":"),sort_keys=True)
+    checksum = hashlib.sha256(serialized.encode()).hexdigest()
+    existing = db.get(VoiceToolCall, key)
+    if existing:
+        if existing.request_hash != checksum or existing.session_id != session_id:
+            raise HTTPException(409, "Reused tool call with different arguments")
+        return json.loads(existing.result_json)
+    count = db.scalar(select(func.count()).select_from(VoiceToolCall).where(
+        VoiceToolCall.session_id == session_id)) or 0
+    if count >= 12:
+        raise HTTPException(429, "Personal voice uptime tool limit reached")
+    reading = report(db,24)
+    output = {k: reading[k] for k in (
+        "status","window_hours","uptime_pct","observed_uptime_pct",
+        "coverage_pct","unknown_seconds","approx_down_seconds",
+        "outage_count","avg_https_latency_ms","measurement_note")}
+    output["spoken_report"] = uptime_reply(reading)
+    result = {"output":output,"ui_actions":[],"memory_references":[]}
+    db.add(VoiceToolCall(id=key,session_id=session_id,
+                         request_hash=checksum,name=payload.name,
+                         result_json=json.dumps(result,ensure_ascii=False)))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        row = db.get(VoiceToolCall,key)
+        if row and row.request_hash == checksum and row.session_id == session_id:
+            return json.loads(row.result_json)
+        raise HTTPException(409,"Concurrent tool request; retry same call ID") from None
+    return result
