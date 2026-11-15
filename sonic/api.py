@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.5.0'
+VERSION = '1.5.1'
 
 
 @asynccontextmanager
@@ -133,9 +133,12 @@ def health():
 def session_status(request: Request, response: Response):
     if preview_active():
         from .db import session_factory
+        from .trusted_preview import paired
         with session_factory()() as db:
             selection = selected_model(db)
-        return {**issue_browser_guest(request, response, selection), "version": VERSION}
+            trusted = paired(request, db)
+        return {**issue_browser_guest(request, response, selection),
+                "trusted_uptime": trusted, "version": VERSION}
     try:
         owner = auth.read_session(request)
     except HTTPException:
@@ -340,6 +343,8 @@ from .productivity import router as productivity_router
 app.include_router(productivity_router)
 from .uptime import router as uptime_router
 app.include_router(uptime_router)
+from .trusted_preview import router as trusted_preview_router
+app.include_router(trusted_preview_router)
 
 
 @app.middleware("http")

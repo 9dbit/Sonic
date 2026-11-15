@@ -37,3 +37,8 @@
 .prod-uptime-down{background:#df6262}
 .prod-uptime-degraded{background:#d7a04e}
 .prod-uptime-unknown{background:#63636c}
+
+/* One narrow capability on a paired guest iPhone, not owner panels. */
+.prod-hub.preview-uptime-only > :not(#prodInternetUptime){display:none!important}
+.sonic-open-preview.sonic-trusted-uptime #devicesPanel > :not(#productivityHub){display:none!important}
+.prod-hub button[hidden]{display:none!important}

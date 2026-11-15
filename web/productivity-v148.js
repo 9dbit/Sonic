@@ -1,14 +1,15 @@
-/* SONIC Productivity 1.5.0: owner-only Mission + Project Memory + Diagnostics. */
+/* SONIC Productivity 1.5.1: owner-only Mission + Project Memory + Diagnostics. */
 (() => {
   "use strict";
   const q=id=>document.getElementById(id);
   const base="/api/productivity";
   let csrf=null;
+  let personalPreview=false;
   let project="sonic";
   const tag=(name,text,cls="")=>{const e=document.createElement(name);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
   const div=(cls="")=>tag("div",undefined,cls);
   async function api(path,options={}){
-    const headers={"Content-Type":"application/json",...(csrf?{"X-Sonic-CSRF":csrf}:{})};
+    const headers={"Content-Type":"application/json",...(csrf?{[personalPreview?"X-Sonic-Preview-CSRF":"X-Sonic-CSRF"]:csrf}:{})};
     const r=await fetch(path,{credentials:"same-origin",cache:"no-store",...options,headers});
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw Error(typeof data.detail==="string"?data.detail:"HTTP "+r.status);
@@ -82,6 +83,12 @@
     const outageList=div("prod-items");outageList.id="prodUptimeOutagesList";uptime.append(outageList);
     uptime.append(tag("p","30-second checks from TRADEVICEPC to two fixed HTTPS endpoints. Unknown time is never counted as uptime. This is reachability, not ISP SLA or packet loss."));
     uptime.append(button("Refresh 24h report",async()=>{await refreshUptime();status("Internet uptime report refreshed from real stored samples.");}));
+    const unpair=button("Unpair this iPhone",async()=>{
+      if(!confirm("Remove personal uptime access from this iPhone?"))return;
+      await api("/api/preview/trusted/unpair",{method:"POST",body:"{}"});
+      location.reload();
+    });
+    unpair.id="prodUnpairIphone";unpair.hidden=true;uptime.append(unpair);
     root.append(uptime);
     const diagnostic=div("prod-card");
     diagnostic.append(tag("h4","Read-only PC diagnostics"));
@@ -212,7 +219,7 @@
     return Math.round(seconds/60)+" min";
   }
   async function refreshUptime(){
-    const data=await api("/api/uptime/summary?hours=24");
+    const data=await api(personalPreview?"/api/preview/trusted/uptime":"/api/uptime/summary?hours=24");
     q("prodUptimePct").textContent=data.uptime_pct===null?"COLLECTING":data.uptime_pct.toFixed(2)+"%";
     q("prodUptimeState").textContent=data.status==="ready"?"24-hour report ready":
       data.status==="no_data"?"No samples recorded yet":"Partial 24-hour coverage";
@@ -253,9 +260,15 @@
     const r=await fetch("/api/session",{credentials:"same-origin",cache:"no-store"});
     const session=r.ok?await r.json().catch(()=>({})):{};
     const authenticated=session.authenticated===true&&session.preview!==true;
-    q("productivityHub").hidden=!authenticated;
-    csrf=authenticated?session.csrf:null;
+    personalPreview=session.preview===true&&session.trusted_uptime===true;
+    const visible=authenticated||personalPreview;
+    q("productivityHub").hidden=!visible;
+    q("productivityHub").classList.toggle("preview-uptime-only",personalPreview);
+    q("prodUnpairIphone").hidden=!personalPreview;
+    document.body.classList.toggle("sonic-trusted-uptime",personalPreview);
+    csrf=authenticated?session.csrf:personalPreview?session.preview_csrf:null;
     if(authenticated)await refreshAll();
+    else if(personalPreview)await refreshUptime();
   }
   window.addEventListener("sonic:tab",e=>{if(e.detail?.tab==="devices")access().catch(err=>status(err.message));});
   window.addEventListener("DOMContentLoaded",()=>{setup();});
