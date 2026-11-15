@@ -30,3 +30,14 @@ Allow the owner's personal iPhone to stay in the familiar guest/preview UI while
 ## Not implied
 - Pairing does not transfer ownership or allow broader Windows diagnostics, microphone recording without explicit user consent, background microphone, payments or software installation.
 - The 24-hour uptime metric still requires full monitoring coverage; partial data must be marked partial, never shown as a fabricated 100% 24-hour value.
+
+## Windows Companion: one-shot link issuance without credential extraction
+
+- Helper module scripts/windows_pairing_v151.py is imported by scripts/windows_agent_v05.py after the normal authenticated heartbeat.
+- Request marker: D:\Sonic\companion\state\request-iphone-pairing.flag (empty file). Only the authorized TRADEVICEPC operator should create it.
+- The running Companion consumes the flag once and calls its restricted device-authenticated pairing endpoint with the existing in-process API helper.
+- The response is stored in D:\Sonic\companion\state\personal-iphone-pairing.json for local display. The result expires automatically after 15 minutes.
+- Neither the Companion device credential nor the short-lived pairing URL is printed to agent logs. Failed requests never silently retry.
+- The user may open the local one-time pair_url on the intended iPhone. Never publish it to source control or analytics.
+- Upgrade the Windows Companion with a backup and Python compilation, then restart only the SONIC Read-only Companion Scheduled Task.
+- This flow never reads/decrypts the device token outside the Companion, and never modifies MetaTrader or security settings.
