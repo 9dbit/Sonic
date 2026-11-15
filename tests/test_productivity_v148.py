@@ -14,6 +14,8 @@ def test_tools_are_owner_only_and_registered(client):
     tools=r.json()["tools"]
     assert next(x for x in tools if x["id"]=="diagnostics.ping")["ready"] is False
     assert next(x for x in tools if x["id"]=="router.syslog")["ready"] is False
+    assert next(x for x in tools if x["id"]=="computer.operator")["ready"] is False
+    assert next(x for x in tools if x["id"]=="mission.checkpoints")["ready"] is True
     assert client.post("/api/productivity/missions",json={
         "project_key":"sonic","goal":"Develop this secure mission",
         "steps":["Implement this first"]}).status_code == 403
@@ -53,10 +55,17 @@ def test_mission_requires_manual_progress_and_verified_evidence(client):
     r=client.post(url,headers=h,json={"status":"in_progress","expected_revision":2})
     assert r.status_code==200
     assert client.post(url,headers=h,json={"status":"completed","expected_revision":3}).status_code==422
-    r=client.post(url,headers=h,json={"status":"completed","expected_revision":3,
+    assert client.post(url,headers=h,json={"status":"completed","expected_revision":3,
+                                     "evidence":"Verified the actual output manually"}).status_code==409
+    for idx in range(2):
+        step=client.post("/api/productivity/missions/"+m["id"]+"/steps/"+str(idx)+"/complete",
+                         headers=h,json={"expected_revision":3+idx,
+                                         "evidence":"Verified checkpoint "+str(idx)+" manually"})
+        assert step.status_code==200, step.text
+    r=client.post(url,headers=h,json={"status":"completed","expected_revision":5,
                                      "evidence":"Verified the actual output manually"})
     assert r.status_code==200 and r.json()["mission"]["status"]=="completed"
-    assert client.post(url,headers=h,json={"status":"in_progress","expected_revision":4}).status_code==409
+    assert client.post(url,headers=h,json={"status":"in_progress","expected_revision":6}).status_code==409
     assert len(client.get("/api/productivity/missions").json()["missions"])==1
     assert client.get("/api/productivity/missions?project_key=other").json()["missions"]==[]
 

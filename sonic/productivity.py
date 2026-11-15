@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 import re
+import hashlib
 from datetime import timedelta
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import DateTime, Integer, String, Text, select, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, select, func
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from . import auth
@@ -30,6 +31,7 @@ TOOLS = (
     {"id": "diagnostics.events", "kind": "read_only", "status": "implemented", "device": True},
     {"id": "project.memory", "kind": "owner_write", "status": "implemented", "device": False},
     {"id": "mission.plan", "kind": "owner_write", "status": "implemented", "device": False},
+    {"id": "mission.checkpoints", "kind": "owner_write", "status": "implemented", "device": False},
     {"id": "daily.briefing", "kind": "read_only", "status": "implemented", "device": False},
     {"id": "workspace.search", "kind": "read_only", "status": "implemented", "device": False},
     {"id": "computer.operator", "kind": "review_required", "status": "existing_operator", "device": True},
@@ -59,6 +61,27 @@ class Mission(Base):
     created_at: Mapped[object] = mapped_column(DateTime, default=utcnow, nullable=False)
     updated_at: Mapped[object] = mapped_column(DateTime, default=utcnow, nullable=False)
 
+class MissionCheckpoint(Base):
+    """Explicit owner-confirmed checkpoint; absence means not done."""
+    __tablename__ = "productivity_mission_checkpoints_v149"
+    mission_id: Mapped[str] = mapped_column(ForeignKey("productivity_missions_v148.id", ondelete="CASCADE"), primary_key=True)
+    step_index: Mapped[int] = mapped_column(Integer, primary_key=True)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    completed_at: Mapped[object] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class MissionEvent(Base):
+    """Append-only audit metadata; does not duplicate raw evidence or secrets."""
+    __tablename__ = "productivity_mission_events_v149"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    mission_id: Mapped[str] = mapped_column(ForeignKey("productivity_missions_v148.id", ondelete="CASCADE"), nullable=False, index=True)
+    step_index: Mapped[int] = mapped_column(Integer, default=-1, nullable=False)
+    action: Mapped[str] = mapped_column(String(40), nullable=False)
+    evidence_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[object] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -77,6 +100,11 @@ class ChangeMission(Strict):
     expected_revision: int = Field(ge=1)
     evidence: str = Field(default="", max_length=1200)
 
+class CheckpointBody(Strict):
+    expected_revision: int = Field(ge=1)
+    evidence: str = Field(min_length=10, max_length=600)
+
+
 class DiagnosticRequest(Strict):
     action: str
 
@@ -94,11 +122,47 @@ def fact_record(x):
             "content": x.content, "source": x.provenance,
             "updated_at": x.updated_at.isoformat()+"Z"}
 
-def mission_record(x):
-    return {"id": x.id, "project_key": x.project_key, "goal": x.goal,
-            "steps": json.loads(x.steps_json), "status": x.status, "evidence": x.evidence,
-            "revision": x.revision, "updated_at": x.updated_at.isoformat()+"Z",
-            "execution": "no_automatic_actions"}
+def mission_record(x, completed: set[int] | None = None):
+    steps = json.loads(x.steps_json)
+    result = {"id": x.id, "project_key": x.project_key, "goal": x.goal,
+              "steps": steps, "status": x.status, "evidence": x.evidence,
+              "revision": x.revision, "updated_at": x.updated_at.isoformat()+"Z",
+              "execution": "no_automatic_actions"}
+    if completed is not None:
+        result["step_progress"] = {
+            "total": len(steps), "completed": len(completed),
+            "checkpoints": [{"index": i, "done": i in completed} for i in range(len(steps))],
+            "source": "owner_confirmed_checkpoints"}
+    return result
+
+
+def _audit(db, mission, step_index, action, evidence=""):
+    db.add(MissionEvent(id=str(uuid4()), mission_id=mission.id, step_index=step_index,
+                        action=action, evidence_sha256=hashlib.sha256(
+                            evidence.encode("utf-8")).hexdigest(),
+                        revision=mission.revision))
+
+
+def _mission(db, mission_id):
+    row = db.scalar(select(Mission).where(Mission.id == mission_id).with_for_update())
+    if row is None:
+        raise HTTPException(404, "Mission not found")
+    return row
+
+
+def _completed(db, mission_id):
+    return {idx for idx in db.scalars(select(MissionCheckpoint.step_index).where(
+        MissionCheckpoint.mission_id == mission_id)).all()}
+
+
+def _validated_evidence(value):
+    from .memory import SECRET_PATTERN
+    content = value.strip()
+    if not 10 <= len(content) <= 600:
+        raise HTTPException(422, "Checkpoint evidence must be 10-600 characters")
+    if SECRET_PATTERN.search(content):
+        raise HTTPException(422, "Credentials must not be stored as evidence")
+    return content
 
 @router.get("/capabilities")
 def capability_registry(_: dict = Depends(auth.require_owner), db: Session = Depends(get_db)):
@@ -107,7 +171,8 @@ def capability_registry(_: dict = Depends(auth.require_owner), db: Session = Dep
     metrics = device_metrics(db)
     supported = set(metrics["capabilities"]) if metrics["connected"] else set()
     return {"tools": [{**t, "ready": (t["id"] in supported) if t["device"] and t["id"] in DIAGNOSTICS else
-                       (metrics["connected"] if t["id"] == "computer.operator" else t["status"] == "implemented")}
+                       (bool(supported & {"process.list", "file.list", "window.list", "shell.inspect"})
+                        if t["id"] == "computer.operator" else t["status"] == "implemented")}
                       for t in TOOLS], "device_connected": metrics["connected"],
             "notice": "Read-only diagnostics are queued only to an authenticated companion. Missions never execute automatically."}
 
@@ -159,7 +224,13 @@ def list_missions(project_key: str | None = None, _: dict = Depends(auth.require
     if project_key is not None:
         stmt = stmt.where(Mission.project_key == check_project(project_key))
     rows = db.scalars(stmt.order_by(Mission.created_at.desc()).limit(80)).all()
-    return {"missions": [mission_record(x) for x in rows]}
+    ids = [x.id for x in rows]
+    states: dict[str,set[int]] = {i:set() for i in ids}
+    if ids:
+        for checkpoint in db.scalars(select(MissionCheckpoint).where(
+                MissionCheckpoint.mission_id.in_(ids))).all():
+            states[checkpoint.mission_id].add(checkpoint.step_index)
+    return {"missions": [mission_record(x, states[x.id]) for x in rows]}
 
 @router.post("/missions", status_code=201)
 def create_mission(data: NewMission, _: dict = Depends(auth.require_owner_write),
@@ -196,13 +267,16 @@ def transition_mission(mission_id: str, data: ChangeMission,
             raise HTTPException(422, "Completion requires human-entered evidence")
         if SECRET_PATTERN.search(data.evidence):
             raise HTTPException(422, "Credentials must not be stored as mission evidence")
+        if len(_completed(db, x.id)) != len(json.loads(x.steps_json)):
+            raise HTTPException(409, "Complete and review every mission checkpoint before closing")
     x.status = data.status
     x.revision += 1
     x.updated_at = utcnow()
     if data.status == "completed":
         x.evidence = data.evidence.strip()
+    _audit(db, x, -1, "mission."+data.status, data.evidence.strip())
     db.commit()
-    return {"mission": mission_record(x)}
+    return {"mission": mission_record(x, _completed(db, x.id))}
 
 @router.post("/diagnostics", status_code=202)
 def queue_diagnostic(data: DiagnosticRequest, _: dict = Depends(auth.require_owner_write),
@@ -284,3 +358,95 @@ def universal_search(q: str, _: dict = Depends(auth.require_owner),
                 [{"source": "sonic_cloud_workspace", "id": x.id, "title": x.name, "kind": x.kind}
                  for x in files]
             ), "not_searched": ["tradevicepc", "google_drive", "email", "external_apps"]}
+
+
+@router.get("/missions/{mission_id}/steps")
+def mission_steps(mission_id: str, _: dict = Depends(auth.require_owner),
+                  db: Session = Depends(get_db)):
+    ensure_db()
+    x = db.get(Mission, mission_id)
+    if x is None:
+        raise HTTPException(404, "Mission not found")
+    rows = db.scalars(select(MissionCheckpoint).where(
+        MissionCheckpoint.mission_id == x.id)).all()
+    found = {c.step_index: c for c in rows}
+    return {"mission_id": x.id, "revision": x.revision, "status": x.status,
+            "steps": [{"index": idx, "description": title, "done": idx in found,
+                       "evidence": found[idx].evidence if idx in found else None,
+                       "completed_at": found[idx].completed_at.isoformat()+"Z"
+                                      if idx in found else None}
+                      for idx, title in enumerate(json.loads(x.steps_json))],
+            "no_automatic_execution": True}
+
+
+@router.post("/missions/{mission_id}/steps/{step_index}/complete")
+def complete_step(mission_id: str, step_index: int, data: CheckpointBody,
+                  _: dict = Depends(auth.require_owner_write),
+                  db: Session = Depends(get_db)):
+    ensure_db()
+    x = _mission(db, mission_id)
+    if x.status != "in_progress":
+        raise HTTPException(409, "Start the approved mission first")
+    if x.revision != data.expected_revision:
+        raise HTTPException(409, "Mission revision changed; refresh before retry")
+    steps = json.loads(x.steps_json)
+    if step_index < 0 or step_index >= len(steps):
+        raise HTTPException(404, "Mission step not found")
+    done = _completed(db, x.id)
+    if step_index in done:
+        raise HTTPException(409, "Checkpoint already completed")
+    if any(i not in done for i in range(step_index)):
+        raise HTTPException(409, "Earlier checkpoints must be completed first")
+    evidence = _validated_evidence(data.evidence)
+    db.add(MissionCheckpoint(mission_id=x.id, step_index=step_index, evidence=evidence))
+    x.revision += 1
+    x.updated_at = utcnow()
+    _audit(db, x, step_index, "step.completed", evidence)
+    db.commit()
+    return {"mission_id": x.id, "step_index": step_index,
+            "done": True, "revision": x.revision,
+            "note": "Owner-entered evidence, not independently verified",
+            "execution": "no_automatic_actions"}
+
+
+@router.post("/missions/{mission_id}/steps/{step_index}/reopen")
+def reopen_step(mission_id: str, step_index: int, data: CheckpointBody,
+                _: dict = Depends(auth.require_owner_write),
+                db: Session = Depends(get_db)):
+    ensure_db()
+    x = _mission(db, mission_id)
+    if x.status != "in_progress":
+        raise HTTPException(409, "Only in-progress mission checkpoints can be reopened")
+    if x.revision != data.expected_revision:
+        raise HTTPException(409, "Mission revision changed; refresh before retry")
+    done = _completed(db, x.id)
+    if step_index not in done:
+        raise HTTPException(409, "Checkpoint is not completed")
+    if any(i > step_index for i in done):
+        raise HTTPException(409, "Reopen the latest checkpoint first")
+    reason = _validated_evidence(data.evidence)
+    obj = db.get(MissionCheckpoint, (x.id, step_index))
+    db.delete(obj)
+    x.revision += 1
+    x.updated_at = utcnow()
+    _audit(db, x, step_index, "step.reopened", reason)
+    db.commit()
+    return {"mission_id": x.id, "step_index": step_index,
+            "done": False, "revision": x.revision,
+            "execution": "no_automatic_actions"}
+
+
+@router.get("/missions/{mission_id}/audit")
+def mission_audit(mission_id: str, _: dict = Depends(auth.require_owner),
+                  db: Session = Depends(get_db)):
+    ensure_db()
+    if db.get(Mission, mission_id) is None:
+        raise HTTPException(404, "Mission not found")
+    rows = db.scalars(select(MissionEvent).where(
+        MissionEvent.mission_id == mission_id
+    ).order_by(MissionEvent.created_at.desc()).limit(80)).all()
+    return {"mission_id": mission_id,
+            "audit": [{"action": a.action, "step_index": a.step_index,
+                       "revision": a.revision, "evidence_sha256": a.evidence_sha256,
+                       "created_at": a.created_at.isoformat()+"Z"} for a in rows],
+            "raw_evidence_in_audit": False}
