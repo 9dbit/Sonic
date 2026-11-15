@@ -110,20 +110,57 @@
     const list=q("prodMissions");list.replaceChildren();
     if(!r.missions.length)list.append(tag("p","No missions. Create a draft first."));
     for(const m of r.missions){
-      const card=div("prod-item");card.append(tag("strong",m.goal),tag("p","Status: "+m.status+" | revision "+m.revision));
-      const ol=tag("ol");for(const step of m.steps)ol.append(tag("li",step));card.append(ol);
-      const next={draft:"approved",approved:"in_progress",in_progress:"completed"}[m.status];
-      if(next)card.append(button(next==="approved"?"Approve plan":next==="in_progress"?"Start manual work":"Mark completed",async()=>{
-        let evidence="";
-        if(next==="completed"){
-          const result=prompt("Evidence of work completed (min 10 characters):");
-          if(result===null)return;
-          evidence=result;
+      const progress=m.step_progress||{total:m.steps.length,completed:0,checkpoints:[]};
+      const card=div("prod-item");
+      card.append(tag("strong",m.goal),
+        tag("p","Status: "+m.status+" | revision "+m.revision+
+            " | checkpoints "+progress.completed+"/"+progress.total));
+      const ol=tag("ol");
+      for(let i=0;i<m.steps.length;i++){
+        const isDone=progress.checkpoints[i]?.done===true;
+        const li=tag("li",(isDone?"✓ ":"○ ")+m.steps[i]);
+        if(m.status==="in_progress"&&!isDone&&i===progress.completed){
+          li.append(button("Complete step",async()=>{
+            const evidence=prompt("Evidence for checkpoint "+(i+1)+" (10-600 characters):");
+            if(evidence===null)return;
+            await api(base+"/missions/"+m.id+"/steps/"+i+"/complete",{
+              method:"POST",body:JSON.stringify({expected_revision:m.revision,evidence})});
+            status("Checkpoint saved as owner-entered evidence. No PC action executed.");
+            await refreshMissions();
+          }));
         }
-        await api(base+"/missions/"+m.id+"/transition",{method:"POST",
-          body:JSON.stringify({status:next,expected_revision:m.revision,evidence})});
-        status("Mission status changed. No commands were executed.");await refreshMissions();
-      }));
+        if(m.status==="in_progress"&&isDone&&i===progress.completed-1){
+          li.append(button("Reopen",async()=>{
+            const evidence=prompt("Reason to reopen checkpoint "+(i+1)+" (10-600 characters):");
+            if(evidence===null)return;
+            await api(base+"/missions/"+m.id+"/steps/"+i+"/reopen",{
+              method:"POST",body:JSON.stringify({expected_revision:m.revision,evidence})});
+            status("Checkpoint reopened; audit preserved.");await refreshMissions();
+          }));
+        }
+        ol.append(li);
+      }
+      card.append(ol);
+      const next={draft:"approved",approved:"in_progress",in_progress:"completed"}[m.status];
+      if(next){
+        const advance=button(next==="approved"?"Approve plan":
+          next==="in_progress"?"Start manual work":"Mark completed",async()=>{
+          let evidence="";
+          if(next==="completed"){
+            const result=prompt("Final mission evidence (minimum 10 characters):");
+            if(result===null)return;
+            evidence=result;
+          }
+          await api(base+"/missions/"+m.id+"/transition",{method:"POST",
+            body:JSON.stringify({status:next,expected_revision:m.revision,evidence})});
+          status("Mission status changed. No commands were executed.");await refreshMissions();
+        });
+        if(next==="completed"&&progress.completed<progress.total){
+          advance.disabled=true;
+          advance.title="Complete all checkpoints before closing this mission";
+        }
+        card.append(advance);
+      }
       if(["draft","approved","in_progress"].includes(m.status)){
         card.append(button("Cancel",async()=>{if(!confirm("Cancel this mission?"))return;
           await api(base+"/missions/"+m.id+"/transition",{method:"POST",
@@ -131,7 +168,12 @@
           await refreshMissions();
         }));
       }
-      if(m.evidence)card.append(tag("p","Evidence: "+m.evidence));
+      card.append(button("Audit log",async()=>{
+        const receipt=await api(base+"/missions/"+m.id+"/audit");
+        const output=tag("pre",JSON.stringify(receipt,null,2),"prod-result");
+        card.append(output);
+      }));
+      if(m.evidence)card.append(tag("p","Final evidence (owner-entered): "+m.evidence));
       list.append(card);
     }
   }
