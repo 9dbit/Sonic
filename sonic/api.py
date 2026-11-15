@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.4.9'
+VERSION = '1.5.0'
 
 
 @asynccontextmanager
@@ -338,6 +338,8 @@ from .workspace import router as workspace_router
 app.include_router(workspace_router)
 from .productivity import router as productivity_router
 app.include_router(productivity_router)
+from .uptime import router as uptime_router
+app.include_router(uptime_router)
 
 
 @app.middleware("http")

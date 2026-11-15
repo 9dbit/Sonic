@@ -21,6 +21,7 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
     from .chat_actions import classify, confirmation_intent, looks_like_pc_action, pc_status_followup
     from .window_policy_v090 import looks_like_window_command, approval_notice
     from .chat_audit import is_chat_log_request, summarize_chat_friction
+    from .uptime import is_uptime_question, report as internet_report, uptime_reply
     from fastapi import HTTPException
     start = time.monotonic()
     run_id = str(uuid4())
@@ -32,11 +33,12 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
     db.info.update(ui_actions=[], memory_events=[], memory_references=[], engine_steps=[], selected_node_id=selected_node_id,
                    execution_identity=identity,execution_run_id=run_id,execution_task_id=None)
     from .operator import direct_device_command, direct_capability_question, capability_reply, device_metrics, metrics_reply
-    audit_intent=is_chat_log_request(text)
-    confirm_intent=None if audit_intent else confirmation_intent(text)
+    uptime_intent=is_uptime_question(text)
+    audit_intent=not uptime_intent and is_chat_log_request(text)
+    confirm_intent=None if audit_intent or uptime_intent else confirmation_intent(text)
     chat_action=None
     action_parse_error=None
-    if not confirm_intent and not audit_intent:
+    if not confirm_intent and not audit_intent and not uptime_intent:
         try:chat_action=resolved_action or classify(text)
         except ValueError as exc:action_parse_error=str(exc)
     pc_ambiguous=not (chat_action or action_parse_error or confirm_intent or audit_intent) and looks_like_pc_action(text)
@@ -44,12 +46,17 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
     pc_capabilities = direct_capability_question(text)
     pc_request = not (pc_capabilities or audit_intent or chat_action or confirm_intent or action_parse_error) and direct_device_command(text)
     command = None if pc_request or pc_capabilities or audit_intent or chat_action or confirm_intent or action_parse_error or pc_ambiguous or status_question else direct_graph_command(text, selected_node_id)
-    route = 'chat_audit' if audit_intent else 'task_status' if status_question else 'chat_pc_clarification' if pc_ambiguous else 'chat_approval' if confirm_intent else 'chat_pc_action' if chat_action or action_parse_error else 'device_capabilities' if pc_capabilities else 'device_metrics' if pc_request else 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
+    route = 'internet_uptime' if uptime_intent else 'chat_audit' if audit_intent else 'task_status' if status_question else 'chat_pc_clarification' if pc_ambiguous else 'chat_approval' if confirm_intent else 'chat_pc_action' if chat_action or action_parse_error else 'device_capabilities' if pc_capabilities else 'device_metrics' if pc_request else 'graph_command' if command else 'explicit_memory' if parse_memory_intent(text) else 'model_conversation'
     status = 'completed'
     operator_jobs=[]
     operator_proposals=[]
     try:
-        if audit_intent:
+        if uptime_intent:
+            _record_user(db,text)
+            snapshot=internet_report(db,24)
+            answer=_record_answer(db,uptime_reply(snapshot))
+            db.info['engine_steps'].append({'tool':'internet.uptime','status':'read' if snapshot['status']=='ready' else 'partial'})
+        elif audit_intent:
             _record_user(db,text)
             answer=_record_answer(db,summarize_chat_friction(db))
             db.info['engine_steps'].append({'tool':'chat.history_audit','status':'read'})

@@ -67,7 +67,7 @@ def test_fixed_provider_session_contract(client,provider):
     assert config['audio']['input']['turn_detection']['interrupt_response'] is True
     assert config['audio']['input']['turn_detection']['create_response'] is False
     names={t['name'] for t in config['tools']}
-    assert names=={'graph_search','graph_focus','graph_neighbors','graph_reset','memory_search','memory_prepare','device_metrics','pc_capabilities','chat_history_audit'}
+    assert names=={'graph_search','graph_focus','graph_neighbors','graph_reset','memory_search','memory_prepare','device_metrics','pc_capabilities','chat_history_audit','internet_uptime'}
     assert 'memory_save' not in names
     assert client.get('/api/voice/status').json()['active_session']['id']==sid
     status=client.post(f'/api/voice/sessions/{sid}/stop',json={},headers=h).json()
@@ -198,3 +198,18 @@ def test_voice_can_read_real_pc_metrics_but_not_execute(client,provider):
     assert observed.json()['ui_actions'][0]['type']=='device.metrics'
     assert call(client,h,sid,'device_metrics',{'script':'taskkill'},'metric_bad').json()['output']=={'error':'INVALID_TOOL_ARGUMENTS'}
     assert call(client,h,sid,'shell.run',{'recipe':'clock'},'shell_forbidden').status_code==403
+
+
+def test_internet_uptime_voice_tool_reads_real_samples_without_imagining(client,provider):
+    h=login(client)
+    sid=start(client,h)
+    response=call(client,h,sid,'internet_uptime',{},'uptime_before_samples')
+    assert response.status_code==200,response.text
+    data=response.json()['output']
+    assert data['status']=='no_data'
+    assert data['uptime_pct'] is None
+    assert data['coverage_pct']==0
+    assert 'Belum ada data' in data['spoken_report']
+    unsafe=call(client,h,sid,'internet_uptime',{'script':'net stop'},'uptime_bad_args')
+    assert unsafe.status_code==200
+    assert unsafe.json()['output']=={'error':'INVALID_TOOL_ARGUMENTS'}

@@ -24,6 +24,7 @@ import windows_workspace_v082 as workspace_actions
 import windows_window_v090 as window_control
 import windows_software
 import windows_diagnostics_v148
+import windows_uptime_v150
 import threading
 
 HERE=Path(__file__).resolve().parent
@@ -40,6 +41,8 @@ _LAST_NET=None
 _SOFTWARE_BROKER=None
 _SOFTWARE_PREFLIGHT=(0.0,{})
 _SOFTWARE_PENDING_RESULT=None
+_UPTIME_MONITOR=None
+_LAST_UPTIME_SYNC_WARNING=0.0
 KEYS={'ENTER':0x0d,'TAB':0x09,'BACKSPACE':0x08,'DELETE':0x2e,'LEFT':0x25,'RIGHT':0x27,'UP':0x26,'DOWN':0x28,'HOME':0x24,'END':0x23,'ESCAPE':0x1b}
 
 
@@ -495,6 +498,14 @@ def run_once(only_heartbeat=False):
         'capabilities':capabilities,
         'metrics':m,'gui_targets':[]})
     if only_heartbeat:return
+    global _LAST_UPTIME_SYNC_WARNING
+    if _UPTIME_MONITOR is not None:
+        try:
+            windows_uptime_v150.upload_pending(_UPTIME_MONITOR.journal,api,DEVICE)
+        except Exception as exc:
+            if time.monotonic()-_LAST_UPTIME_SYNC_WARNING>120:
+                print('SONIC uptime upload deferred:',type(exc).__name__,flush=True)
+                _LAST_UPTIME_SYNC_WARNING=time.monotonic()
     if _SOFTWARE_PENDING_RESULT is not None:
         # Retry only receipt delivery. Never re-dispatch an installer after a
         # network error; the broker journal survives process restarts separately.
@@ -546,8 +557,14 @@ def run_once(only_heartbeat=False):
 
 
 def main():
+    global _UPTIME_MONITOR
     parser=argparse.ArgumentParser();parser.add_argument('--once',action='store_true');parser.add_argument('--preflight',action='store_true');args=parser.parse_args()
     ensure_config()
+    if not args.once and not args.preflight and windows_uptime_v150.enabled():
+        try:
+            _UPTIME_MONITOR=windows_uptime_v150.start_monitor(HERE)
+        except Exception as exc:
+            print('SONIC uptime monitor unavailable:',type(exc).__name__,flush=True)
     if args.preflight and os.environ.get('SONIC_SOFTWARE_DISCOVERY_ENABLED')=='1':
         check=software_broker().preflight()
         if not check.get('ok'):
