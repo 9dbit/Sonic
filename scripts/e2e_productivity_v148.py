@@ -22,6 +22,9 @@ with local_server(settings={"DEEPSEEK_API_KEY":"FAKE-DO-NOT-CALL","SONIC_BRAIN_P
         expect(page.locator("#loginOverlay")).to_have_class("login-overlay hidden",timeout=15000)
         page.locator('.nav[data-tab="devices"]').click()
         expect(page.locator("#productivityHub")).to_be_visible(timeout=15000)
+        expect(page.locator("#prodUptimePct")).to_have_text("COLLECTING",timeout=15000)
+        assert page.locator("#prodUptimeTimeline .prod-uptime-bar").count()==48
+        expect(page.locator("#prodUptimeCoverage")).to_have_text("0.00%")
         page.locator("#prodFactTitle").fill("Project checkpoint")
         page.locator("#prodFactText").fill("Browser QA checkpoint with synthetic data only.")
         page.locator("#productivityHub button:has-text('Save to project')").click()

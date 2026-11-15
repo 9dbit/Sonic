@@ -23,3 +23,17 @@
 .prod-result{border-radius:12px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;background:#111018;color:#c7daff;font-size:12px}
 .prod-status{color:#c3b6ff!important;min-height:24px}
 @media(max-width:700px){.prod-hub{padding:12px}.prod-grid{grid-template-columns:1fr}.prod-hub h3{font-size:19px}}
+
+/* SONIC v1.5 Internet Uptime: unknown data is visibly neutral */
+.prod-uptime-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0}
+.prod-uptime-value{font-size:clamp(26px,5vw,38px);line-height:1.2;color:#4adb93;font-weight:750;font-variant-numeric:tabular-nums}
+.prod-uptime-state{font-size:12px;background:#303038;padding:7px 11px;border-radius:999px;color:#c5c5d0}
+.prod-uptime-stat{background:#19191e;padding:13px;border-radius:14px;display:flex;flex-direction:column;gap:8px}
+.prod-uptime-stat span{font-size:12px;color:#bcbac5}
+.prod-uptime-stat strong{font-size:18px;font-variant-numeric:tabular-nums;color:#f5f5f7}
+.prod-uptime-timeline{display:flex;gap:2px;min-height:22px;margin:16px 0 10px}
+.prod-uptime-bar{flex:1;min-width:1px;border-radius:3px;background:#55565b}
+.prod-uptime-up{background:#39ac75}
+.prod-uptime-down{background:#df6262}
+.prod-uptime-degraded{background:#d7a04e}
+.prod-uptime-unknown{background:#63636c}

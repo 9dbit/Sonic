@@ -1,4 +1,4 @@
-/* SONIC Productivity 1.4.8: owner-only Mission + Project Memory + Diagnostics. */
+/* SONIC Productivity 1.5.0: owner-only Mission + Project Memory + Diagnostics. */
 (() => {
   "use strict";
   const q=id=>document.getElementById(id);
@@ -63,6 +63,26 @@
     insights.append(searchRow);
     const insightResults=tag("pre","Internal SONIC data only.","prod-result");
     insightResults.id="prodInsights";insights.append(insightResults);root.append(insights);
+    const uptime=div("prod-card");uptime.id="prodInternetUptime";
+    uptime.append(tag("h4","Internet Uptime Monitor • Last 24 hours"));
+    const uptimeHead=div("prod-uptime-header");
+    const uptimePct=tag("strong","NO DATA","prod-uptime-value");uptimePct.id="prodUptimePct";
+    const uptimeState=tag("span","Waiting for Windows samples","prod-uptime-state");uptimeState.id="prodUptimeState";
+    uptimeHead.append(uptimePct,uptimeState);
+    uptime.append(uptimeHead);
+    const uptimeStat=div("prod-grid");
+    for(const [id,label] of [["prodUptimeCoverage","Measured coverage"],["prodUptimeDown","Observed downtime"],
+                             ["prodUptimeUnknown","Unknown / PC offline"],["prodUptimeLatency","Avg HTTPS response"],
+                             ["prodUptimeOutages","Observed interruptions"],["prodUptimeProbe","HTTPS probes passed"]]){
+      const group=div("prod-uptime-stat");const value=tag("strong","--");value.id=id;
+      group.append(tag("span",label),value);uptimeStat.append(group);
+    }
+    uptime.append(uptimeStat);
+    const timeline=div("prod-uptime-timeline");timeline.id="prodUptimeTimeline";uptime.append(timeline);
+    const outageList=div("prod-items");outageList.id="prodUptimeOutagesList";uptime.append(outageList);
+    uptime.append(tag("p","30-second checks from TRADEVICEPC to two fixed HTTPS endpoints. Unknown time is never counted as uptime. This is reachability, not ISP SLA or packet loss."));
+    uptime.append(button("Refresh 24h report",async()=>{await refreshUptime();status("Internet uptime report refreshed from real stored samples.");}));
+    root.append(uptime);
     const diagnostic=div("prod-card");
     diagnostic.append(tag("h4","Read-only PC diagnostics"));
     const diagBtns=div("prod-row");diagBtns.id="prodDiagButtons";
@@ -187,8 +207,44 @@
       btn.title=item?.ready?"Authenticated companion":"Requires updated Companion";
     }
   }
+  function uptimeDuration(seconds){
+    if(seconds>=3600)return (seconds/3600).toFixed(1)+" h";
+    return Math.round(seconds/60)+" min";
+  }
+  async function refreshUptime(){
+    const data=await api("/api/uptime/summary?hours=24");
+    q("prodUptimePct").textContent=data.uptime_pct===null?"COLLECTING":data.uptime_pct.toFixed(2)+"%";
+    q("prodUptimeState").textContent=data.status==="ready"?"24-hour report ready":
+      data.status==="no_data"?"No samples recorded yet":"Partial 24-hour coverage";
+    q("prodUptimeCoverage").textContent=data.coverage_pct.toFixed(2)+"%";
+    q("prodUptimeDown").textContent=uptimeDuration(data.approx_down_seconds);
+    q("prodUptimeUnknown").textContent=uptimeDuration(data.unknown_seconds);
+    q("prodUptimeLatency").textContent=data.avg_https_latency_ms===null?"--":
+      data.avg_https_latency_ms.toFixed(1)+" ms";
+    q("prodUptimeOutages").textContent=data.samples_recorded===0?"--":String(data.outage_count);
+    q("prodUptimeProbe").textContent=data.https_probe_success_pct===null?"--":
+      data.https_probe_success_pct.toFixed(2)+"%";
+    const chart=q("prodUptimeTimeline");
+    chart.replaceChildren();
+    for(const bar of data.timeline){
+      const n=div("prod-uptime-bar prod-uptime-"+bar.state);
+      n.title=bar.at_utc+" • "+bar.state+" • "+bar.samples+" samples / "+bar.missing+" unknown";
+      chart.append(n);
+    }
+    const incidents=q("prodUptimeOutagesList");incidents.replaceChildren();
+    if(!data.outages.length){
+      incidents.append(tag("p",data.samples_recorded===0?"No monitoring samples yet.":
+        "No simultaneous endpoint failures recorded in available samples."));
+    }else{
+      for(const incident of data.outages.slice(-5).reverse()){
+        const when=new Date(incident.started_at_utc).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",
+          day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+        incidents.append(tag("p",when+" WIB • about "+uptimeDuration(incident.approx_duration_seconds)+" unavailable"));
+      }
+    }
+  }
   async function refreshAll(){
-    await Promise.all([refreshFacts(),refreshMissions(),refreshTools()]);
+    await Promise.all([refreshFacts(),refreshMissions(),refreshTools(),refreshUptime()]);
     status("Project "+project+" loaded. No automatic device changes.");
   }
   async function access(){
