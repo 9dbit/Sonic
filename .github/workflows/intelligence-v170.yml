@@ -1,0 +1,58 @@
+name: SONIC v1.7 Intelligence Experience
+on:
+  pull_request:
+    paths:
+      - 'sonic/research_*.py'
+      - 'sonic/api.py'
+      - 'web/mobile-v170.*'
+      - 'web/neural-knowledge-v170.js'
+      - 'web/research-agent-v160.js'
+      - 'web/index.html'
+      - 'web/app.js'
+      - 'tests/test_research_memory_v170.py'
+      - 'scripts/e2e_mobile_v170.py'
+      - '.github/workflows/intelligence-v170.yml'
+  push:
+    branches: ['feat/sonic-intelligence-rebuild-v170-*']
+permissions:
+  contents: read
+jobs:
+  backend-and-mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install requirements, Playwright and Chromium
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Python and JS syntax
+        run: |
+          python -m compileall -q sonic
+          node --check web/app.js
+          node --check web/mobile-v170.js
+          node --check web/neural-knowledge-v170.js
+          node --check web/research-agent-v160.js
+      - name: Memory, owner and source security regression
+        run: python -m pytest -q tests/test_research_memory_v170.py tests/test_research_agent_v160.py tests/test_owner_entry_v153.py
+      - name: Existing JavaScript tests
+        run: node --test tests/js/*.test.cjs
+      - name: Owner and guest browser Research Agent regression
+        run: python scripts/e2e_research_agent_v160.py
+      - name: iPhone, compact mobile, desktop and Neural UI browser QA
+        run: python scripts/e2e_mobile_v170.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sonic-v170-mobile-qa
+          path: |
+            artifacts/mobile-v170/
+            artifacts/research-agent-v160/
+          retention-days: 7
+          if-no-files-found: warn
