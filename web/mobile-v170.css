@@ -230,3 +230,69 @@ body.orbit-v140 .app #agentMemorySearch {width:100%;margin:8px 0 9px;padding:10p
   }
   body.orbit-v140 .sidebar .nav.active svg{color:#fff!important}
 }
+
+@media(max-width:720px){
+  /* Keep the More popover above the content stacking context on iPhone. */
+  body.orbit-v140 .sidebar{z-index:100!important;overflow:visible!important;isolation:isolate}
+  body.orbit-v140 #mobileMoreMenu:not([hidden]){z-index:110!important;pointer-events:auto!important}
+}
+
+@media(max-width:720px){
+  /* 3D mode: a fixed tool strip above an independently scrollable inspector.
+     Neither element can intercept taps intended for the other. */
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .graph-toolbar {
+    top:67px!important;bottom:auto!important;
+    left:9px!important;right:9px!important;transform:none!important;
+    width:calc(100% - 18px)!important;max-width:calc(100% - 18px)!important;
+    z-index:65!important;justify-content:flex-start!important;
+    overflow-x:auto!important;flex-wrap:nowrap!important;
+  }
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .brain-side{
+    top:124px!important;bottom:12px!important;max-height:calc(100% - 136px)!important;
+    width:calc(100% - 20px)!important;overflow-y:auto!important;z-index:40!important;
+  }
+}
+
+@media(max-width:720px){
+  /* Prevent the inherited shell's negative side-offset on public preview
+     Workspace, Memory and other panels without changing desktop layout. */
+  body.orbit-v140 .content > .panel {
+    box-sizing:border-box!important;
+    width:calc(100% - 16px)!important;
+    max-width:calc(100vw - 16px)!important;
+    margin-left:8px!important;
+    margin-right:8px!important;
+    left:auto!important;right:auto!important;
+  }
+}
+
+@media(max-width:720px){
+  /* Voice focus is modal: graph tools must never intercept voice Stop. */
+  body.orbit-v140.sonic-focused #brainPanel .graph-toolbar,
+  body.orbit-v140.sonic-focused #brainPanel #neuralMobileSwitcher,
+  body.orbit-v140.sonic-focused #brainPanel .brain-side {
+    pointer-events:none!important;
+  }
+}
+
+@media(max-width:720px){
+  /* More is a menu button, NOT a normal tab. Keeping it out of .nav
+     prevents the legacy .nav click handler calling setTab(undefined). */
+  body.orbit-v140 .sidebar #mobileMoreNav {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;justify-content:center!important;
+    min-width:0!important;max-width:100%!important;width:100%!important;
+    height:53px!important;min-height:53px!important;
+    padding:5px 0!important;gap:4px!important;border-radius:17px!important;
+    color:#9caabb!important;background:transparent!important;
+    border:1px solid transparent!important;box-shadow:none!important;
+    font-size:10px!important;
+  }
+  body.orbit-v140 .sidebar #mobileMoreNav svg{width:18px!important;height:18px!important;color:currentColor!important}
+  body.orbit-v140 .sidebar #mobileMoreNav span{font-size:10px!important;white-space:nowrap}
+  body.orbit-v140 .sidebar #mobileMoreNav[aria-expanded="true"]{
+    color:#fff!important;background:#1d395b!important;
+    border-color:#3d95ff!important;
+  }
+}

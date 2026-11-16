@@ -72,7 +72,11 @@ with local_server() as (url,token),sync_playwright() as p:
         page.locator('#ownerToken').fill(token)
         page.locator('#loginForm button[type=submit]').click()
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('.*hidden.*'))
-        page.locator('.nav[data-tab=workspace]').click()
+        if name=='mobile':
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go=workspace]').click()
+        else:
+            page.locator('.nav[data-tab=workspace]').click()
         expect(page.locator('#wsStatus')).to_contain_text('SONIC Cloud')
         page.locator('#wsPcDeviceTab').click()
         expect(page.locator('#wsPcArea')).to_be_visible()
@@ -104,7 +108,11 @@ with local_server() as (url,token),sync_playwright() as p:
         if page.locator('#logout').is_visible():
             page.locator('#logout').click()
         else:
-            page.locator('.nav[data-tab=setup]').click()
+            if name=='mobile':
+                page.locator('#mobileMoreNav').click()
+                page.locator('[data-mobile-go=setup]').click()
+            else:
+                page.locator('.nav[data-tab=setup]').click()
             page.locator('#setupLogout').click()
         expect(page.locator('#loginOverlay')).to_be_visible()
         expect(page.locator('#wsPcText')).to_have_text('')

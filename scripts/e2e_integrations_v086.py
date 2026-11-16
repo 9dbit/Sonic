@@ -52,6 +52,7 @@ with local_server(settings=settings) as (url,owner),sync_playwright() as p:
         page.locator('#loginForm button[type=submit]').click()
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('hidden'))
         page.locator('.nav[data-tab="brain"]').click()
+        if viewport=='mobile': page.locator('#neuralGraphBtn').click()
         page.locator('#focusIntegration').click()
         expect(page.locator('#graphStage')).to_have_attribute('data-selected','integration:hub')
         expect(page.locator('#nodeInspector h3')).to_have_text('Integration')

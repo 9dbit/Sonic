@@ -13,6 +13,17 @@ OUT = Path('artifacts/sonic-orbit-v140')
 OUT.mkdir(parents=True, exist_ok=True)
 
 def layout(page, label):
+    # Wait for the existing tab slide transition to settle before asserting
+    # viewport geometry. The previous one-frame snapshot could see a 4px
+    # transient negative x-offset with no actual scroll overflow.
+    page.wait_for_function("""() => {
+      const width=innerWidth;
+      return document.documentElement.scrollWidth<=width+2 &&
+        [...document.querySelectorAll('.content>.panel')]
+          .filter(n=>!n.classList.contains('hidden'))
+          .every(n=>{const r=n.getBoundingClientRect();
+            return r.width>=240&&r.left>=-1&&r.right<=width+1;});
+    }""",timeout=4000)
     result=page.evaluate('''() => ({width:innerWidth,scroll:document.documentElement.scrollWidth,
       panel:[...document.querySelectorAll('.content>.panel')].filter(x=>!x.classList.contains('hidden')).map(x=>{const r=x.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}})})''')
     assert result['scroll']<=result['width']+2,(label,result)
@@ -23,7 +34,7 @@ with local_server(settings={'DEEPSEEK_API_KEY':'LOCAL-FAKE-DO-NOT-SEND','SONIC_B
     browser=pw.chromium.launch(headless=True,args=['--no-sandbox','--enable-unsafe-swiftshader'])
     report=[]
     for label,size in [('desktop',{'width':1440,'height':960}),('tablet',{'width':820,'height':1000}),('mobile',{'width':390,'height':844}),('small-mobile',{'width':360,'height':740})]:
-        page=browser.new_page(viewport=size,device_scale_factor=1,is_mobile='mobile' in label,has_touch='mobile' in label)
+        page=browser.new_page(viewport=size,device_scale_factor=1,is_mobile=size['width']<=720,has_touch=size['width']<=720)
         errors=[]; starts=[]
         page.on('pageerror',lambda e:errors.append(str(e)))
         page.route('https://**',lambda route:route.abort())
@@ -35,7 +46,11 @@ with local_server(settings={'DEEPSEEK_API_KEY':'LOCAL-FAKE-DO-NOT-SEND','SONIC_B
         page.locator('#ownerToken').fill(token);page.locator('#loginForm button[type=submit]').click()
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('hidden'),timeout=15000)
         page.locator('.nav[data-tab="brain"]').click()
-        expect(page.locator('#orbitOverview')).to_be_visible()
+        # v1.7 hides the large overview on phones to preserve chat/Neural space.
+        if size['width']<=720:
+            expect(page.locator('#orbitOverview')).to_be_hidden()
+        else:
+            expect(page.locator('#orbitOverview')).to_be_visible()
         expect(page.locator('#orbitMemory')).to_have_text('0')
         expect(page.locator('#orbitDevice')).to_have_text('Offline')
         expect(page.locator('#orbitModel')).to_have_text('deepseek-flash')
@@ -64,11 +79,19 @@ with local_server(settings={'DEEPSEEK_API_KEY':'LOCAL-FAKE-DO-NOT-SEND','SONIC_B
         assert page.evaluate('sonicMotion.focused') is False
         expect(page.locator('#orbitVoiceCaption')).to_be_hidden()
         assert page.evaluate('document.querySelector("#orbitOverview").inert') is False
-        page.locator('[data-orbit-tab="memory"]').click()
+        if size['width']<=720:
+            page.locator('.nav[data-tab="memory"]').click()
+        else:
+            page.locator('[data-orbit-tab="memory"]').click()
         expect(page.locator('#memoryPanel')).to_be_visible()
         expect(page.locator('#orbitOverview')).to_be_hidden()
         for tab in ['chat','workspace','devices','setup','brain']:
-            page.locator('.nav[data-tab="'+tab+'"]').click();layout(page,label+'-'+tab)
+            if size['width']<=720 and tab in ('workspace','setup'):
+                page.locator('#mobileMoreNav').click()
+                page.locator('[data-mobile-go="'+tab+'"]').click()
+            else:
+                page.locator('.nav[data-tab="'+tab+'"]').click()
+            layout(page,label+'-'+tab)
             if tab in ('chat','setup'):page.screenshot(path=str(OUT/f'{label}-{tab}.png'))
         # Expired sessions cannot retain or repopulate private overview values.
         page.evaluate("document.querySelector('#loginOverlay').classList.remove('hidden')")
@@ -151,9 +174,17 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
         layout(page,label+'-preview-brain')
         page.screenshot(path=str(OUT/f'{label}-preview-neural.png'))
         # Both text composers call only the bounded public provider adapter.
-        page.locator('#brainMessage').fill('Hello SONIC')
-        page.locator('#brainSend').click()
-        expect(page.locator('#brainAnswerText')).to_have_text('SONIC preview model replied.',timeout=10000)
+        if size['width']<=720:
+            # v1.7 mobile keeps one visible composer, in Chat. Neural is list-first.
+            page.locator('.nav[data-tab="chat"]').click()
+            page.locator('#message').fill('Hello SONIC')
+            page.locator('#send').click()
+            expect(page.locator('#chatFeed .message.assistant .body').last).to_have_text(
+                'SONIC preview model replied.', timeout=10000)
+        else:
+            page.locator('#brainMessage').fill('Hello SONIC')
+            page.locator('#brainSend').click()
+            expect(page.locator('#brainAnswerText')).to_have_text('SONIC preview model replied.',timeout=10000)
         assert calls[-1]['provider']=='deepseek' and len(calls)==2, 'CSRF denial must retry just once'
         page.locator('#previewModelPicker select').select_option('openai|gpt-4.1-mini')
         expect(page.locator('#brainPill')).to_contain_text('gpt-4.1-mini')
@@ -201,7 +232,11 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
         # Every tab remains navigable; owner data and PC ops stay protected.
         for tab,panel in [('workspace','#workspacePanel'),('memory','#memoryPanel'),
                           ('devices','#devicesPanel'),('setup','#setupPanel'),('brain','#brainPanel')]:
-            page.locator('.nav[data-tab="'+tab+'"]').click()
+            if size['width']<=720 and tab in ('workspace','setup'):
+                page.locator('#mobileMoreNav').click()
+                page.locator('[data-mobile-go="'+tab+'"]').click()
+            else:
+                page.locator('.nav[data-tab="'+tab+'"]').click()
             expect(page.locator(panel)).to_be_visible()
             layout(page,label+'-preview-'+tab)
             if tab in ('workspace','memory','devices','setup'):

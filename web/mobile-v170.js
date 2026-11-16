@@ -23,8 +23,20 @@
     const keyboard=small&&focused&&h&&h<window.innerHeight*.78;
     document.body.classList.toggle('mobile-keyboard-open',Boolean(keyboard));
   }
+  function keepHorizontalOrigin() {
+    // Legacy panels and Playwright's scrollIntoView can scroll the nested
+    // .app container by 12px, clipping panels while document scrollWidth
+    // still reports no overflow. Always restore x=0 after mobile navigation.
+    if (matchMedia('(max-width:720px)').matches) {
+      const app=document.querySelector('.app');
+      if (app && app.scrollLeft !== 0) app.scrollLeft=0;
+    }
+  }
   function init() {
     const moreNav=$('mobileMoreNav'),menu=$('mobileMoreMenu');
+    document.querySelector('.sidebar')?.addEventListener('click',
+      ()=>requestAnimationFrame(keepHorizontalOrigin));
+    menu?.addEventListener('click',()=>requestAnimationFrame(keepHorizontalOrigin));
     moreNav?.addEventListener('click',()=>more(menu?.hidden));
     menu?.querySelectorAll('[data-mobile-go]').forEach(button=>{
       button.addEventListener('click',()=>{more(false);go(button.dataset.mobileGo);});
@@ -32,7 +44,10 @@
     document.addEventListener('pointerdown',event=>{
       if(menu&&!menu.hidden&&!menu.contains(event.target)&&!moreNav?.contains(event.target))more(false);
     });
-    window.addEventListener('sonic:tab',()=>more(false));
+    // Close on a real user tab choice, not an asynchronous owner/session
+    // initialization event that could dismiss an open menu after page reload.
+    document.querySelectorAll('.sidebar .nav').forEach(nav=>
+      nav.addEventListener('click',()=>more(false)));
     const form=$('chatForm'),extras=$('chatExtras');
     extras?.addEventListener('click',()=>{
       const open=!form.classList.contains('show-extras');
