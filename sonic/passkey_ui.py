@@ -27,10 +27,12 @@ MANAGE = '''<section class="passkey-manage" aria-label="Passkey dan akses perang
 </section>'''
 
 
-def render(html: str, version: str) -> str:
+def render(html: str, version: str, *, owner_entry: bool = False) -> str:
     html = html.replace("<b>V1.2.0</b>", f"<b>V{version}</b>")
     html = html.replace("VERSION 1.2.0", f"VERSION {version}")
-    if setting("SONIC_OPEN_PREVIEW", "false").lower() == "true":
+    # Explicit /owner route renders the usual authenticated login UI while
+    # the homepage keeps its guest-only preview experience.
+    if setting("SONIC_OPEN_PREVIEW", "false").lower() == "true" and not owner_entry:
         html = html.replace('<div class="login-overlay" id="loginOverlay">',
                             '<div class="login-overlay hidden" id="loginOverlay">', 1)
         return html

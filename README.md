@@ -69,3 +69,6 @@ The Setup page now has Persona Studio: ten curated voice choices, ten communicat
 ## SONIC v1.5.2 Local AI Control Center
 
 Owner-only TRADEVICEPC GGUF controls, selected text-only local model, and black/grey/blue theme are documented in [SONIC_LOCAL_AI_V152.md](docs/SONIC_LOCAL_AI_V152.md). Staging is off by default until both server and local Companion opt-ins are completed.
+## SONIC v1.5.3 Private Owner Portal
+
+Staging adds an opt-in `/owner` entry for authenticated iPhone and desktop control while `/` remains guest preview. See [Owner Portal v1.5.3](docs/SONIC_OWNER_PORTAL_V153.md). An owner token or enrolled passkey is still required; no public device control is exposed.

@@ -174,3 +174,5 @@ body.orbit-v140 .orbit-voice-caption span{color:#84bdff!important}
 @media(prefers-reduced-motion:reduce){
   body.orbit-v140 *{scroll-behavior:auto!important}
 }
+/* Guest preview must not display the owner-only Local AI console. */
+body.sonic-open-preview #localAIControl{display:none!important}
