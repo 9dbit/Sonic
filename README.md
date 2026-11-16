@@ -65,3 +65,7 @@ See [Presence, PC operator and Voice](docs/SONIC_V05.md). Operator actions requi
 Owner-requested silver particle motion based on supplied video, rendered in a transparent canvas. Hover/single tap scales 10%; double tap within one second focuses at screen center; say "kembali ke tempat semula" to return. States follow idle/listening/thinking/speaking.
 
 The Setup page now has Persona Studio: ten curated voice choices, ten communication styles, short/balanced/expressive output and three presets. The selections persist in SONIC's existing database. Preview is an explicit paid TTS request; a new Realtime session is needed when changing voice. See [docs/SONIC_V06.md](docs/SONIC_V06.md).
+
+## SONIC v1.5.2 Local AI Control Center
+
+Owner-only TRADEVICEPC GGUF controls, selected text-only local model, and black/grey/blue theme are documented in [SONIC_LOCAL_AI_V152.md](docs/SONIC_LOCAL_AI_V152.md). Staging is off by default until both server and local Companion opt-ins are completed.

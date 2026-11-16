@@ -26,6 +26,7 @@ import windows_software
 import windows_diagnostics_v148
 import windows_uptime_v150
 import windows_pairing_v151
+import windows_local_ai_v152
 import threading
 
 HERE=Path(__file__).resolve().parent
@@ -44,6 +45,7 @@ _SOFTWARE_PREFLIGHT=(0.0,{})
 _SOFTWARE_PENDING_RESULT=None
 _UPTIME_MONITOR=None
 _LAST_UPTIME_SYNC_WARNING=0.0
+_LOCAL_AI_BROKER=None
 KEYS={'ENTER':0x0d,'TAB':0x09,'BACKSPACE':0x08,'DELETE':0x2e,'LEFT':0x25,'RIGHT':0x27,'UP':0x26,'DOWN':0x28,'HOME':0x24,'END':0x23,'ESCAPE':0x1b}
 
 
@@ -499,6 +501,14 @@ def run_once(only_heartbeat=False):
         'capabilities':capabilities,
         'metrics':m,'gui_targets':[]})
     if only_heartbeat:return
+    global _LOCAL_AI_BROKER
+    if windows_local_ai_v152.is_enabled():
+        if _LOCAL_AI_BROKER is None:
+            _LOCAL_AI_BROKER = windows_local_ai_v152.LocalAIBroker()
+        try:
+            _LOCAL_AI_BROKER.dispatch(api, DEVICE)
+        except Exception as exc:
+            print('SONIC local AI bridge unavailable:', type(exc).__name__, flush=True)
     try:
         result = windows_pairing_v151.process(HERE, BASE, api)
         if result['issued']:

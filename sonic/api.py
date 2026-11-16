@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.5.1'
+VERSION = '1.5.2'
 
 
 @asynccontextmanager
@@ -317,6 +317,8 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
     return {"reply": answer, "image_stored": False, "pc_action": "none"}
 
 
+from .local_ai import router as local_ai_router
+app.include_router(local_ai_router)
 from .activation import router as activation_router
 from .knowledge import router as knowledge_router
 from .integrations import router as integrations_router

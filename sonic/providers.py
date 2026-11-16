@@ -27,6 +27,7 @@ PROVIDER_KEY_ENVS = {
     "openai": "OPENAI_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
+    "local": "SONIC_LOCAL_AI_ENABLED",
 }
 CATALOG = (
     ("openai", "gpt-4.1-mini", "OpenAI · GPT-4.1 mini"),
@@ -34,6 +35,7 @@ CATALOG = (
     ("openrouter", "z-ai/glm-5.3-prime", "OpenRouter · GLM-5.3 Prime"),
     ("openrouter", "z-ai/glm-5.3", "OpenRouter · GLM-5.3"),
     ("deepseek", "deepseek-flash", "DeepSeek · Flash"),
+    ("local", "DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M", "Local · DeepSeek-Qwen 9B (TRADEVICEPC)"),
 )
 SAFE_MODEL = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,99}$")
 SAFE_CALL = re.compile(r"^[a-zA-Z0-9_-]{1,160}$")
@@ -79,6 +81,9 @@ def provider_key_env(provider: str) -> str:
 
 
 def configured(provider: str) -> bool:
+    if provider == "local":
+        from .local_ai import enabled
+        return enabled()
     return provider in PROVIDER_KEY_ENVS and bool(setting(provider_key_env(provider)))
 
 
@@ -96,7 +101,8 @@ def selected_model(db: Session) -> Selection:
         raise HTTPException(503, "Invalid SONIC brain provider setting")
     model = {"openai": model_name(),
              "openrouter": setting("SONIC_OPENROUTER_MODEL", "z-ai/glm-5.3-prime"),
-             "deepseek": setting("SONIC_DEEPSEEK_MODEL", "deepseek-flash")}[provider]
+             "deepseek": setting("SONIC_DEEPSEEK_MODEL", "deepseek-flash"),
+             "local": "DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M"}[provider]
     return validate_model(provider, model)
 
 
@@ -104,6 +110,9 @@ def choose_model(db: Session, provider: str, model: str) -> Selection:
     selected = validate_model(provider, model)
     if not configured(provider):
         raise HTTPException(409, provider_key_env(provider) + " is not configured on the SONIC server")
+    if provider == "local":
+        from .local_ai import require_available
+        require_available(db, chat=False)
     row = db.get(BrainPreference, 1)
     if row is None:
         db.add(BrainPreference(id=1, provider=provider, model=model))
@@ -133,6 +142,8 @@ def public_model_status(db: Session) -> dict:
             "notice": "Chat model only. Realtime Voice and image analysis remain OpenAI. "
                       "Switching to OpenRouter or DeepSeek sends chat context, relevant memories and tool data to that provider. "
                       "DeepSeek uses non-thinking chat mode. "
+                      "Local GGUF uses an authenticated SONIC Companion relay; prompts transit Railway before being processed on TRADEVICEPC. "
+                      "Local model is text-only, cannot call tools and is never exposed publicly. "
                       "No automatic provider fallback or hidden request retries."}
 
 
@@ -267,6 +278,9 @@ def _chat_tools(tools: list[dict]) -> list[dict]:
 
 async def complete(client: httpx.AsyncClient, request: dict, selection: Selection) -> dict:
     """Single provider HTTP call, no cross-provider retries/fallback."""
+    if selection.provider == "local":
+        from .local_ai import infer
+        return await infer(request)
     key_env = provider_key_env(selection.provider)
     key = setting(key_env)
     if not key:

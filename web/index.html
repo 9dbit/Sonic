@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#050911">
+  <meta name="theme-color" content="#050607">
   <meta name="description" content="SONIC Private Intelligence. Your world, one tap away. Neural Brain, voice, knowledge and workspace.">
   <link rel="canonical" href="__SONIC_PUBLIC_URL__/">
   <meta name="application-name" content="SONIC">
@@ -23,12 +23,12 @@
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="SONIC purple-blue glowing orb. Your world. One tap away.">
+  <meta property="og:image:alt" content="SONIC black-grey-blue intelligent orb. Your world. One tap away.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="SONIC | Private Intelligence">
   <meta name="twitter:description" content="Your world. One tap away. Neural Brain, voice and workspace.">
   <meta name="twitter:image" content="__SONIC_PUBLIC_URL__/assets/sonic-og-1200x630.png?v=1.5.1">
-  <meta name="twitter:image:alt" content="SONIC purple-blue glowing orb. Your world. One tap away.">
+  <meta name="twitter:image:alt" content="SONIC black-grey-blue intelligent orb. Your world. One tap away.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SONIC | Intelligence Console</title>
@@ -71,6 +71,8 @@
   <script src="/assets/productivity-v148.js?v=1.5.1" defer></script>
   <script src="/assets/trusted-preview-v151.js?v=1.5.1" defer></script>
   <link rel="stylesheet" href="/assets/productivity-v148.css?v=1.5.1">
+  <link rel="stylesheet" href="/assets/sonic-black-grey-blue-v152.css?v=1.5.2">
+  <script src="/assets/local-ai-v152.js?v=1.5.2" defer></script>
 </head>
 <body class="sonic-shell-v100 orbit-v140">
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -116,7 +118,7 @@
     <main class="content">
       <header class="topbar">
         <button id="sonicHeaderOrb" class="orbit-header-orb" type="button" title="Double tap untuk panggil SONIC" aria-label="Double tap to summon SONIC"><img src="/assets/sonic-mark.svg?v=1.5.1" width="50" height="56" alt=""></button>
-        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.5.1</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
+        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.5.2</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section id="orbitOverview" class="orbit-overview" aria-label="SONIC live overview">
@@ -244,6 +246,28 @@
           <p class="pc-window-notice">MetaTrader 5: penutupan terminal dapat menghentikan EA dan otomasi lokal. Posisi broker tidak otomatis ditutup. SONIC tidak akan memaksa aplikasi keluar jika muncul dialog konfirmasi.</p>
           <p id="pcWindowStatus" role="status" aria-live="polite">Memeriksa kemampuan companion.</p>
         </section>
+        <section id="localAIControl" class="operator-panel" aria-label="SONIC Local AI Control Center">
+          <div class="local-ai-header">
+            <div><span class="eyebrow">SONIC / TRADEVICEPC / LOCAL AI</span><h3>Local AI Control Center</h3>
+              <p>Jalankan model GGUF di PC, pantau RAM/VRAM, dan pilih AI untuk chat dari iPhone. Hanya untuk pemilik.</p></div>
+            <span id="localAIState" role="status" aria-live="polite">CHECKING</span>
+          </div>
+          <div class="local-ai-grid" aria-label="Local AI hardware status">
+            <div class="local-ai-metric"><span>MODEL</span><strong id="localAIModel">DeepSeek 9B</strong></div>
+            <div class="local-ai-metric"><span>FREE SYSTEM RAM</span><strong id="localAIRam">N/A</strong></div>
+            <div class="local-ai-metric"><span>FREE GPU VRAM</span><strong id="localAIVram">N/A</strong></div>
+          </div>
+          <div class="local-ai-actions">
+            <button type="button" id="localAIStart" disabled>Start AI</button>
+            <button type="button" id="localAIStop" disabled>Stop AI</button>
+            <button type="button" id="localAIChoose" disabled>Use for Chat</button>
+            <button type="button" id="localAIOpenChat">Open Chat</button>
+            <button type="button" id="localAIRefresh">Refresh</button>
+          </div>
+          <p id="localAIDevice" class="small-note">Checking companion...</p>
+          <p id="localAIMessage" class="small-note" role="status" aria-live="polite">Menunggu status companion.</p>
+          <p class="local-ai-footnote">Pemrosesan jawaban dilakukan lokal di TRADEVICEPC. Permintaan chat transit melalui SONIC Railway, bukan penyedia AI cloud. Model lokal tidak mendapat akses tool atau perintah Windows. Tidak menyala otomatis. Hanya aksi eksplisit pemilik yang dapat menyalakan atau menghentikan proses milik SONIC.</p>
+        </section>
         <section id="softwareManager" class="operator-panel software-manager" aria-labelledby="softwareTitle">
           <div class="software-heading"><div><span class="eyebrow">TRADEVICEPC / SOFTWARE</span><h3 id="softwareTitle">Software Manager</h3><p>Cari software, tinjau sumber dan versinya, lalu pasang di PC.</p></div><span id="softwareReady" class="software-tag">Memeriksa koneksi</span></div>
           <div class="software-grid">
@@ -328,8 +352,8 @@
           </div>
           <p id="brainModelStatus" class="small-note" role="status" aria-live="polite">Loading model configuration...</p>
           <div id="brainProviderStatus" class="model-provider-status" aria-label="Konfigurasi API key provider" aria-live="polite"></div>
-          <p class="small-note">Status key menunjukkan konfigurasi server. Gunakan <strong>Test selected model</strong> untuk memeriksa koneksi model yang dipilih. Tes dilakukan hanya setelah tombol ditekan dan dapat dikenakan biaya API.</p>
-          <p class="model-router-privacy">Konteks chat, catatan Memory Vault yang digunakan, definisi tool dan hasilnya dikirim ke provider chat yang dipilih: OpenAI, OpenRouter beserta penyedia modelnya, atau langsung ke DeepSeek. DeepSeek Flash menggunakan mode non-thinking (tanpa reasoning tambahan). Tidak ada perpindahan provider otomatis atau replay aksi PC.</p>
+          <p class="small-note">Status provider menunjukkan key cloud atau kesiapan bridge lokal. Gunakan <strong>Test selected model</strong> untuk memeriksa koneksi model yang dipilih. Tes dilakukan hanya setelah tombol ditekan dan dapat dikenakan biaya API.</p>
+          <p class="model-router-privacy">Untuk model cloud, konteks dikirim ke OpenAI, OpenRouter atau DeepSeek melalui API masing-masing. Untuk Local GGUF, teks chat ditransitkan melalui Railway ke Windows Companion terautentikasi, lalu diproses di TRADEVICEPC tanpa tools. Voice dan Vision tetap OpenAI. Tidak ada perpindahan provider otomatis.</p>
           <div class="model-router-metrics"><h4>Recent usage</h4><div id="brainModelMetrics" aria-live="polite"><p class="small-note">No model calls recorded yet.</p></div></div>
         </section>
         <section id="personaStudio" class="persona-studio" aria-label="SONIC Persona Studio"></section>

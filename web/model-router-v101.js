@@ -18,7 +18,9 @@
     openrouter:{label:'OpenRouter',key:'OPENROUTER_API_KEY',
       sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim ke OpenRouter serta penyedia model.'},
     deepseek:{label:'DeepSeek',key:'DEEPSEEK_API_KEY',
-      sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim langsung ke DeepSeek.'}
+      sharing:'Konteks percakapan, catatan Memory Vault yang dipakai, definisi tool dan hasilnya dapat dikirim langsung ke DeepSeek.'},
+    local:{label:'Local GGUF',key:'SONIC Companion / TRADEVICEPC',
+      sharing:'Chat transit lewat Railway lalu diproses di TRADEVICEPC. Local GGUF hanya text-chat, tidak dapat menjalankan PC tools.'}
   };
   const status = message => {
     if($('brainModelStatus')) $('brainModelStatus').textContent=message;
@@ -62,7 +64,7 @@
       const row=text('div','','model-provider-row');row.dataset.provider=id;
       const info=text('div','');
       info.append(text('strong',provider.label),text('small',provider.key));
-      row.append(info,text('span',configured?'Key terkonfigurasi':'Key belum diisi',
+      row.append(info,text('span',configured?(id==='local'?'Bridge enabled':'Key terkonfigurasi'):(id==='local'?'Bridge belum aktif':'Key belum diisi'),
         'model-provider-state'+(configured?' configured':'')));
       host.append(row);
     }
@@ -99,14 +101,14 @@
     for(const item of lastModels){
       const option=document.createElement('option');
       option.value=item.provider+'|'+item.model;
-      option.textContent=item.label+(item.key_configured===true?'':' · API key missing');
+      option.textContent=item.label+(item.key_configured===true?'':(item.provider==='local'?' · Bridge disabled':' · API key missing'));
       option.disabled=item.key_configured!==true||!Object.hasOwn(providers,item.provider);
       option.selected=draftSelection?option.value===draftSelection:!!item.selected;
       select.append(option);
     }
     const selected=data.selected||{};
     status('Pilihan chat: '+selected.provider+' / '+selected.model+
-      (selected.key_configured===true?'':'. API key pilihan ini belum terkonfigurasi')+
+      (selected.key_configured===true?'':(selected.provider==='local'?'. Local bridge not enabled':'. API key pilihan ini belum terkonfigurasi'))+
       '. Realtime Voice dan Vision tetap menggunakan OpenAI.');
     updateButton();renderProviderStatus();renderUsage(data.usage||[]);
   }
