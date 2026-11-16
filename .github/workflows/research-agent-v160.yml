@@ -1,0 +1,52 @@
+name: SONIC v1.6 Research Agent
+on:
+  pull_request:
+    paths:
+      - 'sonic/research_web.py'
+      - 'sonic/research_agent.py'
+      - 'sonic/api.py'
+      - 'web/research-agent-v160.*'
+      - 'web/app.js'
+      - 'web/index.html'
+      - 'tests/test_research_agent_v160.py'
+      - 'scripts/e2e_research_agent_v160.py'
+      - '.github/workflows/research-agent-v160.yml'
+  push:
+    branches: ['feat/sonic-web-research-agent-*']
+permissions:
+  contents: read
+jobs:
+  backend-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies, Playwright and Chromium
+        run: |
+          python -m pip install -r requirements.txt playwright==1.56.0
+          python -m pip check
+          python -m playwright install --with-deps chromium
+      - name: Compile and static-verify source
+        run: |
+          python -m compileall -q sonic scripts/e2e_research_agent_v160.py
+          node --check web/app.js
+          node --check web/research-agent-v160.js
+      - name: Browser-free owner, tool and source security tests
+        run: python -m pytest -q tests/test_research_agent_v160.py tests/test_owner_entry_v153.py
+      - name: Existing SONIC JS regressions
+        run: node --test tests/js/*.test.cjs
+      - name: Real Chromium owner and guest research mode QA
+        run: python scripts/e2e_research_agent_v160.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sonic-research-agent-v160-browser
+          path: artifacts/research-agent-v160/
+          retention-days: 7
+          if-no-files-found: warn
