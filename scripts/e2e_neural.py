@@ -32,7 +32,7 @@ def local_server():
         env = {k: v for k, v in os.environ.items() if not k.startswith(('SONIC_', 'OPENAI_', 'DATABASE_', 'RAILWAY_'))}
         env.update(SONIC_ENV='local', SONIC_PUBLIC_URL=f'http://127.0.0.1:{port}',
                    SONIC_LOCAL_DB=str(Path(temp) / 'qa.sqlite3'), SONIC_SESSION_SECRET=secrets.token_urlsafe(48),
-                   SONIC_OWNER_TOKEN_SHA256=hashlib.sha256(owner.encode()).hexdigest(), PYTHONPATH=str(ROOT))
+                   SONIC_OWNER_TOKEN_SHA256=hashlib.sha256(owner.encode()).hexdigest(), PYTHONPATH=str(ROOT)+os.pathsep+os.environ.get('PYTHONPATH',''))
         log = open(Path(temp) / 'server.log', 'w')
         proc = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'sonic.api:app', '--host', '127.0.0.1', '--port', str(port)],
                                 cwd=ROOT, env=env, stdout=log, stderr=log)
@@ -70,24 +70,34 @@ def run():
                     page.goto(base)
                     page.locator('#ownerToken').fill(owner)
                     page.locator('#loginForm button').click()
-                    expect(page.locator('#setupPanel')).to_be_visible()
+                    expect(page.locator('#chatPanel' if name=='mobile' else '#setupPanel')).to_be_visible()
                     page.locator('[data-tab=brain]').click()
+                    if name=='mobile': page.locator('#neuralGraphBtn').click()
                     expect(page.locator('#brainPanel')).to_be_visible()
                     expect(page.locator('#graphCounts')).to_contain_text('memories')
-                    page.locator('#brainMessage').fill('SONIC, simpan ke memoriku bahwa saya suka bakso')
-                    page.locator('#brainSend').click()
-                    expect(page.locator('#brainAnswerText')).to_contain_text('tersimpan', ignore_case=True)
-                    expect(page.locator('#brainReceipt .receipt')).to_be_visible()
+                    if name=='mobile':
+                        # v1.7 uses Chat for mobile memory commands, not a
+                        # second composer overlaying the 3D graph.
+                        page.locator('[data-tab=chat]').click()
+                        page.locator('#message').fill('SONIC, simpan ke memoriku bahwa saya suka bakso')
+                        page.locator('#send').click()
+                        expect(page.locator('#chatFeed')).to_contain_text('tersimpan', ignore_case=True)
+                    else:
+                        page.locator('#brainMessage').fill('SONIC, simpan ke memoriku bahwa saya suka bakso')
+                        page.locator('#brainSend').click()
+                        expect(page.locator('#brainAnswerText')).to_contain_text('tersimpan', ignore_case=True)
+                        expect(page.locator('#brainReceipt .receipt')).to_be_visible()
                     page.locator('[data-tab=memory]').click()
                     expect(page.locator('#memoryList')).to_contain_text('saya suka bakso')
                     page.reload()
-                    expect(page.locator('#setupPanel')).to_be_visible()
+                    expect(page.locator('#chatPanel' if name=='mobile' else '#setupPanel')).to_be_visible()
                     page.locator('[data-tab=memory]').click()
                     expect(page.locator('#memoryList')).to_contain_text('saya suka bakso')
                     page.locator('#memoryInput').fill('Kantor contoh saya di Bandung ' + name)
                     page.locator('#memoryForm button').click()
                     expect(page.locator('#memoryList')).to_contain_text('Kantor contoh')
                     page.locator('[data-tab=brain]').click()
+                    if name=='mobile': page.locator('#neuralGraphBtn').click()
                     if name == 'mobile' and not page.locator('#graphInspector').is_visible():
                         page.locator('#toggleInspector').click()
                     page.locator('#graphSearch').fill('saya suka bakso')
@@ -149,7 +159,12 @@ def run():
                         page.locator('#refreshGraph').click(); page.wait_for_timeout(300)
                         page.locator('#fitGraph').click(); page.wait_for_timeout(200)
                         page.screenshot(path=str(ARTIFACTS / 'sonic-desktop-neural-fixture.png'))
-                    page.locator('[data-tab=setup]').click(); page.locator('#setupLogout').click()
+                    if name=='mobile':
+                        page.locator('#mobileMoreNav').click()
+                        page.locator('[data-mobile-go=setup]').click()
+                    else:
+                        page.locator('[data-tab=setup]').click()
+                    page.locator('#setupLogout').click()
                     expect(page.locator('#loginOverlay')).to_be_visible()
                     assert not errors, 'Browser errors: ' + json.dumps(errors)
                     results.append({'viewport':name,'status':'PASS','javascript_errors':0,'engine':engine})

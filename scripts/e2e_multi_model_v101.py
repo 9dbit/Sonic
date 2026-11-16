@@ -115,7 +115,11 @@ with sync_playwright() as playwright:
                 page.locator("#ownerToken").fill(owner_token)
                 page.locator("#loginForm button[type=submit]").click()
                 expect(page.locator("#loginOverlay")).to_have_class(re.compile("hidden"), timeout=12000)
-                page.locator('.nav[data-tab="setup"]').click()
+                if viewport=="mobile":
+                    page.locator('#mobileMoreNav').click()
+                    page.locator('[data-mobile-go="setup"]').click()
+                else:
+                    page.locator('.nav[data-tab="setup"]').click()
                 expect(page.locator("#brainModelControl")).to_be_visible()
                 expect(page.locator("#brainModelSelect option")).to_have_count(6)
                 key_row = page.locator('#brainProviderStatus [data-provider="deepseek"]')
@@ -172,7 +176,11 @@ with sync_playwright() as playwright:
                 verify_layout(page)
                 page.screenshot(path=str(OUT / f"{scenario}-{viewport}.png"), full_page=False)
                 page.reload(wait_until="networkidle")
-                page.locator('.nav[data-tab="setup"]').click()
+                if viewport=="mobile":
+                    page.locator('#mobileMoreNav').click()
+                    page.locator('[data-mobile-go="setup"]').click()
+                else:
+                    page.locator('.nav[data-tab="setup"]').click()
                 expect(page.locator("#brainModelSelect")).to_have_value(selection)
                 expect(page.locator("#brainModelStatus")).to_contain_text(selection.split("|", 1)[1])
                 assert len(test_calls) == (2 if deepseek_key else 0)

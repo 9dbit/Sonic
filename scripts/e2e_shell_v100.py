@@ -67,6 +67,7 @@ with local_server() as (url,token),sync_playwright() as p:
         # An unconfigured fresh owner can start on Setup; request the Brain
         # explicitly instead of assuming a preconfigured owner's default tab.
         page.locator('.nav[data-tab="brain"]').click()
+        if label.endswith('mobile'): page.locator('#neuralGraphBtn').click()
         expect(page.locator('#brainPanel')).to_be_visible()
         expect(page.locator('#graphStage canvas').first).to_be_visible(timeout=12000)
         expect(page.locator('#sonicMotionFloat canvas')).to_be_visible(timeout=12000)
@@ -106,13 +107,20 @@ with local_server() as (url,token),sync_playwright() as p:
         expect(page.locator('#chatPanel')).to_be_visible()
         expect(page.locator('#hero')).to_be_visible()
         expect(page.locator('#pageSubtitle')).to_contain_text('conversation')
-        expect(page.locator('#hero img')).to_be_visible()
+        if label.endswith('mobile'):
+            expect(page.locator('#hero img')).to_be_hidden()
+        else:
+            expect(page.locator('#hero img')).to_be_visible()
         assert page.locator('#message').is_enabled()
         check_layout(page,label,'chat')
         page.screenshot(path=str(OUT/f'{label}-chat.png'),full_page=False)
 
         # Hero shortcuts invoke the original nav handlers (no parallel router).
-        page.locator('#goToWorkspace').click()
+        if label.endswith('mobile'):
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go=workspace]').click()
+        else:
+            page.locator('#goToWorkspace').click()
         expect(page.locator('#workspacePanel')).to_be_visible()
         expect(page.locator('.nav[data-tab="workspace"]')).to_have_class(re.compile('active'))
         expect(page.locator('#wsPcCloudTab')).to_be_visible()
@@ -133,7 +141,11 @@ with local_server() as (url,token),sync_playwright() as p:
         if label in ('desktop','mobile'):
             page.screenshot(path=str(OUT/f'{label}-devices.png'),full_page=False)
 
-        page.locator('.nav[data-tab="setup"]').click()
+        if label.endswith('mobile'):
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go=setup]').click()
+        else:
+            page.locator('.nav[data-tab="setup"]').click()
         expect(page.locator('#setupPanel')).to_be_visible()
         check_layout(page,label,'settings')
         assert not errors,(label,errors)

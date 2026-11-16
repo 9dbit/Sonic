@@ -44,8 +44,8 @@ def test_owner_portal_is_separate_and_pwa_starts_in_owner_mode(client, monkeypat
     assert '<div class="login-overlay" id="loginOverlay">' in portal.text
     assert 'id="ownerToken"' in portal.text
     assert "sonic-black-grey-blue-v152.css" in portal.text
-    assert "app.js?v=1.6.0" in portal.text
-    assert 'href="/owner.webmanifest?v=1.6.0"' in portal.text
+    assert "app.js?v=1.7.0" in portal.text
+    assert 'href="/owner.webmanifest?v=1.7.0"' in portal.text
     assert portal.headers["cache-control"] == "no-store"
     assert portal.headers["x-robots-tag"] == "noindex, nofollow"
     assert "owner-test-token" not in portal.text

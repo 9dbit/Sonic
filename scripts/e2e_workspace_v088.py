@@ -59,7 +59,11 @@ with local_server() as (url, token), sync_playwright() as p:
         headers = {'X-Sonic-CSRF':csrf}
         for i in range(4):
             page.request.post(url+'/api/memories',headers=headers,data={'text':f'Proyek QA {label} {i} memakai SONIC workspace dan catatan rapat.'})
-        page.locator('.nav[data-tab=workspace]').click()
+        if label=='mobile':
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go=workspace]').click()
+        else:
+            page.locator('.nav[data-tab=workspace]').click()
         expect(page.locator('#wsStatus')).to_contain_text('SONIC Cloud')
         page.locator('#wsNewFolder').click();page.locator('#wsName').fill('Project '+label)
         page.locator('#wsDialogSubmit').click()
@@ -104,11 +108,18 @@ with local_server() as (url, token), sync_playwright() as p:
         page.locator('#wsCloud').click()
         expect(page.locator('#wsList')).to_contain_text('Renamed '+label+'.md')
         # Refresh persistence, no secrets or notes in localStorage.
-        page.reload(wait_until='networkidle');page.locator('.nav[data-tab=workspace]').click()
+        page.reload(wait_until='domcontentloaded')
+        if label=='mobile':
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go=workspace]').click()
+        else:
+            page.locator('.nav[data-tab=workspace]').click()
         expect(page.locator('#wsList')).to_contain_text('Renamed '+label+'.md')
         assert not page.evaluate('Object.keys(localStorage).some(k=>/token|workspace|note/i.test(k))')
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
-        page.locator('.nav[data-tab=brain]').click();page.locator('#refreshGraph').click()
+        page.locator('.nav[data-tab=brain]').click()
+        if label=='mobile': page.locator('#neuralGraphBtn').click()
+        page.locator('#refreshGraph').click()
         expect(page.locator('#graphStage')).to_have_attribute('data-layout','category-groups')
         page.screenshot(path=str(OUT/f'{label}-groups.png'))
         orb = page.locator('#sonicMotionFloat')
@@ -128,7 +139,11 @@ with local_server() as (url, token), sync_playwright() as p:
         page.locator('#voiceMute').click();expect(page.locator('#voiceStateText')).to_have_text('Mic muted')
         page.locator('#voiceMute').click();page.keyboard.press('Escape')
         assert not page.evaluate('window.sonicMotion.focused')
-        page.locator('.nav[data-tab=workspace]').click()
+        if label=='mobile':
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go=workspace]').click()
+        else:
+            page.locator('.nav[data-tab=workspace]').click()
         # Real SonicVoice event -> app routing -> cloud storage, with context
         # captured when speech starts rather than when transcription arrives.
         page.evaluate("""label => {

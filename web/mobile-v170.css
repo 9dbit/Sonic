@@ -1,0 +1,331 @@
+/* SONIC v1.7 · Unified iPhone UX layer; loaded after every legacy stylesheet.
+ * This changes presentation, never PC security/auth or voice permissions.
+ */
+:root { --sonic-mobile-top:58px; --sonic-mobile-nav:72px; --sonic-blue:#3d95ff; }
+html,body {max-width:100%;overflow-x:clip}
+body.orbit-v140 .app {background:#050607!important;color:#f3f6fa!important}
+body.orbit-v140 .app .panel {border-color:rgba(137,156,181,.15)!important}
+#mobileMoreNav,#mobileMoreMenu {display:none}
+#mobileMoreMenu[hidden],#neuralMobileSwitcher[hidden],#neuralKnowledgeList[hidden],
+#agentResearchPreferences[hidden],#agentMemoryPanel[hidden] {display:none!important}
+body.orbit-v140 .app button:is(.icon-button,.voice-button):not(.nav):not(.plain):not(.logout) {
+  background:#252b35!important;border:1px solid #394657!important;color:#d7e6f7!important;
+  box-shadow:none!important;border-radius:999px!important;
+}
+body.orbit-v140 .app button.send-button:not(.nav):not(.plain):not(.logout) {
+  background:#236fe5!important;border-color:#3d95ff!important;color:#fff!important;
+  box-shadow:none!important;border-radius:999px!important;
+}
+body.orbit-v140 .chat-panel .agent-disclosure {margin:1px 3px;color:#8392a6;font-size:11px}
+body.orbit-v140 .chat-panel .agent-disclosure summary {cursor:pointer;width:max-content;max-width:100%;color:#91adca}
+body.orbit-v140 .chat-panel #agentPrivacy {white-space:normal;line-height:1.5;margin:5px 0;overflow-wrap:anywhere}
+.agent-research-preferences {display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:2px 0}
+.agent-save-toggle,.agent-project-label {display:inline-flex;gap:7px;align-items:center;color:#b7c6da;font-size:11px}
+.agent-save-toggle input {accent-color:#3d95ff;width:16px;height:16px;min-width:16px}
+body.orbit-v140 .app #agentProject {width:110px!important;max-width:130px!important;min-height:33px!important;font-size:12px!important;padding:6px 10px!important;border-radius:999px!important}
+body.orbit-v140 .app #agentHistoryToggle,body.orbit-v140 .app #agentRefreshMemory {
+  border:1px solid #354252!important;border-radius:999px!important;min-height:33px!important;
+  color:#a7cefb!important;background:#212936!important;padding:7px 12px!important;font-size:11px!important;
+}
+.agent-memory-panel {border:1px solid #33455a;background:#121920;border-radius:16px;padding:11px;max-height:250px;overflow:auto}
+.agent-memory-toolbar {display:flex;justify-content:space-between;align-items:center;gap:9px;color:#e7f0fb;font-size:12px}
+body.orbit-v140 .app #agentMemorySearch {width:100%;margin:8px 0 9px;padding:10px 12px;font-size:13px;border-radius:14px!important}
+.agent-memory-items {display:grid;gap:7px}
+.agent-memory-entry {background:#202933;padding:10px 12px;border-radius:13px;display:grid;gap:5px;font-size:12px;min-width:0}
+.agent-memory-entry strong{color:#edf5ff;line-height:1.4;overflow-wrap:anywhere}
+.agent-memory-entry p{color:#a8b6c7;font-size:11px;margin:0;line-height:1.4}
+.agent-memory-actions{display:flex;gap:7px;justify-content:flex-end}
+.agent-memory-actions button {font-size:11px;min-height:30px;padding:6px 11px;border-radius:999px}
+.agent-research-results {max-width:100%;overflow-wrap:anywhere;background:#101720!important;border-color:#263d56!important}
+.agent-source-list {gap:7px}
+.agent-source {border-color:#304258!important;background:#1a2430!important}
+.agent-source p {max-height:60px;overflow:hidden}
+.agent-source a {text-decoration:none}
+.agent-research-results .agent-steps {font-size:10px;opacity:.8}
+.agent-research-results .agent-research-notice {font-size:10px}
+#neuralMobileSwitcher,#neuralKnowledgeList{display:none}
+.mobile-more-nav {display:none!important}
+@media(max-width:720px){
+  body.orbit-v140 .app {min-height:100dvh;max-width:100vw;padding-bottom:calc(var(--sonic-mobile-nav) + 12px + env(safe-area-inset-bottom,0px))!important;overflow-x:clip}
+  body.orbit-v140 .content {min-width:0!important;width:100%!important;padding:0!important}
+  body.orbit-v140 .topbar {
+    position:sticky!important;top:0!important;z-index:22!important;
+    min-height:var(--sonic-mobile-top)!important;height:var(--sonic-mobile-top)!important;
+    padding:0 13px!important;gap:10px!important;
+    background:#101317!important;border-bottom:1px solid #242c36!important;
+  }
+  body.orbit-v140 .orbit-header-orb{height:43px!important;width:43px!important;flex:none}
+  body.orbit-v140 .orbit-header-orb img{height:41px!important;width:39px!important;object-fit:contain}
+  body.orbit-v140 .topbar-intro{min-width:0;flex:1}
+  body.orbit-v140 .topbar .eyebrow{font-size:10px!important;letter-spacing:.09em!important;color:#78b5ff!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  body.orbit-v140 .topbar .eyebrow b{font-size:10px!important}
+  body.orbit-v140 .topbar .top-title h1 {display:none!important}
+  body.orbit-v140 .top-subtitle{display:none!important}
+  body.orbit-v140 .topbar .top-right{display:flex;align-items:center;width:auto;flex:none}
+  body.orbit-v140 .topbar #wakeToggle,body.orbit-v140 .topbar #brainPill,body.orbit-v140 .topbar #devicePill{display:none!important}
+  body.orbit-v140 .app #talkSonic {width:39px!important;height:39px!important;min-width:39px!important;min-height:39px!important;padding:0!important;display:grid!important;place-items:center!important;border-radius:999px!important;background:#246fe0!important}
+  body.orbit-v140 .app #talkSonic svg{width:18px;height:18px}
+  body.orbit-v140 .app #talkSonic span {display:none!important}
+  body.orbit-v140 #orbitOverview {display:none!important}
+  body.orbit-v140 .sidebar {height:calc(var(--sonic-mobile-nav) - 8px)!important;min-height:0!important;padding:5px!important;bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;left:8px!important;right:8px!important;width:calc(100% - 16px)!important;border-radius:21px!important}
+  body.orbit-v140 .sidebar-content{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px!important;height:100%!important}
+  body.orbit-v140 .sidebar .nav{min-width:0!important;max-width:100%!important;width:100%!important;height:53px!important;min-height:53px!important;padding:5px 0!important;display:flex!important;flex-direction:column!important;gap:4px!important;border-radius:17px!important}
+  body.orbit-v140 .sidebar .nav span{font-size:10px!important;white-space:nowrap}
+  body.orbit-v140 .sidebar .nav svg{width:18px!important;height:18px!important}
+  body.orbit-v140 .sidebar .nav[data-tab="workspace"],body.orbit-v140 .sidebar .nav[data-tab="setup"]{display:none!important}
+  body.orbit-v140 .sidebar #mobileMoreNav{display:flex!important}
+  body.orbit-v140 #mobileMoreMenu:not([hidden]) {position:fixed;display:grid!important;gap:6px;left:auto;right:10px;bottom:calc(84px + env(safe-area-inset-bottom,0px));min-width:215px;z-index:45;background:#161c24;border:1px solid #344357;border-radius:18px;padding:9px;box-shadow:0 15px 32px #000b}
+  body.orbit-v140 #mobileMoreMenu button {background:#222a34!important;border:1px solid #34445b!important;color:#eaf3ff!important;min-height:45px;border-radius:13px!important;text-align:left;padding:11px 14px!important}
+  body.orbit-v140 .chat-panel {display:flex;flex-direction:column;min-width:0;overflow:hidden!important;min-height:420px;height:calc(100dvh - var(--sonic-mobile-top) - var(--sonic-mobile-nav) - 38px - env(safe-area-inset-bottom,0px))!important;margin:8px 8px 10px!important;border-radius:20px!important;background:#090c10!important}
+  body.orbit-v140 .chat-panel.hidden {display:none!important}
+  body.orbit-v140 .chat-panel .chat-feed {flex:1 1 auto!important;min-height:0!important;width:100%;overflow-y:auto!important;overscroll-behavior:contain;padding:16px 12px 9px!important;margin:0!important;scrollbar-width:thin}
+  body.orbit-v140 .chat-panel .message{max-width:100%!important;min-width:0;overflow-wrap:anywhere}
+  body.orbit-v140 .chat-panel .message .body{font-size:14px!important;line-height:1.6!important;overflow-wrap:anywhere;white-space:pre-wrap}
+  body.orbit-v140 .chat-panel .message.user{max-width:90%!important}
+  body.orbit-v140 .chat-panel .compose-wrap{flex:0 0 auto!important;min-width:0;width:100%;margin:0!important;padding:9px 10px 12px!important;border-top:1px solid #27303a;background:#0e1218;position:relative}
+  body.orbit-v140 #agentResearchToolbar {max-width:100%;width:100%;margin:0 0 9px!important;gap:7px!important;padding:0!important}
+  body.orbit-v140 .agent-mode-top {gap:7px;flex-wrap:nowrap;align-items:center}
+  body.orbit-v140 .agent-mode-buttons{padding:3px!important;gap:2px;flex:none}
+  body.orbit-v140 .agent-mode-buttons button {font-size:11px!important;min-height:33px!important;padding:7px 10px!important}
+  body.orbit-v140 .agent-research-choice{min-width:0;margin-left:auto}
+  body.orbit-v140 .agent-research-choice span {display:none!important}
+  body.orbit-v140 .app #agentPurpose{font-size:12px!important;max-width:125px!important;min-height:35px!important;padding:7px 11px!important;background:#262e39!important}
+  body.orbit-v140 .agent-capability{font-size:10px!important;color:#91c3ff}
+  body.orbit-v140 .agent-disclosure{display:none}
+  body.orbit-v140 .agent-research-preferences{gap:7px;padding:1px 0}
+  body.orbit-v140 .agent-research-preferences .agent-project-label{font-size:0}
+  body.orbit-v140 .app #agentProject{width:93px!important;font-size:11px!important}
+  body.orbit-v140 .agent-save-toggle{font-size:11px}
+  body.orbit-v140 .app #agentHistoryToggle{margin-left:auto;padding:7px 9px!important}
+  body.orbit-v140 .app #chatForm {width:100%!important;min-width:0!important;padding:9px 10px!important;border-radius:18px!important;display:flex!important;flex-direction:column!important;gap:6px!important;background:#222831!important;border:1px solid #3a4656!important;box-shadow:none!important}
+  body.orbit-v140 .app #chatForm #message {flex:none!important;width:100%!important;max-width:100%!important;min-height:45px!important;max-height:115px!important;line-height:1.45!important;font-size:16px!important;letter-spacing:0!important;border:0!important;background:transparent!important;padding:8px 9px!important;border-radius:0!important;resize:none;box-shadow:none!important}
+  body.orbit-v140 .chat-panel #chatForm .compose-actions{display:flex!important;flex-direction:row!important;justify-content:space-between!important;align-items:center!important;gap:8px!important;width:100%;min-height:39px!important;margin:0!important}
+  body.orbit-v140 .chat-panel #chatForm .compose-left{display:flex!important;gap:7px!important;align-items:center!important;flex-wrap:wrap;min-width:0}
+  body.orbit-v140 .app #chatForm .icon-button,body.orbit-v140 .app #chatForm .voice-button{min-height:37px!important;height:37px!important;min-width:37px!important;width:37px!important;padding:0!important}
+  body.orbit-v140 .app #chatForm .voice-button{width:89px!important;padding:0 9px!important;gap:5px}
+  body.orbit-v140 .app #chatForm .voice-button span{font-size:11px}
+  body.orbit-v140 .app #chatForm .send-button{width:39px!important;height:39px!important;min-height:39px!important;min-width:39px!important;padding:0!important;flex:none}
+  body.orbit-v140 .app #chatForm .icon-button svg{width:17px;height:17px}
+  body.orbit-v140 .app #chatForm .chat-extras{font-size:23px!important;font-weight:400}
+  body.orbit-v140 .chat-panel #camera,body.orbit-v140 .chat-panel #screen,body.orbit-v140 .chat-panel #image{display:none!important}
+  body.orbit-v140 .chat-panel #chatForm.show-extras :is(#camera,#screen,#image){display:flex!important}
+  body.orbit-v140 .chat-security-details{display:none!important}
+  body.orbit-v140 .chat-panel .hero{padding:10px!important}
+  body.orbit-v140 .chat-panel .hero h2{font-size:23px}
+  /* Mobile Neural uses one knowledge list by default, with a separate 3D option. */
+  body.orbit-v140 #brainPanel {min-height:calc(100dvh - 158px);height:auto!important;margin:8px!important;border-radius:20px!important;overflow:hidden;position:relative}
+  body.orbit-v140 #neuralMobileSwitcher:not([hidden]) {display:flex!important;gap:10px;justify-content:space-between;align-items:center;position:relative;z-index:4;padding:13px 12px;color:#eaf3ff;background:#101720;border-bottom:1px solid #293847}
+  body.orbit-v140 .neural-switch-buttons{display:flex;gap:5px}
+  body.orbit-v140 .app .neural-switch-buttons button {font-size:11px!important;background:#242c36!important;padding:8px 12px!important;min-height:35px!important;border-radius:999px!important;color:#aec2da!important}
+  body.orbit-v140 .app .neural-switch-buttons button[aria-pressed=true]{background:#236fe5!important;color:white!important}
+  body.orbit-v140.neural-knowledge-mode #neuralKnowledgeList:not([hidden]) {display:flex!important;flex-direction:column;gap:11px;padding:12px;min-height:400px;max-height:calc(100dvh - 235px);overflow-y:auto;background:#0c1219}
+  body.orbit-v140 .app #neuralKnowledgeSearch{padding:12px 14px!important;border-radius:15px!important;font-size:16px!important;background:#1d2530!important;color:#f6fbff!important;border:1px solid #36495f!important}
+  body.orbit-v140 .neural-knowledge-items {display:grid;gap:9px}
+  body.orbit-v140 .neural-knowledge-card {padding:13px 14px;background:#1b2530;border:1px solid #344356;border-radius:16px;display:grid;gap:6px;min-width:0}
+  body.orbit-v140 .neural-knowledge-card strong{font-size:14px;color:#f1f7ff;overflow-wrap:anywhere}
+  body.orbit-v140 .neural-knowledge-card span,body.orbit-v140 .neural-knowledge-card p{font-size:11px;color:#a6b8c9;margin:0;line-height:1.5;overflow-wrap:anywhere}
+  body.orbit-v140 .app .neural-knowledge-card button{width:max-content!important;max-width:100%;padding:8px 12px!important;min-height:32px!important;border-radius:999px!important;background:#263e58!important;color:#b2d5ff!important;font-size:11px!important}
+  body.orbit-v140.neural-knowledge-mode #brainPanel :is(#graphStage,.neural-field-label,.graph-toolbar,.brain-side,.brain-right,.brain-console,.graph-empty,#graphEngine){display:none!important}
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel #neuralKnowledgeList{display:none!important}
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel #graphStage {height:calc(100dvh - 300px)!important;min-height:330px!important}
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .graph-toolbar {max-width:calc(100% - 14px)!important;overflow-x:auto;white-space:nowrap;gap:5px!important;bottom:16px!important}
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .brain-console{position:relative!important;bottom:auto!important;left:auto!important;right:auto!important;transform:none!important;max-width:100%!important;padding:8px!important}
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .brain-console .composer{display:none!important}
+  body.orbit-v140 #brainPanel #brainAnswer {display:none!important}
+}
+@media(max-width:365px) {
+ body.orbit-v140 .chat-panel .chat-feed {padding:12px 9px!important}
+ body.orbit-v140 .agent-mode-buttons button{padding:7px 8px!important;font-size:10px!important}
+ body.orbit-v140 .app #chatForm .voice-button{width:80px!important}
+ body.orbit-v140 .sidebar .nav span{font-size:9px!important}
+}
+@media(prefers-reduced-motion:reduce){body.orbit-v140 .chat-panel *,body.orbit-v140 #brainPanel *{scroll-behavior:auto!important;transition-duration:0.01ms!important}}
+
+@media(max-width:720px) {
+  body.mobile-keyboard-open .sidebar, body.mobile-keyboard-open #mobileMoreMenu{display:none!important}
+  body.mobile-keyboard-open .app {padding-bottom:8px!important}
+  body.mobile-keyboard-open .chat-panel{height:calc(var(--sonic-visual-vh,100dvh) - var(--sonic-mobile-top) - 18px)!important;min-height:220px}
+  body.orbit-v140 .chat-panel {height:calc(var(--sonic-visual-vh,100dvh) - var(--sonic-mobile-top) - var(--sonic-mobile-nav) - 38px - env(safe-area-inset-bottom,0px))!important}
+  body.mobile-keyboard-open .chat-panel {height:calc(var(--sonic-visual-vh,100dvh) - var(--sonic-mobile-top) - 18px)!important}
+}
+
+@media(max-width:720px){
+  /* Legacy top-right styles stack the Talk button below the compact header.
+     Anchor it explicitly inside the 58px header, never over the chat feed. */
+  body.orbit-v140 .topbar .top-right {
+    position:absolute!important;top:9px!important;right:12px!important;
+    left:auto!important;bottom:auto!important;width:40px!important;max-width:40px!important;
+    height:40px!important;flex:0 0 40px!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    padding:0!important;margin:0!important;transform:none!important;z-index:2;
+  }
+  body.orbit-v140 .topbar #talkSonic {
+    width:39px!important;max-width:39px!important;min-width:39px!important;
+    height:39px!important;flex:0 0 39px!important;box-sizing:border-box!important;
+  }
+  body.orbit-v140 .topbar .topbar-intro {padding-right:45px!important}
+}
+
+@media(max-width:720px) {
+  body.orbit-v140:not(.sonic-open-preview) .topbar {
+    display:grid!important;
+    grid-template-columns:44px minmax(0,1fr) 42px!important;
+    grid-template-rows:58px!important;
+    grid-auto-rows:0!important;column-gap:8px!important;row-gap:0!important;
+    align-items:center!important;min-height:58px!important;height:58px!important;
+  }
+  body.orbit-v140:not(.sonic-open-preview) .orbit-header-orb {grid-column:1!important;grid-row:1!important}
+  body.orbit-v140:not(.sonic-open-preview) .topbar-intro {grid-column:2!important;grid-row:1!important;min-width:0!important;padding-right:0!important}
+  body.orbit-v140:not(.sonic-open-preview) .topbar .top-right {
+    position:static!important;grid-column:3!important;grid-row:1!important;
+    top:auto!important;right:auto!important;left:auto!important;bottom:auto!important;
+    margin:0!important;transform:none!important;width:42px!important;
+    min-width:42px!important;height:41px!important;flex:none!important;
+    justify-content:center!important;align-items:center!important;
+  }
+  body.orbit-v140.sonic-open-preview .topbar {
+    height:106px!important;min-height:106px!important;
+    grid-template-rows:54px 43px!important;
+  }
+}
+
+@media(max-width:720px){
+ body.orbit-v140 #brainPanel #neuralMobileSwitcher:not([hidden]){position:relative!important;z-index:100!important;pointer-events:auto!important;isolation:isolate}
+ body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .graph-toolbar{top:auto!important;bottom:18px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;z-index:15!important}
+}
+
+@media(max-width:720px) {
+  /* A compact welcome state leaves real conversation space on iPhone. */
+  body.orbit-v140 .chat-panel #hero {
+    padding:18px 14px!important;
+    min-height:0!important;
+    max-height:154px!important;
+    flex:0 0 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    gap:7px!important;
+    margin:0!important;
+  }
+  body.orbit-v140 .chat-panel #hero :is(.hero-mark,.hero-actions,.hero-footnote){display:none!important}
+  body.orbit-v140 .chat-panel #hero .eyebrow{font-size:9px!important;letter-spacing:.1em!important}
+  body.orbit-v140 .chat-panel #hero h2{
+    margin:0!important;font-size:20px!important;line-height:1.22!important;text-align:left!important
+  }
+  body.orbit-v140 .chat-panel #hero p{
+    margin:0!important;text-align:left!important;line-height:1.4!important;font-size:11px!important
+  }
+  body.orbit-v140.neural-knowledge-mode .sonic-motion-float{display:none!important}
+}
+
+@media(max-width:720px) {
+  body.orbit-v140 .sidebar .nav:not(.active):not(.disabled) {
+    background:transparent!important;color:#9caabb!important;
+    box-shadow:none!important;border-color:transparent!important;
+  }
+  body.orbit-v140 .sidebar .nav.active {
+    background:#216fe5!important;color:#fff!important;
+    box-shadow:none!important;border-color:#3d95ff!important;
+  }
+  body.orbit-v140 .sidebar .nav.active svg{color:#fff!important}
+}
+
+@media(max-width:720px){
+  /* Keep the More popover above the content stacking context on iPhone. */
+  body.orbit-v140 .sidebar{z-index:100!important;overflow:visible!important;isolation:isolate}
+  body.orbit-v140 #mobileMoreMenu:not([hidden]){z-index:110!important;pointer-events:auto!important}
+}
+
+@media(max-width:720px){
+  /* 3D mode: a fixed tool strip above an independently scrollable inspector.
+     Neither element can intercept taps intended for the other. */
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .graph-toolbar {
+    top:67px!important;bottom:auto!important;
+    left:9px!important;right:9px!important;transform:none!important;
+    width:calc(100% - 18px)!important;max-width:calc(100% - 18px)!important;
+    z-index:65!important;justify-content:flex-start!important;
+    overflow-x:auto!important;flex-wrap:nowrap!important;
+  }
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .brain-side{
+    top:124px!important;bottom:12px!important;max-height:calc(100% - 136px)!important;
+    width:calc(100% - 20px)!important;overflow-y:auto!important;z-index:40!important;
+  }
+}
+
+@media(max-width:720px){
+  /* Prevent the inherited shell's negative side-offset on public preview
+     Workspace, Memory and other panels without changing desktop layout. */
+  body.orbit-v140 .content > .panel {
+    box-sizing:border-box!important;
+    width:calc(100% - 16px)!important;
+    max-width:calc(100vw - 16px)!important;
+    margin-left:8px!important;
+    margin-right:8px!important;
+    left:auto!important;right:auto!important;
+  }
+}
+
+@media(max-width:720px){
+  /* Voice focus is modal: graph tools must never intercept voice Stop. */
+  body.orbit-v140.sonic-focused #brainPanel .graph-toolbar,
+  body.orbit-v140.sonic-focused #brainPanel #neuralMobileSwitcher,
+  body.orbit-v140.sonic-focused #brainPanel .brain-side {
+    pointer-events:none!important;
+  }
+}
+
+@media(max-width:720px){
+  /* More is a menu button, NOT a normal tab. Keeping it out of .nav
+     prevents the legacy .nav click handler calling setTab(undefined). */
+  body.orbit-v140 .sidebar #mobileMoreNav {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;justify-content:center!important;
+    min-width:0!important;max-width:100%!important;width:100%!important;
+    height:53px!important;min-height:53px!important;
+    padding:5px 0!important;gap:4px!important;border-radius:17px!important;
+    color:#9caabb!important;background:transparent!important;
+    border:1px solid transparent!important;box-shadow:none!important;
+    font-size:10px!important;
+  }
+  body.orbit-v140 .sidebar #mobileMoreNav svg{width:18px!important;height:18px!important;color:currentColor!important}
+  body.orbit-v140 .sidebar #mobileMoreNav span{font-size:10px!important;white-space:nowrap}
+  body.orbit-v140 .sidebar #mobileMoreNav[aria-expanded="true"]{
+    color:#fff!important;background:#1d395b!important;
+    border-color:#3d95ff!important;
+  }
+}
+
+@media(max-width:720px){
+  /* Active voice Stop must stay above graph tools in ALL voice modes,
+     including normal sessions without body.sonic-focused. */
+  body.orbit-v140 #voiceSessionBar:not(.hidden){
+    z-index:300!important;
+    pointer-events:auto!important;
+  }
+}
+
+@media(max-width:720px) {
+  /* Filters drawer must be in front of 3D toolbar when opened. Close button
+     remains tappable and the toolbar regains focus after closing. */
+  body.orbit-v140 #brainPanel #graphFilters.open,
+  body.orbit-v140 #brainPanel .filter-panel.open {
+    z-index:145!important;pointer-events:auto!important;
+  }
+}
+
+@media(max-width:720px){
+  /* The filter pane sits inside .brain-right, a separate stacking context.
+     Raising the child alone was insufficient to beat the 3D toolbar. */
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .brain-right:has(#graphFilters.open){
+    z-index:180!important;pointer-events:none!important;
+  }
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel #graphFilters.open{
+    position:fixed!important;top:142px!important;right:12px!important;
+    left:auto!important;bottom:auto!important;
+    width:min(270px,calc(100vw - 24px))!important;
+    max-height:calc(100dvh - 245px)!important;overflow-y:auto!important;
+    z-index:200!important;pointer-events:auto!important;
+  }
+}

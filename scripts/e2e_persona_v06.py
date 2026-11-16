@@ -20,7 +20,11 @@ with local_server() as (url,token),sync_playwright() as p:
         page.locator('#ownerToken').fill(token)
         page.locator('#loginForm button[type=submit]').click()
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('.*hidden.*'))
-        page.locator('.nav[data-tab="setup"]').click()
+        if label=='mobile':
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go="setup"]').click()
+        else:
+            page.locator('.nav[data-tab="setup"]').click()
         expect(page.locator('#personaStudio h3')).to_have_text('Persona Studio')
         expect(page.locator('input[name="sonicVoice"]')).to_have_count(10)
         page.locator('input[name="sonicVoice"][value="female_03"]').check(force=True)
@@ -45,9 +49,14 @@ with local_server() as (url,token),sync_playwright() as p:
         assert stored['active']=={'voice_id':'female_03','style':'poetic','intensity':'expressive'},stored
         # Force re-login and verify persisted preferences survive a fresh browser page.
         page.reload(wait_until='networkidle')
-        page.locator('.nav[data-tab="setup"]').click()
+        if label=='mobile':
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go="setup"]').click()
+        else:
+            page.locator('.nav[data-tab="setup"]').click()
         expect(page.locator('input[name="sonicVoice"][value="female_03"]')).to_be_checked()
         page.locator('.nav[data-tab="brain"]').click()
+        if label=='mobile': page.locator('#neuralGraphBtn').click()
         expect(page.locator('#sonicMotionFloat')).to_be_visible()
         motion=page.locator('#sonicMotionFloat')
         page.wait_for_timeout(350)

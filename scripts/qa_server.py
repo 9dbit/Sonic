@@ -35,7 +35,7 @@ def local_server(app_path='sonic.api:app', settings=None):
                                     'DATABASE_', 'RAILWAY_'))}
         env.update(SONIC_ENV='local', SONIC_PUBLIC_URL=f'http://127.0.0.1:{port}',
                    SONIC_LOCAL_DB=str(Path(temp) / 'qa.sqlite3'), SONIC_SESSION_SECRET=secrets.token_urlsafe(48),
-                   SONIC_OWNER_TOKEN_SHA256=hashlib.sha256(owner.encode()).hexdigest(), PYTHONPATH=str(ROOT))
+                   SONIC_OWNER_TOKEN_SHA256=hashlib.sha256(owner.encode()).hexdigest(), PYTHONPATH=str(ROOT)+os.pathsep+os.environ.get('PYTHONPATH',''))
         env.update(settings or {})
         log = open(Path(temp) / 'server.log', 'w')
         proc = subprocess.Popen([sys.executable, '-m', 'uvicorn', app_path, '--host', '127.0.0.1', '--port', str(port)],

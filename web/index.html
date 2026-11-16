@@ -61,9 +61,9 @@
   <link rel="stylesheet" href="/assets/orbit-unified-v142.css?v=1.5.1">
   <script src="/assets/workspace.js?v=0.9.0" defer></script>
   <script src="/assets/pc-workspace-v089.js?v=0.9.0" defer></script>
-  <script src="/assets/app.js?v=1.6.0" defer></script>
-  <script src="/assets/research-agent-v160.js?v=1.6.0" defer></script>
-  <link rel="stylesheet" href="/assets/research-agent-v160.css?v=1.6.0">
+  <script src="/assets/app.js?v=1.7.0" defer></script>
+  <script src="/assets/research-agent-v160.js?v=1.7.0" defer></script>
+  <link rel="stylesheet" href="/assets/research-agent-v160.css?v=1.7.0">
   <script src="/assets/pc-command-v08.js?v=0.9.0" defer></script>
   <script src="/assets/window-manager-v090.js?v=0.9.0" defer></script>
   <script src="/assets/sonic-shell-v100.js?v=1.0.0" defer></script>
@@ -75,6 +75,9 @@
   <link rel="stylesheet" href="/assets/productivity-v148.css?v=1.5.1">
   <link rel="stylesheet" href="/assets/sonic-black-grey-blue-v152.css?v=1.5.3">
   <script src="/assets/local-ai-v152.js?v=1.5.2" defer></script>
+  <link rel="stylesheet" href="/assets/mobile-v170.css?v=1.7.0">
+  <script src="/assets/mobile-v170.js?v=1.7.0" defer></script>
+  <script src="/assets/neural-knowledge-v170.js?v=1.7.0" defer></script>
 </head>
 <body class="sonic-shell-v100 orbit-v140">
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -111,7 +114,12 @@
         <button class="nav" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span data-short="Memory">Memory Vault</span></button>
         <button class="nav" data-tab="devices" aria-label="Devices"><svg><use href="#i-device"/></svg><span data-short="Devices">Devices</span></button>
         <button class="nav" data-tab="setup" aria-label="Setup"><svg><use href="#i-settings"/></svg><span data-short="Setup">Settings</span></button>
+        <button id="mobileMoreNav" class="mobile-more-nav" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More navigation"><svg><use href="#i-settings"/></svg><span>More</span></button>
       </nav>
+      <div id="mobileMoreMenu" class="mobile-more-menu" hidden>
+        <button type="button" data-mobile-go="workspace">Workspace &amp; Files</button>
+        <button type="button" data-mobile-go="setup">Settings &amp; Models</button>
+      </div>
       <div class="sidebar-footer">
         <div class="sidebar-footnote"><span class="sidebar-footnote-dot" aria-hidden="true"></span><span>PRIVATE COMMAND SYSTEM</span></div>
         <button id="logout" class="logout" title="Sign out" aria-label="Sign out"><svg><use href="#i-exit"/></svg><span>Sign out</span></button>
@@ -120,7 +128,7 @@
     <main class="content">
       <header class="topbar">
         <button id="sonicHeaderOrb" class="orbit-header-orb" type="button" title="Double tap untuk panggil SONIC" aria-label="Double tap to summon SONIC"><img src="/assets/sonic-mark.svg?v=1.5.1" width="50" height="56" alt=""></button>
-        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.6.0</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
+        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.7.0</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section id="orbitOverview" class="orbit-overview" aria-label="SONIC live overview">
@@ -140,7 +148,16 @@
           <span class="orbit-card-foot">Chat model · Voice uses OpenAI</span>
         </button>
       </section>
-      <section class="panel brain-panel" id="brainPanel" aria-label="Peta pengetahuan tiga dimensi">
+      <section class="panel brain-panel" id="brainPanel" aria-label="Knowledge and neural exploration">
+        <div id="neuralMobileSwitcher" class="neural-mobile-switcher" hidden>
+          <strong>Knowledge</strong>
+          <div class="neural-switch-buttons"><button id="neuralKnowledgeBtn" type="button" aria-pressed="true">List</button><button id="neuralGraphBtn" type="button" aria-pressed="false">Explore 3D</button></div>
+        </div>
+        <section id="neuralKnowledgeList" class="neural-knowledge-list" aria-label="Knowledge list" hidden>
+          <label class="sr-only" for="neuralKnowledgeSearch">Cari knowledge</label>
+          <input type="search" id="neuralKnowledgeSearch" placeholder="Cari catatan, topik, integrasi..." maxlength="100">
+          <div id="neuralKnowledgeItems" class="neural-knowledge-items" role="list"><p>Knowledge siap ditampilkan setelah SONIC memuat data.</p></div>
+        </section>
         <div id="graphStage" class="graph-stage" tabindex="0" aria-label="Graph 3D. Drag untuk memutar, scroll atau pinch untuk zoom. Gunakan Search untuk memilih node dengan keyboard."></div>
         <div class="neural-field-label" aria-hidden="true"><span class="neural-field-glyph">✧</span><span>NEURAL FABRIC</span><span class="neural-field-line"></span><span class="neural-field-index">3D / INTERACTIVE</span></div>
         <div class="graph-toolbar">
@@ -195,9 +212,21 @@
                </label>
              </div>
              <div id="agentCapability" class="agent-capability" role="status" aria-live="polite">Checking Research Agent...</div>
-             <p id="agentPrivacy">Read-only browsing. Public search queries and source URLs are shared with third-party research services.</p>
+             <div id="agentResearchPreferences" class="agent-research-preferences" hidden>
+               <label class="agent-save-toggle"><input id="agentSaveMemory" type="checkbox" checked> Save research</label>
+               <label class="agent-project-label">Project <input id="agentProject" type="text" value="General" maxlength="80" placeholder="Project"></label>
+               <button id="agentHistoryToggle" type="button" aria-expanded="false">Saved research</button>
+             </div>
+             <div id="agentMemoryPanel" class="agent-memory-panel" hidden>
+               <div class="agent-memory-toolbar"><strong>Research Memory</strong><button id="agentRefreshMemory" type="button">Refresh</button></div>
+               <input id="agentMemorySearch" type="search" placeholder="Cari riset sebelumnya..." maxlength="120" aria-label="Search research memory">
+               <div id="agentMemoryItems" class="agent-memory-items"></div>
+             </div>
+             <details class="agent-disclosure"><summary>Research privacy &amp; AI model</summary>
+               <p id="agentPrivacy">Public queries go to Bing; source URLs to Jina Reader. If the local model is stopped, SONIC can use your already-selected cloud chat provider when enabled. Only verified owner sessions can search saved research. No PC commands are executed.</p>
+             </details>
            </div>
-           <form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><p class="disclaimer">Perintah PC aman diproses di chat atau voice; operasi sensitif memerlukan persetujuan dalam percakapan.</p></div>
+           <form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="chatExtras" type="button" class="icon-button chat-extras" aria-expanded="false" title="More attachment tools" aria-label="More tools">+</button><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><details class="chat-security-details"><summary>Keamanan Chat &amp; PC</summary><p class="disclaimer">Perintah PC aman diproses di chat atau voice; operasi sensitif memerlukan persetujuan dalam percakapan.</p></details></div>
       </section>
       <section class="panel workspace-panel hidden" id="workspacePanel" aria-label="Workspace SONIC">
         <div class="ws-heading"><div><span class="eyebrow">YOUR FILES &amp; NOTES</span><h2>Workspace</h2><p>Folder dan catatan dalam satu ruang. Ketik, dikte, atau panggil SONIC.</p></div><div class="ws-actions"><button id="wsNewFolder" type="button" class="ws-button">+ Folder</button><button id="wsNewNote" type="button" class="ws-button primary">+ Catatan</button></div></div>

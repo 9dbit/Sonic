@@ -82,7 +82,7 @@ with local_server(settings=settings) as (base, owner_token), sync_playwright() a
         page.locator("#message").fill("OpenAI research")
         page.locator("#send").click()
         expect(page.locator(".agent-research-results")).to_be_visible(timeout=11000)
-        assert calls==[{"query":"OpenAI research","purpose":"references"}], calls
+        assert calls==[{"query":"OpenAI research","purpose":"references","save_to_memory":True,"project":"General"}], calls
         assert page.locator(".agent-source a").count()==2
         anchors=page.locator(".agent-source a").all()
         assert all(a.get_attribute("href").startswith("https://") for a in anchors)

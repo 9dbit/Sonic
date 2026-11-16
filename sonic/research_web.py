@@ -23,6 +23,7 @@ import httpx
 
 BING_RSS = "https://www.bing.com/search"
 JINA_READ = "https://r.jina.ai/"
+WIKIPEDIA_SEARCH = "https://en.wikipedia.org/w/rest.php/v1/search/page"
 USER_AGENT = "SONIC-Research-Agent/1.6 (read-only, owner-initiated)"
 MAX_SEARCH_BYTES = 128_000
 MAX_READ_BYTES = 700_000
@@ -37,7 +38,17 @@ STOPWORDS = frozenset({
     "dan", "apa", "cara", "bagaimana", "seperti", "kita", "saya", "ingin", "terbaru",
     "the", "and", "for", "with", "what", "find", "list", "show", "latest", "best",
     "about", "from", "into", "website", "official", "online", "source", "sources",
+    "kerja", "contoh", "penjelasan", "pengertian", "detail", "jelaskan",
+    "explain", "works", "work", "how", "does", "definition", "penggunaan",
 })
+ACRONYMS = {
+    "mitm": "man-in-the-middle attack",
+    "xss": "cross-site scripting",
+    "csrf": "cross-site request forgery",
+    "sql injection": "SQL injection vulnerability",
+    "rtp": "return to player",
+    "api": "application programming interface",
+}
 NO_PRIVATE = (".local", ".localhost", ".internal", ".lan", ".home", ".test", ".invalid", ".onion")
 SENSITIVE_QUERY = re.compile(
     r"(?i)\b(?:password|passwd|secret|api[_ -]?key|bearer|private[_ -]?key)\s*[:=]\s*\S+"
@@ -81,8 +92,12 @@ def public_url(url: str) -> str | None:
 
 
 def _tokens(text: str) -> list[str]:
-    return [token for token in re.findall(r"(?u)\b[\w.-]{3,}\b", text.casefold())
-            if token not in STOPWORDS][:16]
+    value = text.casefold()
+    for acronym, expanded in ACRONYMS.items():
+        if re.search(r"(?i)\b" + re.escape(acronym) + r"\b", value):
+            value += " " + expanded + " " + expanded.replace("-", " ")
+    return [token for token in re.findall(r"(?u)\b[\w.-]{3,}\b", value)
+            if token not in STOPWORDS][:24]
 
 
 def relevance(query: str, title: str, snippet: str) -> int:
@@ -153,6 +168,13 @@ def search_rss(query: str) -> list[dict]:
 
 def expand_queries(query: str, purpose: str) -> list[str]:
     query = " ".join(query.split())[:260]
+    if purpose == "references":
+        for acronym, expanded in ACRONYMS.items():
+            if re.search(r"(?i)\b" + re.escape(acronym) + r"\b", query):
+                # Search the expanded definition, not the ambiguous abbreviation.
+                # Bing RSS can silently return unrelated broad results otherwise.
+                return [expanded + " explained",
+                        expanded + " how it works cybersecurity"]
     if purpose == "targets":
         second = query + " company official business"
     elif purpose == "data":
@@ -162,12 +184,56 @@ def expand_queries(query: str, purpose: str) -> list[str]:
     return [query, second[:300]]
 
 
+def _technical_match(query: str, title: str, snippet: str) -> bool:
+    text=(title+" "+snippet).casefold()
+    for abbreviation, phrase in ACRONYMS.items():
+        if re.search(r"\b" + re.escape(abbreviation) + r"\b", query, re.I):
+            if abbreviation == "mitm":
+                # Bing RSS has returned unrelated "MAN trucks" and "Man Group"
+                # for "man-in-the-middle". Never treat these as evidence.
+                if not (re.search(r"man[- ]in[- ]the[- ]middle|\bmitm\b",text)):
+                    return False
+            elif not (abbreviation in text or phrase in text):
+                return False
+    return True
+
+
+def wiki_search(query: str) -> list[dict]:
+    """Public MediaWiki REST search, a bounded fallback for definitions."""
+    with _client() as client:
+        with client.stream("GET", WIKIPEDIA_SEARCH,
+                           params={"q":query[:220],"limit":6},
+                           headers={"Accept":"application/json"}) as response:
+            raw=_read_limited(response,MAX_SEARCH_BYTES)
+    try:
+        payload=json.loads(raw)
+        pages=payload.get("pages",[])
+        if not isinstance(pages,list):raise ValueError("Invalid Wikimedia results")
+    except (ValueError,TypeError,AttributeError):
+        raise ResearchWebError("Wikimedia returned invalid results") from None
+    results=[]
+    for page in pages[:6]:
+        if not isinstance(page,dict):continue
+        key=page.get("key")
+        title=" ".join(str(page.get("title","")).split())[:180]
+        if not isinstance(key,str) or not re.fullmatch(r"[A-Za-z0-9_().%,-]{3,200}",key):
+            continue
+        url=public_url("https://en.wikipedia.org/wiki/"+quote(key,safe="()_.,-%"))
+        if not url or not title:continue
+        excerpt=re.sub(r"<[^>]{0,400}>"," ",str(page.get("excerpt","")))
+        excerpt=" ".join(excerpt.split())[:MAX_SNIPPET]
+        results.append({"title":title,"url":url,"snippet":excerpt,"date":None,"publisher":"en.wikipedia.org"})
+    return results
+
+
 def pick_sources(query: str, found: list[dict], max_sources: int = MAX_SOURCES) -> list[dict]:
     """Reject irrelevant fallback SERPs, and avoid a single domain flooding results."""
     unique = {}
     for item in found:
         url = public_url(item.get("url", ""))
         if not url:
+            continue
+        if not _technical_match(query,item.get("title",""),item.get("snippet","")):
             continue
         score = relevance(query, item.get("title", ""), item.get("snippet", ""))
         if score < 2:
@@ -250,9 +316,25 @@ def search_and_read(query: str, purpose: str, *, max_sources: int = MAX_SOURCES)
             trace.append({"tool": "web.search", "status": "unavailable", "found": 0,
                           "detail": type(exc).__name__})
     selected = pick_sources(query, found, max_sources)
+    if not selected and purpose == "references":
+        # Wikipedia public REST API is far more reliable for technical
+        # definitions than the ambiguous Bing RSS acronym search.
+        normalized=next((phrase for acronym,phrase in ACRONYMS.items()
+                         if re.search(r'\b'+re.escape(acronym)+r'\b',query,re.I)),query)
+        try:
+            additions=wiki_search(normalized)
+            found.extend(additions)
+            selected=pick_sources(query, found, max_sources)
+            trace.append({"tool":"web.search.wikipedia","status":"ok","found":len(additions)})
+        except (ResearchWebError,httpx.HTTPError):
+            trace.append({"tool":"web.search.wikipedia","status":"unavailable","found":0})
     if not selected:
+        failed = not any(step["status"] == "ok" for step in trace)
         return {"sources": [], "trace": trace, "queries": queries,
-                "notice": "No relevant public sources found. Refine keywords or use a dedicated search API."}
+                "reason": "provider_unavailable" if failed else "no_relevant_sources",
+                "notice": ("External search provider is unavailable; no references were invented."
+                           if failed else
+                           "No sufficiently relevant sources found. Please refine the question or provider.")}
     # Reading three public sources in parallel is bounded, with no arbitrary
     # hosts requested directly by this service and no JavaScript execution.
     with ThreadPoolExecutor(max_workers=MAX_FETCHES) as pool:
@@ -274,4 +356,5 @@ def search_and_read(query: str, purpose: str, *, max_sources: int = MAX_SOURCES)
         item["excerpt"] = item["snippet"]
         item["read"] = False
     return {"sources": selected, "trace": trace, "queries": queries,
-            "notice": "Third-party search and reader services may be rate-limited or return incomplete results."}
+            "reason": None,
+            "notice": "Source snippets and dates are search metadata; verify facts on the original pages."}

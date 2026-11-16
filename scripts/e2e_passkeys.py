@@ -70,7 +70,11 @@ with sync_playwright() as pw:
                     page.locator("#passkeySetup").click()
                     expect(page.locator("#loginOverlay")).to_be_hidden(timeout=20000)
                     assert page.request.get(origin + "/api/session").json()["authenticated"]
-                    page.locator('.nav[data-tab="setup"]').click()
+                    if name == "mobile":
+                        page.locator("#mobileMoreNav").click()
+                        page.locator('[data-mobile-go="setup"]').click()
+                    else:
+                        page.locator('.nav[data-tab="setup"]').click()
                     expect(page.locator("#passkeyRegister")).to_be_visible()
                     expect(page.locator("#passkeyList .passkey-row")).to_have_count(1)
                     expect(page.locator("#passkeyList button")).to_be_disabled()
@@ -82,7 +86,11 @@ with sync_playwright() as pw:
                     page.locator("#passkeyLogin").click()
                     expect(page.locator("#loginOverlay")).to_be_hidden(timeout=20000)
                     assert page.request.get(origin + "/api/session").json()["authenticated"]
-                    page.locator('.nav[data-tab="setup"]').click()
+                    if name == "mobile":
+                        page.locator("#mobileMoreNav").click()
+                        page.locator('[data-mobile-go="setup"]').click()
+                    else:
+                        page.locator('.nav[data-tab="setup"]').click()
                     expect(page.locator("#passkeyList .passkey-row")).to_have_count(1)
                     page.screenshot(path=str(OUT / (name + "-settings.png")))
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
