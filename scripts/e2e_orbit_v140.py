@@ -30,7 +30,7 @@ with local_server(settings={'DEEPSEEK_API_KEY':'LOCAL-FAKE-DO-NOT-SEND','SONIC_B
         # Even an unintended provider test cannot spend tokens.
         for path in ['/api/setup/test-provider','/api/chat','/api/voice/sessions']:
             page.route('**'+path,lambda route:route.fulfill(status=503,json={'detail':'Blocked by isolated visual QA'}))
-        page.goto(url,wait_until='networkidle')
+        page.goto(url,wait_until='domcontentloaded')
         expect(page.locator('#loginOverlay')).to_be_visible()
         page.locator('#ownerToken').fill(token);page.locator('#loginForm button[type=submit]').click()
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('hidden'),timeout=15000)
@@ -90,7 +90,7 @@ with local_server(settings={'SONIC_PASSWORDLESS_LOGIN':'true'}) as (url,_),sync_
     browser=pw.chromium.launch(headless=True,args=['--no-sandbox'])
     for label,size in [('desktop',{'width':1440,'height':960}),('mobile',{'width':390,'height':844})]:
         page=browser.new_page(viewport=size)
-        page.goto(url,wait_until='networkidle')
+        page.goto(url,wait_until='domcontentloaded')
         expect(page.locator('#ownerToken')).to_be_hidden()
         expect(page.locator('.login-card')).to_be_visible()
         page.screenshot(path=str(OUT/f'{label}-passkey.png'))
@@ -135,7 +135,7 @@ with local_server(settings={'SONIC_OPEN_PREVIEW':'true',
             route.fulfill(status=200,json={'provider_close_confirmed':True})
         page.route('**/api/preview/chat',fake_chat)
         page.route('**/api/preview/voice/**',fake_voice)
-        page.goto(url,wait_until='networkidle')
+        page.goto(url,wait_until='domcontentloaded')
         expect(page.locator('#loginOverlay')).to_be_hidden()
         expect(page.locator('.orbit-preview-pill')).to_have_text('STAGING')
         expect(page.locator('#previewModelPicker select')).to_be_visible()

@@ -46,7 +46,7 @@ with local_server(settings=settings) as (base, owner_token), sync_playwright() a
                                  device_scale_factor=1, has_touch=mobile, is_mobile=mobile)
         guest_errors = []
         guest.on("pageerror", lambda error: guest_errors.append(str(error)))
-        guest.goto(base + "/", wait_until="networkidle")
+        guest.goto(base + "/", wait_until="domcontentloaded")
         expect(guest.locator("body")).to_have_class(__import__("re").compile("sonic-open-preview"))
         expect(guest.locator("#loginOverlay")).to_be_hidden()
         expect(guest.locator("#localAIControl")).to_be_hidden()
@@ -59,7 +59,7 @@ with local_server(settings=settings) as (base, owner_token), sync_playwright() a
                                 device_scale_factor=1, has_touch=mobile, is_mobile=mobile)
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
-        page.goto(base + "/owner", wait_until="networkidle")
+        page.goto(base + "/owner", wait_until="domcontentloaded")
         expect(page.locator("#loginOverlay")).to_be_visible()
         expect(page.locator("#ownerToken")).to_be_visible()
         assert "sonic-open-preview" not in (page.locator("body").get_attribute("class") or "")
@@ -93,7 +93,7 @@ with local_server(settings=settings) as (base, owner_token), sync_playwright() a
         assert result.status == 200, result.text()
         assert page.request.get(base + "/api/session").json()["preview"] is True
         assert page.request.get(base + "/api/local-ai/status").status == 401
-        page.reload(wait_until="networkidle")
+        page.reload(wait_until="domcontentloaded")
         expect(page.locator("#loginOverlay")).to_be_visible()
         results.append({"viewport": name, "guest": "isolated",
                         "private_login": "passed", "owner_status": "authenticated",
