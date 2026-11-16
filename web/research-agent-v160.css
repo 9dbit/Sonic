@@ -1,0 +1,101 @@
+/* SONIC Agent Mode · mobile-first, black-grey-blue, owner only. */
+#agentResearchToolbar[hidden],
+body.sonic-open-preview #agentResearchToolbar {display:none!important}
+#agentResearchToolbar {
+  width:min(100%,900px);
+  margin:0 auto 11px;
+  padding:0 4px;
+  color:#b0bfce;
+  display:grid;
+  gap:8px;
+}
+.agent-mode-top {
+  display:flex; gap:10px; align-items:center; justify-content:space-between;
+  flex-wrap:wrap;
+}
+.agent-mode-buttons {
+  display:inline-flex; background:#171a20;
+  border:1px solid rgba(110,143,183,.2);padding:4px;
+  gap:4px; border-radius:999px;
+}
+.agent-mode-buttons button {
+  appearance:none; border:0; cursor:pointer;min-height:33px;
+  border-radius:999px; background:transparent; color:#aeb7c4;
+  padding:8px 14px; font-size:12px; font-weight:650;
+}
+.agent-mode-buttons button[aria-pressed="true"] {
+  background:#287ae8;color:white;box-shadow:0 3px 18px #206ad833;
+}
+.agent-mode-buttons button:disabled {opacity:.42;cursor:not-allowed}
+.agent-research-choice{display:inline-flex;gap:7px;align-items:center}
+.agent-research-choice span{font-size:10px;letter-spacing:.04em;color:#90a0b3}
+.agent-research-choice select {
+  max-width:160px;padding:8px 11px;min-height:34px;border-radius:999px;
+  background:#1d2229;color:#e7f2fd;border:1px solid #344358;
+  font:600 12px/1.2 inherit;
+}
+.agent-capability {
+  color:#7abaff;font-size:10px;font-weight:600;
+  white-space:nowrap;min-height:14px;
+}
+#agentPrivacy {
+  font-size:10px;line-height:1.5;color:#95a4b6;
+  margin:0 0 2px; overflow-wrap:anywhere;
+}
+.agent-research-results{
+  background:#12171d; border:1px solid rgba(67,147,241,.24);
+  border-radius:18px; margin:12px 0 5px;padding:13px;min-width:0;
+}
+.agent-results-head {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px;margin-bottom:11px;color:#e8f3ff;font-size:12px;
+}
+.agent-results-head span {
+  background:#1c2b3d;color:#91c4ff;padding:5px 10px;
+  border-radius:999px;font-size:10px;white-space:nowrap;
+}
+.agent-source-list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.agent-source {
+  background:#1c222a;border:1px solid rgba(140,165,195,.12);
+  border-radius:13px;padding:10px 12px;display:grid;gap:4px;min-width:0;
+}
+.agent-source a {
+  color:#87c4ff;text-decoration:none;font-weight:650;
+  font-size:12px;line-height:1.5;overflow-wrap:anywhere;
+}
+.agent-source a:hover{text-decoration:underline}
+.agent-source a:focus-visible{outline:2px solid #7abaff;outline-offset:2px}
+.agent-source .agent-source-meta {
+  color:#95a4b5;font-size:10px;overflow-wrap:anywhere;
+}
+.agent-source p{font-size:11px;line-height:1.55;color:#bcc9d5;margin:0}
+.agent-steps,.agent-research-notice{
+  margin:10px 0 0;line-height:1.6;font-size:10px;color:#8aa9c7;
+}
+.agent-research-notice{color:#a2afbd}
+@media(max-width:560px) {
+  #agentResearchToolbar{padding:0 2px;margin-bottom:8px}
+  .agent-mode-buttons{width:auto}
+  .agent-mode-buttons button{padding:8px 11px;font-size:11px}
+  .agent-research-choice select{max-width:136px;font-size:11px}
+  .agent-capability{width:100%}
+  .agent-research-results{border-radius:16px;padding:11px}
+  .agent-source{padding:10px;border-radius:12px}
+}
+
+/* Override broad legacy button selectors while keeping pill controls. */
+body.orbit-v140 .app #agentModeChat[aria-pressed="true"],
+body.orbit-v140 .app #agentModeResearch[aria-pressed="true"] {
+  background:#287ae8!important;
+  border-color:#398afa!important;
+  color:#fff!important;
+  box-shadow:0 4px 18px #2169d43a!important;
+}
+body.orbit-v140 .app #agentModeChat[aria-pressed="false"],
+body.orbit-v140 .app #agentModeResearch[aria-pressed="false"] {
+  background:transparent!important;border-color:transparent!important;
+  color:#aeb7c4!important;box-shadow:none!important;
+}
+body.orbit-v140 .app #agentModeResearch:disabled {
+  opacity:.40!important;cursor:not-allowed!important;
+}

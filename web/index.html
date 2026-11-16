@@ -61,7 +61,9 @@
   <link rel="stylesheet" href="/assets/orbit-unified-v142.css?v=1.5.1">
   <script src="/assets/workspace.js?v=0.9.0" defer></script>
   <script src="/assets/pc-workspace-v089.js?v=0.9.0" defer></script>
-  <script src="/assets/app.js?v=1.5.3" defer></script>
+  <script src="/assets/app.js?v=1.6.0" defer></script>
+  <script src="/assets/research-agent-v160.js?v=1.6.0" defer></script>
+  <link rel="stylesheet" href="/assets/research-agent-v160.css?v=1.6.0">
   <script src="/assets/pc-command-v08.js?v=0.9.0" defer></script>
   <script src="/assets/window-manager-v090.js?v=0.9.0" defer></script>
   <script src="/assets/sonic-shell-v100.js?v=1.0.0" defer></script>
@@ -118,7 +120,7 @@
     <main class="content">
       <header class="topbar">
         <button id="sonicHeaderOrb" class="orbit-header-orb" type="button" title="Double tap untuk panggil SONIC" aria-label="Double tap to summon SONIC"><img src="/assets/sonic-mark.svg?v=1.5.1" width="50" height="56" alt=""></button>
-        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.5.3</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
+        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V1.6.0</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section id="orbitOverview" class="orbit-overview" aria-label="SONIC live overview">
@@ -177,7 +179,25 @@
       </section>
       <section class="panel chat-panel hidden" id="chatPanel">
         <div id="chatFeed" class="chat-feed" aria-live="polite"><div class="hero" id="hero"><div class="hero-mark"><img src="/assets/sonic-mark.svg?v=1.5.1" width="80" height="80" alt=""></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Think it. Say it.<br><span>Make it happen.</span></h2><p>Satu ruang untuk percakapan, memory, workspace, dan perangkat yang kamu izinkan.</p><div class="hero-actions"><button id="goToBrain" class="outline-button">Explore Neural Brain <span aria-hidden="true">↗</span></button><button id="goToWorkspace" class="outline-button">Open Workspace <span aria-hidden="true">↗</span></button><button id="goToDevices" class="outline-button">Device Control <span aria-hidden="true">↗</span></button></div><p class="hero-footnote">YOUR INTELLIGENCE. YOUR CONTROL.</p></div></div>
-        <div class="compose-wrap"><form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><p class="disclaimer">Perintah PC aman diproses di chat atau voice; operasi sensitif memerlukan persetujuan dalam percakapan.</p></div>
+        <div class="compose-wrap">
+           <div id="agentResearchToolbar" class="agent-research-toolbar" aria-label="SONIC Chat and Research Agent modes" hidden>
+             <div class="agent-mode-top">
+               <div class="agent-mode-buttons" role="group" aria-label="Chat mode">
+                 <button id="agentModeChat" type="button" aria-pressed="true">Chat</button>
+                 <button id="agentModeResearch" type="button" aria-pressed="false" disabled>Research Agent</button>
+               </div>
+               <label class="agent-research-choice" for="agentPurpose"><span>RESEARCH FOCUS</span>
+                 <select id="agentPurpose" disabled aria-label="Research purpose">
+                   <option value="targets">Find Targets</option>
+                   <option value="data">Data &amp; Figures</option>
+                   <option value="references" selected>References</option>
+                 </select>
+               </label>
+             </div>
+             <div id="agentCapability" class="agent-capability" role="status" aria-live="polite">Checking Research Agent...</div>
+             <p id="agentPrivacy">Read-only browsing. Public search queries and source URLs are shared with third-party research services.</p>
+           </div>
+           <form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><p class="disclaimer">Perintah PC aman diproses di chat atau voice; operasi sensitif memerlukan persetujuan dalam percakapan.</p></div>
       </section>
       <section class="panel workspace-panel hidden" id="workspacePanel" aria-label="Workspace SONIC">
         <div class="ws-heading"><div><span class="eyebrow">YOUR FILES &amp; NOTES</span><h2>Workspace</h2><p>Folder dan catatan dalam satu ruang. Ketik, dikte, atau panggil SONIC.</p></div><div class="ws-actions"><button id="wsNewFolder" type="button" class="ws-button">+ Folder</button><button id="wsNewNote" type="button" class="ws-button primary">+ Catatan</button></div></div>
@@ -407,6 +427,6 @@
   <div id="orbitVoiceCaption" class="orbit-voice-caption" hidden aria-live="polite">
     <strong>SONIC</strong><span id="orbitVoiceState">Ready</span><small>VOICE / OPENAI</small>
   </div>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb"><img src="/assets/sonic-mark.svg?v=1.5.1" width="68" height="68" alt="SONIC logo"></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Intelligence,<br><span class="gradient-heading">in your orbit.</span></h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 1.5.3</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb"><img src="/assets/sonic-mark.svg?v=1.5.1" width="68" height="68" alt="SONIC logo"></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Intelligence,<br><span class="gradient-heading">in your orbit.</span></h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 1.6.0</small></form></div>
 </body>
 </html>

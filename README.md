@@ -72,3 +72,6 @@ Owner-only TRADEVICEPC GGUF controls, selected text-only local model, and black/
 ## SONIC v1.5.3 Private Owner Portal
 
 Staging adds an opt-in `/owner` entry for authenticated iPhone and desktop control while `/` remains guest preview. See [Owner Portal v1.5.3](docs/SONIC_OWNER_PORTAL_V153.md). An owner token or enrolled passkey is still required; no public device control is exposed.
+## SONIC v1.6.0 Research Agent
+
+Owner-only Chat > Research Agent supports target discovery, source-backed public data lookup and references using Bing RSS + Jina Reader, with optional DeepSeek GGUF local summaries. It is read-only; no PC commands or autonomous actions. See docs/SONIC_RESEARCH_AGENT_V160.md.
