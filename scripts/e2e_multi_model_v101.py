@@ -117,7 +117,7 @@ with sync_playwright() as playwright:
                 expect(page.locator("#loginOverlay")).to_have_class(re.compile("hidden"), timeout=12000)
                 page.locator('.nav[data-tab="setup"]').click()
                 expect(page.locator("#brainModelControl")).to_be_visible()
-                expect(page.locator("#brainModelSelect option")).to_have_count(5)
+                expect(page.locator("#brainModelSelect option")).to_have_count(6)
                 key_row = page.locator('#brainProviderStatus [data-provider="deepseek"]')
                 expect(key_row).to_contain_text("DeepSeek")
                 expect(key_row).to_contain_text("DEEPSEEK_API_KEY")

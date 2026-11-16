@@ -102,6 +102,27 @@ class DeviceJob(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
+class LocalAIJob(Base):
+    __tablename__ = "local_ai_jobs_v152"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    device_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    owner_sid: Mapped[str] = mapped_column(String(64), nullable=False)
+    action: Mapped[str] = mapped_column(String(12), nullable=False)
+    state: Mapped[str] = mapped_column(String(20), default="queued", nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class LocalAIRuntime(Base):
+    __tablename__ = "local_ai_runtime_v152"
+    device_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    state: Mapped[str] = mapped_column(String(20), default="unavailable", nullable=False)
+    metrics_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 def database_url() -> str:
     raw = setting("DATABASE_URL")
     if raw:

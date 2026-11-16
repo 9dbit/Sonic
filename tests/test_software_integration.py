@@ -43,6 +43,9 @@ def companion(monkeypatch):
     spec=importlib.util.spec_from_file_location('sonic_software_companion_test',scripts/'windows_agent_v05.py')
     module=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    # Software-only test: isolate the optional Local AI sidecar even when the
+    # developer's real TRADEVICEPC has a live owner opt-in flag on disk.
+    monkeypatch.setattr(module.windows_local_ai_v152, 'is_enabled', lambda: False)
     monkeypatch.setattr(module,'extended_stats',lambda:{'cpu_usage_percent':1})
     return module
 

@@ -1,10 +1,11 @@
 (() => {
   'use strict';
   const $=id=>document.getElementById(id);
+  const ownerEntry=location.pathname==='/owner';
   const tabs={brain:'brainPanel',chat:'chatPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
   const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
-  const providerLabels={openai:'OpenAI',openrouter:'OpenRouter',deepseek:'DeepSeek'};
+  const providerLabels={openai:'OpenAI',openrouter:'OpenRouter',deepseek:'DeepSeek',local:'Local GGUF'};
   let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,compatibleVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const watchingJobs=new Set();
@@ -33,6 +34,10 @@
     graphData={nodes:[],edges:[],counts:{categories:{},memories:0}};graphFingerprint='';$('chatFeed').replaceChildren();$('memoryList').replaceChildren();$('brainAnswerText').textContent='';$('brainReceipt').replaceChildren();$('brainAnswer').classList.add('hidden');renderInspector(null);$('searchResults').replaceChildren();$('topHubs').replaceChildren();
   }
   async function API(path,opts={}){
+    if(ownerEntry&&path==='/api/login'){
+      path='/api/owner/login';
+      opts={...opts,headers:{...(opts.headers||{}),'X-Sonic-Owner-Entry':'1'}};
+    }
     if(openPreview&&path!=='/api/session'&&path!=='/api/health'){
       if(path==='/api/chat'){
         path='/api/preview/chat';
@@ -61,7 +66,7 @@
         body=await response.json().catch(()=>({}));
       }
     }
-    if(response.status===401&&path!=='/api/login'&&!openPreview){csrf=null;clearPrivateUI();$('loginOverlay').classList.remove('hidden');}
+    if(response.status===401&&!['/api/login','/api/owner/login'].includes(path)&&!openPreview){csrf=null;clearPrivateUI();$('loginOverlay').classList.remove('hidden');}
     if(!response.ok){const detail=body.detail||body.error;const error=Error(typeof detail==='string'?detail:'Request failed (HTTP '+response.status+')');error.status=response.status;throw error;}
     return body;
   }
@@ -457,7 +462,7 @@
     loadPreviewTopology();
     setTab(currentTab);
   }
-  async function initialize(){const r=await API('/api/session');if(r.preview===true){await applyOpenPreview(r);return;}$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
+  async function initialize(){const r=await API('/api/session');if(r.preview===true&&!ownerEntry){await applyOpenPreview(r);return;}$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
     const initialTab=currentTab;
     csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(brainConfigured?'brain':'setup'):currentTab);
     await loadTasks(true);

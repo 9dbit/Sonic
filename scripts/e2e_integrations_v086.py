@@ -91,9 +91,9 @@ with local_server(settings=settings) as (url,owner),sync_playwright() as p:
         assert summary['inspectorVisible'],summary
         assert summary['extraWidth']<=5,summary
         body_classes=page.locator('body').evaluate("el=>({orbit:el.classList.contains('orbit-v140'),deck:el.classList.contains('sonic-shell-v100')})")
-        # The Orbit V1.4 lavender-charcoal panel supersedes Command Deck R1's
-        # blue-black gradient. Keep authorization and executor assertions above.
-        expected_bg=('rgb(17, 16, 28)' if body_classes['orbit']
+        # SONIC V1.5.2 black-grey-blue palette supersedes Orbit violet surfaces.
+        # Preserve authorization and executor assertions above.
+        expected_bg=('rgb(8, 10, 12)' if body_classes['orbit']
                      else 'rgb(5, 10, 18)' if body_classes['deck']
                      else 'rgb(0, 0, 0)')
         assert summary['bg']==expected_bg,summary

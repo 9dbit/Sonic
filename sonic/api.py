@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.5.1'
+VERSION = '1.5.3'
 
 
 @asynccontextmanager
@@ -85,6 +85,12 @@ def open_preview_enabled() -> bool:
     return setting("SONIC_OPEN_PREVIEW", "false").lower() == "true"
 
 
+def owner_entry_enabled() -> bool:
+    """Only expose this separate owner entry on opted-in, nonproduction staging."""
+    return (preview_active() and owner_ready()
+            and setting("SONIC_OWNER_ENTRY_ENABLED", "false").lower() in ("1", "true", "yes"))
+
+
 def check_db():
     if not database_ready():
         raise HTTPException(503, "Durable database not configured for hosted deployment")
@@ -105,6 +111,35 @@ def home():
     rendered = render_passkey_page(html, VERSION)
     rendered = rendered.replace("__SONIC_PUBLIC_URL__", html_escape(public_url(), quote=True))
     return HTMLResponse(rendered, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/owner")
+def owner_portal():
+    if not owner_entry_enabled():
+        raise HTTPException(404, "Owner entry is unavailable")
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    rendered = render_passkey_page(html, VERSION, owner_entry=True)
+    rendered = rendered.replace("__SONIC_PUBLIC_URL__", html_escape(public_url(), quote=True))
+    rendered = rendered.replace('href="/site.webmanifest?v=1.5.1"',
+                                'href="/owner.webmanifest?v=1.5.3"', 1)
+    return HTMLResponse(rendered, headers={
+        "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow",
+        "Referrer-Policy": "same-origin"
+    })
+
+
+@app.get("/owner.webmanifest")
+def owner_manifest():
+    if not owner_entry_enabled():
+        raise HTTPException(404, "Owner entry is unavailable")
+    data = json.loads((ROOT / "web" / "site.webmanifest").read_text(encoding="utf-8"))
+    data.update({"name": "SONIC Owner", "short_name": "SONIC Owner",
+                 "id": "/owner", "start_url": "/owner",
+                 "background_color": "#050607", "theme_color": "#050607"})
+    return Response(content=json.dumps(data, separators=(",", ":")),
+                    media_type="application/manifest+json",
+                    headers={"Cache-Control": "no-store",
+                             "X-Robots-Tag": "noindex, nofollow"})
 
 
 @app.get("/favicon.ico")
@@ -131,6 +166,23 @@ def health():
 
 @app.get("/api/session")
 def session_status(request: Request, response: Response):
+    # A verified owner session always takes precedence over public preview.
+    # A guest cookie or forged/expired owner cookie cannot grant access.
+    owner = None
+    if request.cookies.get(auth.COOKIE):
+        try:
+            owner = auth.read_session(request)
+        except HTTPException:
+            owner = None
+    if owner is not None:
+        from .db import session_factory
+        with session_factory()() as db:
+            selection = selected_model(db)
+        return {"authenticated": True, "csrf": owner["csrf"], "provider": selection.provider,
+                "model": selection.model, "version": VERSION,
+                "capabilities": ["chat", "explicit-memory", "knowledge-graph",
+                                 "owner-memory-links", "voice-ui", "device-status",
+                                 "chat-first-pc-actions", "inline-approvals"]}
     if preview_active():
         from .db import session_factory
         from .trusted_preview import paired
@@ -139,16 +191,7 @@ def session_status(request: Request, response: Response):
             trusted = paired(request, db)
         return {**issue_browser_guest(request, response, selection),
                 "trusted_uptime": trusted, "version": VERSION}
-    try:
-        owner = auth.read_session(request)
-    except HTTPException:
-        return {"authenticated": False}
-    from .db import session_factory
-    with session_factory()() as db:
-        selection = selected_model(db)
-    return {"authenticated": True, "csrf": owner["csrf"], "provider": selection.provider,
-            "model": selection.model, "version": VERSION,
-            "capabilities": ["chat", "explicit-memory", "knowledge-graph", "owner-memory-links", "voice-ui", "device-status", "chat-first-pc-actions", "inline-approvals"]}
+    return {"authenticated": False}
 
 
 @app.post("/api/login")
@@ -164,6 +207,34 @@ def login(payload: LoginForm, request: Request, response: Response):
     response.set_cookie(auth.COOKIE, session, httponly=True, samesite="strict",
         secure=bool(setting("RAILWAY_ENVIRONMENT_NAME")) or public_url().startswith("https://"),
         max_age=auth.SESSION_SECONDS, path="/")
+    return {"authenticated": True, "csrf": csrf}
+
+
+@app.post("/api/owner/login")
+def owner_portal_login(payload: LoginForm, request: Request, response: Response):
+    """Token sign-in for the explicitly selected /owner portal only.
+
+    No guest identity is converted into an owner, and the public /api/login
+    remains blocked while open preview is active.
+    """
+    if not owner_entry_enabled():
+        raise HTTPException(404, "Owner entry is unavailable")
+    if passwordless_enabled():
+        raise HTTPException(403, "Owner token login is disabled. Use a passkey.")
+    if (request.headers.get("origin") != public_url().rstrip("/")
+            or request.headers.get("x-sonic-owner-entry") != "1"
+            or request.headers.get("sec-fetch-site") not in (None, "same-origin")):
+        raise HTTPException(403, "Private owner entry and same-origin request required")
+    if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/json":
+        raise HTTPException(415, "JSON request required")
+    address = request.client.host if request.client else "unknown"
+    if not auth.verify_login(payload.token, address):
+        raise HTTPException(401, "Invalid owner access token")
+    session, csrf = auth.issue_session()
+    response.set_cookie(auth.COOKIE, session, httponly=True, samesite="strict",
+        secure=bool(setting("RAILWAY_ENVIRONMENT_NAME")) or public_url().startswith("https://"),
+        max_age=auth.SESSION_SECONDS, path="/")
+    response.headers["Cache-Control"] = "no-store"
     return {"authenticated": True, "csrf": csrf}
 
 
@@ -317,6 +388,8 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
     return {"reply": answer, "image_stored": False, "pc_action": "none"}
 
 
+from .local_ai import router as local_ai_router
+app.include_router(local_ai_router)
 from .activation import router as activation_router
 from .knowledge import router as knowledge_router
 from .integrations import router as integrations_router

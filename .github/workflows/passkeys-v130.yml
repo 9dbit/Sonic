@@ -12,12 +12,14 @@ on:
       - 'web/passkey-login.*'
       - 'tests/test_passkey*.py'
       - 'scripts/e2e_passkeys.py'
+      - 'scripts/e2e_owner_portal_v153.py'
+      - 'tests/test_owner_entry_v153.py'
       - '.github/workflows/passkeys-v130.yml'
 permissions:
   contents: read
 jobs:
   security-and-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -40,15 +42,19 @@ jobs:
           node --test tests/js/*.test.cjs
       - name: Native browser enrollment and sign-in without owner token
         run: python scripts/e2e_passkeys.py
+      - name: Public preview versus private owner portal on desktop and mobile
+        run: python scripts/e2e_owner_portal_v153.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: sonic-passkey-browser
-          path: artifacts/passkeys-v130/
+          path: |
+            artifacts/passkeys-v130/
+            artifacts/owner-portal-v153/
           retention-days: 7
           if-no-files-found: warn
   postgres-security:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 8
     services:
       postgres:
