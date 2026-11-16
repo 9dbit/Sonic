@@ -89,7 +89,11 @@ def run():
                     send('PowerShell: Get-Date')
                     expect(page.locator('#chatFeed .chat-approve-button')).to_have_count(1)
                     old=[t for t in tasks() if t['state']=='pending'][0]['id']
-                    page.locator('[data-tab=setup]').click()
+                    if name=='mobile':
+                        page.locator('#mobileMoreNav').click()
+                        page.locator('[data-mobile-go=setup]').click()
+                    else:
+                        page.locator('[data-tab=setup]').click()
                     page.get_by_role('button',name='Hentikan semua tugas PC',exact=True).click()
                     expect(page.locator('#executionTasks')).to_contain_text('Dibatalkan')
                     page.locator('[data-tab=chat]').click()
@@ -108,7 +112,11 @@ def run():
                         'agent_evidence':'PASS','stale_approval_rejected':'PASS','javascript_errors':0})
                     # This fixture is one owner database; cancel the remaining
                     # synthetic proposal before the next fresh browser login.
-                    page.locator('[data-tab=setup]').click()
+                    if name=='mobile':
+                        page.locator('#mobileMoreNav').click()
+                        page.locator('[data-mobile-go=setup]').click()
+                    else:
+                        page.locator('[data-tab=setup]').click()
                     page.get_by_role('button',name='Hentikan semua tugas PC',exact=True).click()
                 except Exception:
                     page.screenshot(path=str(OUT/(name+'-failure.png')))

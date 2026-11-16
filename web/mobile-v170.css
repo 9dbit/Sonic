@@ -296,3 +296,36 @@ body.orbit-v140 .app #agentMemorySearch {width:100%;margin:8px 0 9px;padding:10p
     border-color:#3d95ff!important;
   }
 }
+
+@media(max-width:720px){
+  /* Active voice Stop must stay above graph tools in ALL voice modes,
+     including normal sessions without body.sonic-focused. */
+  body.orbit-v140 #voiceSessionBar:not(.hidden){
+    z-index:300!important;
+    pointer-events:auto!important;
+  }
+}
+
+@media(max-width:720px) {
+  /* Filters drawer must be in front of 3D toolbar when opened. Close button
+     remains tappable and the toolbar regains focus after closing. */
+  body.orbit-v140 #brainPanel #graphFilters.open,
+  body.orbit-v140 #brainPanel .filter-panel.open {
+    z-index:145!important;pointer-events:auto!important;
+  }
+}
+
+@media(max-width:720px){
+  /* The filter pane sits inside .brain-right, a separate stacking context.
+     Raising the child alone was insufficient to beat the 3D toolbar. */
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel .brain-right:has(#graphFilters.open){
+    z-index:180!important;pointer-events:none!important;
+  }
+  body.orbit-v140:not(.neural-knowledge-mode) #brainPanel #graphFilters.open{
+    position:fixed!important;top:142px!important;right:12px!important;
+    left:auto!important;bottom:auto!important;
+    width:min(270px,calc(100vw - 24px))!important;
+    max-height:calc(100dvh - 245px)!important;overflow-y:auto!important;
+    z-index:200!important;pointer-events:auto!important;
+  }
+}
