@@ -6,7 +6,7 @@
   const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   const providerLabels={openai:'OpenAI',openrouter:'OpenRouter',deepseek:'DeepSeek',local:'Local GGUF'};
-  let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab='brain',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,compatibleVoice=null,wake=null,speechAudio=null;
+  let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab=(innerWidth<=720?'chat':'brain'),waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,compatibleVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const watchingJobs=new Set();
   const taskLabels={awaiting_approval:'Menunggu persetujuan',pending:'Menunggu persetujuan',queued:'Menunggu Windows',leased:'Sedang berjalan',running:'Sedang berjalan',completed:'Selesai',done:'Selesai',failed:'Gagal',cancelled:'Dibatalkan',expired:'Kedaluwarsa',rejected:'Tidak dijalankan',approved:'Persetujuan dicatat',needs_clarification:'Perlu nama dan tujuan yang jelas'};
@@ -16,6 +16,14 @@
     onSelect:(node,path)=>{renderInspector(node,path);if(node&&innerWidth<=650)toggleInspector(true);if(openPreview&&node){showNodePopup(node);return;}if(node?.category==='device')showDevicePopup().catch(e=>notify(e.message));else if(node&&node.category!=='integration')showNodePopup(node);},
     onRender:info=>{$('graphEngine').textContent=info.engine+' / '+info.nodes+' visible';}
   });
+
+  window.addEventListener('sonic:neural-mode',event=>{
+    graph.setVisible(currentTab==='brain'&&(!!csrf||openPreview)&&event.detail?.mode==='graph');
+  });
+  window.addEventListener('sonic:select-node',event=>{
+    if(event.detail?.id&&graph.lookup.has(event.detail.id)){setTab('brain');chooseNode(event.detail.id);}
+  });
+
   // Useful for local browser QA, contains only the already-authorized graph, no tokens.
   window.sonicGraph=graph;
 
@@ -75,7 +83,7 @@
     if(window.sonicWorkspace){window.sonicWorkspace.visible=tab==='workspace';if(tab==='workspace'&&!openPreview&&window.sonicPCWorkspace?.mode!=='pc')window.sonicWorkspace.refresh().catch(e=>notify(e.message));}
     document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
     window.dispatchEvent(new CustomEvent('sonic:tab',{detail:{tab}}));
-    $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&(!!csrf||openPreview));
+    $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&(!!csrf||openPreview)&&(!window.sonicNeural||window.sonicNeural.isGraphMode()));
     if(openPreview||!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});window.sonicWindows?.refresh().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadTasks();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
   }
   function toggleInspector(open){$('graphInspector').classList.toggle('open',open);$('toggleInspector').setAttribute('aria-expanded',String(open));if(open){$('graphFilters').classList.remove('open');}}
@@ -92,6 +100,7 @@
       $('graphEmpty').classList.toggle('hidden',data.counts.memories!==0);
       $('graphLimit').textContent=data.truncated?'Tampilan dibatasi '+data.counts.displayed_memories+' catatan / '+data.limits.topics+' topik.':'';
       renderFilters();renderHubs();renderSearch();renderInspector(graph.lookup.get(graph.selected)||null,graph.path,{preserveDraft:true});
+      window.dispatchEvent(new CustomEvent('sonic:graph-loaded',{detail:{nodes:data.nodes,counts:data.counts}}));
     }catch(error){notify('Graph belum dapat dimuat: '+error.message);}
   }
   function renderFilters(){const host=$('filterList');host.replaceChildren();
@@ -187,7 +196,7 @@
     const b=button('',async()=>{setTab('brain');await refreshGraph();chooseNode(event.node_id);},'receipt');
     b.append(el('span','',event.created?'Saved to Memory Vault':'Already in Memory Vault'),el('span','receipt-detail','#'+event.memory_id+' / View node'));host.append(b);
   }
-  function brainAnswer(text,error=false,events=[]){$('brainAnswer').classList.remove('hidden');$('brainAnswer').classList.toggle('error',error);$('brainAnswerText').textContent=text;$('brainReceipt').replaceChildren();events.forEach(e=>appendReceipt($('brainReceipt'),e));}
+  function brainAnswer(text,error=false,events=[]){if(currentTab!=='brain')return;$('brainAnswer').classList.remove('hidden');$('brainAnswer').classList.toggle('error',error);$('brainAnswerText').textContent=text;$('brainReceipt').replaceChildren();events.forEach(e=>appendReceipt($('brainReceipt'),e));}
   function setWaiting(value){waiting=value;$('send').disabled=value;$('brainSend').disabled=value;}
   async function send(source,options={}){if(liveVoice?.active){notify('Stop sesi suara sebelum mengirim chat teks.');return;}const input=$(source==='brain'?'brainMessage':'message'),text=String(options.overrideText??input.value).trim();if(!text||waiting)return;
     const agentRun=source==='chat'&&!!window.sonicResearch?.active()&&!options.approvalId;
@@ -195,8 +204,8 @@
     const requestId=options.requestId||crypto.randomUUID();
     if(!agentRun&&window.sonicMotion?.handleCommand(text)){input.value='';notify('SONIC Motion Core kembali ke posisi semula.');return;}
     setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');if(!options.overrideText)input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
-    try{const r=await API(agentRun?'/api/agent/research':'/api/chat',{method:'POST',body:JSON.stringify(agentRun?{query:text,purpose:window.sonicResearch.purpose()}:{message:text,selected_node_id:graph.selected||null,request_id:requestId,...(options.approvalId?{approval_request_id:options.approvalId}:{})})});
-      if(agentRun){pending.querySelector('.body').textContent=r.reply;window.sonicResearch.render(pending,r);brainAnswer(r.reply);activityState('idle');return;}
+    try{const r=await API(agentRun?'/api/agent/research':'/api/chat',{method:'POST',body:JSON.stringify(agentRun?{query:text,purpose:window.sonicResearch.purpose(),...window.sonicResearch.options()}:{message:text,selected_node_id:graph.selected||null,request_id:requestId,...(options.approvalId?{approval_request_id:options.approvalId}:{})})});
+      if(agentRun){pending.querySelector('.body').textContent=r.reply;window.sonicResearch.render(pending,r);window.sonicResearch.refreshMemory?.();activityState('idle');return;}
       pending.querySelector('.body').textContent=r.reply;const events=r.memory_events||[];
       events.forEach(e=>appendReceipt(pending,e));
       if((r.operator_proposals||[]).length)inlineChatApproval(pending,source,r.operator_proposals[0].id);
@@ -469,7 +478,7 @@
   }
   async function initialize(){const r=await API('/api/session');if(r.preview===true&&!ownerEntry){await applyOpenPreview(r);return;}$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
     const initialTab=currentTab;
-    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(brainConfigured?'brain':'setup'):currentTab);
+    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(innerWidth<=720?'chat':(brainConfigured?'brain':'setup')):currentTab);
     await loadTasks(true);
     window.dispatchEvent(new Event('sonic:owner-ready'));
   }

@@ -1,153 +1,181 @@
-/* SONIC v1.6.0: owner-only, read-only Web Research Agent UI. */
+/* SONIC v1.7 Read-only Research Agent + owner Research Memory. */
 (() => {
   'use strict';
-  const $ = id => document.getElementById(id);
-  let active = false;
-  let enabled = false;
-  let visible = true;
+  const $=id=>document.getElementById(id);
+  let active=false,enabled=false,visible=false;
+  let memoryOpen=false;
 
-  function setMode(research) {
-    active = Boolean(research && enabled && visible && !document.body.classList.contains('sonic-open-preview'));
-    const chat = $('agentModeChat');
-    const researchButton = $('agentModeResearch');
-    if (chat) chat.setAttribute('aria-pressed', String(!active));
-    if (researchButton) researchButton.setAttribute('aria-pressed', String(active));
-    if ($('agentPurpose')) $('agentPurpose').disabled = !active;
-    if ($('message')) {
-      $('message').maxLength = active ? 300 : 3500;
-      $('message').placeholder = active
-        ? 'Cari target, data, perusahaan, produk atau referensi publik...'
-        : 'Ask SONIC anything...';
-    }
-    if ($('agentPrivacy')) {
-      $('agentPrivacy').textContent = active
-        ? 'READ-ONLY AGENT · Pencarian dikirim ke Bing, URL halaman ke Jina Reader. SONIC tidak login ke website atau menjalankan perintah PC. AI lokal merangkum bila aktif.'
-        : 'Mode Chat biasa. Pilih Research Agent untuk mencari sumber publik dengan referensi.';
+  function setMode(wantResearch) {
+    active=Boolean(wantResearch&&enabled&&visible&&!document.body.classList.contains('sonic-open-preview'));
+    $('agentModeChat')?.setAttribute('aria-pressed',String(!active));
+    $('agentModeResearch')?.setAttribute('aria-pressed',String(active));
+    if($('agentPurpose'))$('agentPurpose').disabled=!active;
+    if($('agentResearchPreferences'))$('agentResearchPreferences').hidden=!active;
+    if(!active){memoryOpen=false;if($('agentMemoryPanel'))$('agentMemoryPanel').hidden=true;}
+    if($('message')){
+      $('message').maxLength=active?300:3500;
+      $('message').placeholder=active
+        ?'Cari topik atau referensi...'
+        :'Tanya SONIC...';
     }
   }
 
   function lock() {
-    const loggedIn = $('loginOverlay')?.classList.contains('hidden');
-    visible = Boolean(loggedIn && !document.body.classList.contains('sonic-open-preview'));
-    if ($('agentResearchToolbar')) $('agentResearchToolbar').hidden = !visible;
-    if (!visible) {
-      enabled = false;
-      setMode(false);
-    }
+    visible=Boolean($('loginOverlay')?.classList.contains('hidden')
+      && !document.body.classList.contains('sonic-open-preview'));
+    if($('agentResearchToolbar'))$('agentResearchToolbar').hidden=!visible;
+    if(!visible){enabled=false;setMode(false);}
   }
 
-  async function refresh() {
-    lock();
-    if (!visible) return;
-    try {
-      const response = await fetch('/api/agent/capabilities', {
-        method: 'GET', credentials: 'same-origin', cache: 'no-store'
-      });
-      if (!response.ok) {
-        enabled = false;
-        if (response.status === 401) lock();
-        return;
+  async function refresh(){
+    lock();if(!visible)return;
+    try{
+      const response=await fetch('/api/agent/capabilities',{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok){enabled=false;setMode(false);return;}
+      const data=await response.json();enabled=data.enabled===true;
+      const btn=$('agentModeResearch');
+      if(btn){
+        btn.disabled=!enabled;
+        btn.title=enabled?'Read-only web research, with citations':'Research Agent is disabled';
       }
-      const data = await response.json();
-      enabled = data.enabled === true;
-      if ($('agentModeResearch')) {
-        $('agentModeResearch').disabled = !enabled;
-        $('agentModeResearch').title = enabled
-          ? 'Cari sumber publik menggunakan read-only Research Agent'
-          : 'Research Agent belum diaktifkan di staging';
-      }
-      if ($('agentCapability')) {
-        $('agentCapability').textContent = enabled
-          ? (data.local_ai_running ? 'Local AI ready' : 'Research ready · AI local stopped')
-          : 'Research Agent disabled';
-      }
-      if (!enabled) setMode(false);
-    } catch (_) {
-      enabled = false;
-      setMode(false);
-    }
+      if($('agentCapability'))$('agentCapability').textContent=!enabled
+        ?'Research unavailable'
+        :data.local_ai_running
+          ?'Web ready · Local AI running'
+          :data.cloud_synthesis_enabled
+            ?'Web ready · Selected cloud AI available'
+            :'Web ready · Source results available';
+      if(!enabled)setMode(false);
+      if(enabled)refreshMemory();
+    }catch(_){enabled=false;setMode(false);}
   }
 
-  function render(host, response) {
-    const details = document.createElement('section');
-    details.className = 'agent-research-results';
-    details.setAttribute('aria-label', 'Research Agent evidence and steps');
-    const heading = document.createElement('div');
-    heading.className = 'agent-results-head';
-    const label = document.createElement('strong');
-    label.textContent = 'Research Agent · ' + (response.local_ai_used ? 'AI summary' : 'Sources only');
-    heading.append(label);
-    const count = document.createElement('span');
-    count.textContent = String(response.sources?.length || 0) + ' sources';
-    heading.append(count);
-    details.append(heading);
-    const list = document.createElement('div');
-    list.className = 'agent-source-list';
-    for (const source of (response.sources || []).slice(0, 5)) {
-      if (!source || typeof source.url !== 'string') continue;
-      let url;
-      try {
-        url = new URL(source.url);
-        if (url.protocol !== 'https:' || url.username || url.password || !url.hostname.includes('.')) continue;
-      } catch (_) { continue; }
-      const item = document.createElement('div');
-      item.className = 'agent-source';
-      const a = document.createElement('a');
-      a.href = url.href;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.textContent = '[' + source.id + '] ' + String(source.title || url.hostname).slice(0, 180);
-      item.append(a);
-      const meta = document.createElement('span');
-      meta.className = 'agent-source-meta';
-      meta.textContent = url.hostname + (source.date ? ' · ' + source.date : '') +
-        (source.read ? ' · page inspected' : ' · search snippet');
-      item.append(meta);
-      const excerpt = document.createElement('p');
-      excerpt.textContent = String(source.excerpt || source.snippet || '').slice(0, 520);
-      item.append(excerpt);
-      list.append(item);
-    }
-    details.append(list);
-    if (Array.isArray(response.steps)) {
-      const tally = document.createElement('p');
-      tally.className = 'agent-steps';
-      const countSearch = response.steps.filter(step => step.tool === 'web.search' && step.status === 'ok').length;
-      const countRead = response.steps.filter(step => step.tool === 'web.open' && step.status === 'ok').length;
-      tally.textContent = 'Tools: ' + countSearch + ' searches · ' + countRead +
-        ' pages read · ' + (response.local_ai_used ? 'local synthesis complete' : 'local synthesis unavailable');
-      details.append(tally);
-    }
-    if (response.notice) {
-      const note = document.createElement('p');
-      note.className = 'agent-research-notice';
-      note.textContent = String(response.notice).slice(0, 300);
-      details.append(note);
-    }
-    host.append(details);
+  function text(tag,value,classname){
+    const el=document.createElement(tag);if(classname)el.className=classname;
+    el.textContent=String(value||'');return el;
   }
 
-  function init() {
-    if (!$('agentResearchToolbar')) return;
-    $('agentModeChat')?.addEventListener('click', () => setMode(false));
-    $('agentModeResearch')?.addEventListener('click', () => setMode(true));
-    window.addEventListener('sonic:owner-ready', refresh);
-    window.addEventListener('sonic:logout', () => {
-      enabled = false;
-      setMode(false);
-      lock();
+  function render(host,response){
+    const box=document.createElement('section');box.className='agent-research-results';
+    box.setAttribute('aria-label','Research results and sources');
+    const heading=text('div','', 'agent-results-head');
+    const labels={
+      local_summary:'Local AI summary',cloud_summary:'Cloud AI · source-backed',
+      sources_only:'Sources collected',
+      general_explanation_unverified:'AI explanation · sources unverified'
+    };
+    heading.append(text('strong','Research · '+(labels[response.mode]||'Results')));
+    heading.append(text('span',String(response.sources?.length||0)+' sources'));
+    box.append(heading);
+    if(response.memory_saved){
+      box.append(text('p','Saved to Research Memory · '+String(response.research_id||'').slice(0,8),'agent-research-saved'));
+    }
+    const sources=Array.isArray(response.sources)?response.sources:[];
+    if(sources.length){
+      const details=document.createElement('details');details.className='agent-sources-details';
+      const summary=text('summary','Lihat '+sources.length+' sumber dan kutipan');
+      details.append(summary);
+      const list=text('div','','agent-source-list');
+      for(const source of sources.slice(0,5)){
+        if(!source||typeof source.url!=='string')continue;
+        let url;
+        try{url=new URL(source.url);if(url.protocol!=='https:'||url.username||url.password||!url.hostname.includes('.'))continue;}catch(_){continue;}
+        const item=text('div','','agent-source');
+        const link=text('a','['+source.id+'] '+String(source.title||url.hostname).slice(0,180));
+        link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';
+        item.append(link);
+        item.append(text('span',url.hostname+
+          (source.date?' · '+source.date:'')+
+          (source.read?' · inspected':' · snippet only'),'agent-source-meta'));
+        item.append(text('p',String(source.excerpt||source.snippet||'').slice(0,500)));
+        list.append(item);
+      }
+      details.append(list);box.append(details);
+    }else{
+      box.append(text('p',response.no_sources_reason==='provider_unavailable'
+        ?'Search service unavailable. No references were invented.'
+        :'No relevant sources found. Try a broader topic, alternative terminology or specific organization.','agent-research-notice'));
+    }
+    if(response.memory_matches?.length){
+      const matches=document.createElement('details');matches.className='agent-related-memory';
+      matches.append(text('summary','Related saved research ('+response.memory_matches.length+')'));
+      for(const item of response.memory_matches.slice(0,3)){
+        matches.append(text('p',String(item.project||'General')+' · '+String(item.query||'').slice(0,150)));
+      }
+      box.append(matches);
+    }
+    if(Array.isArray(response.steps)){
+      const searches=response.steps.filter(s=>s.tool==='web.search'&&s.status==='ok').length;
+      const pages=response.steps.filter(s=>s.tool==='web.open'&&s.status==='ok').length;
+      box.append(text('p',searches+' searches · '+pages+' pages inspected'+
+        (response.model_provider?' · '+response.model_provider+' synthesis':''),'agent-steps'));
+    }
+    if(response.notice&&sources.length)box.append(text('p',String(response.notice).slice(0,240),'agent-research-notice'));
+    host.append(box);
+  }
+
+  async function refreshMemory(){
+    if(!enabled||!visible)return;
+    try{
+      const query=$('agentMemorySearch')?.value.trim()||'';
+      const response=await fetch('/api/agent/memory?limit=30&search='+encodeURIComponent(query),{
+        credentials:'same-origin',cache:'no-store'});
+      if(!response.ok)return;
+      const data=await response.json();const results=data.results||[];
+      const b=$('agentHistoryToggle');if(b)b.textContent='Saved ('+data.total+')';
+      const host=$('agentMemoryItems');if(!host)return;
+      host.replaceChildren();
+      if(!results.length){host.append(text('p','Belum ada riset tersimpan yang cocok.','agent-memory-empty'));return;}
+      for(const item of results){
+        const card=text('div','','agent-memory-entry');
+        card.append(text('strong',item.query));
+        card.append(text('p',item.project+' · '+item.source_count+' sources · '+(item.created_at||'').slice(0,10)));
+        const actions=text('div','','agent-memory-actions');
+        const reuse=text('button','Use in research');
+        reuse.type='button';reuse.addEventListener('click',()=>{
+          if($('message')){$('message').value='Bandingkan temuan dari riset "'+item.query+'" dengan data terbaru.';$('message').focus();}
+          if($('agentMemoryPanel'))$('agentMemoryPanel').hidden=true;
+          memoryOpen=false;
+        });
+        const remove=text('button','Delete');remove.type='button';
+        remove.addEventListener('click',async()=>{
+          if(!confirm('Hapus riset ini dari Research Memory? Riwayat Chat tidak ikut dihapus.'))return;
+          try{
+            const session=await (await fetch('/api/session',{credentials:'same-origin',cache:'no-store'})).json();
+            if(!session.authenticated||!session.csrf)throw Error('Owner login required');
+            const response=await fetch('/api/agent/memory/'+encodeURIComponent(item.id),{
+              method:'DELETE',credentials:'same-origin',headers:{'X-Sonic-CSRF':session.csrf}});
+            if(!response.ok)throw Error('Delete failed ('+response.status+')');
+            await refreshMemory();
+          }catch(error){alert('Tidak bisa menghapus: '+error.message);}
+        });
+        actions.append(reuse,remove);card.append(actions);host.append(card);
+      }
+    }catch(_){ /* An inaccessible memory list cannot reveal private entries. */ }
+  }
+
+  function init(){
+    if(!$('agentResearchToolbar'))return;
+    $('agentModeChat')?.addEventListener('click',()=>setMode(false));
+    $('agentModeResearch')?.addEventListener('click',()=>setMode(true));
+    $('agentHistoryToggle')?.addEventListener('click',()=>{
+      memoryOpen=!memoryOpen;
+      if($('agentMemoryPanel'))$('agentMemoryPanel').hidden=!memoryOpen;
+      $('agentHistoryToggle')?.setAttribute('aria-expanded',String(memoryOpen));
+      if(memoryOpen)refreshMemory();
     });
+    $('agentRefreshMemory')?.addEventListener('click',refreshMemory);
+    $('agentMemorySearch')?.addEventListener('input',()=>refreshMemory());
+    window.addEventListener('sonic:owner-ready',refresh);
+    window.addEventListener('sonic:logout',()=>{enabled=false;memoryOpen=false;setMode(false);lock();});
     refresh();
   }
-
-  window.sonicResearch = {
-    active: () => active && enabled && visible,
-    purpose: () => ['targets', 'data', 'references'].includes($('agentPurpose')?.value)
-      ? $('agentPurpose').value : 'references',
-    render,
-    refresh,
-    reset: () => { enabled = false; setMode(false); lock(); }
+  window.sonicResearch={
+    active:()=>active&&enabled&&visible,
+    purpose:()=>['targets','data','references'].includes($('agentPurpose')?.value)?$('agentPurpose').value:'references',
+    options:()=>({save_to_memory:Boolean($('agentSaveMemory')?.checked),
+                 project:($('agentProject')?.value||'General').trim().slice(0,80)||'General'}),
+    render,refresh,refreshMemory,reset:()=>{enabled=false;setMode(false);lock();}
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once: true});
-  else init();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

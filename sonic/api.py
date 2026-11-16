@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.6.0'
+VERSION = '1.7.0'
 
 
 @asynccontextmanager
@@ -121,7 +121,7 @@ def owner_portal():
     rendered = render_passkey_page(html, VERSION, owner_entry=True)
     rendered = rendered.replace("__SONIC_PUBLIC_URL__", html_escape(public_url(), quote=True))
     rendered = rendered.replace('href="/site.webmanifest?v=1.5.1"',
-                                'href="/owner.webmanifest?v=1.6.0"', 1)
+                                'href="/owner.webmanifest?v=1.7.0"', 1)
     return HTMLResponse(rendered, headers={
         "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow",
         "Referrer-Policy": "same-origin"
@@ -392,6 +392,8 @@ from .local_ai import router as local_ai_router
 app.include_router(local_ai_router)
 from .research_agent import router as research_agent_router
 app.include_router(research_agent_router)
+from .research_memory import router as research_memory_router
+app.include_router(research_memory_router)
 from .activation import router as activation_router
 from .knowledge import router as knowledge_router
 from .integrations import router as integrations_router

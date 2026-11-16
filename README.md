@@ -75,3 +75,6 @@ Staging adds an opt-in `/owner` entry for authenticated iPhone and desktop contr
 ## SONIC v1.6.0 Research Agent
 
 Owner-only Chat > Research Agent supports target discovery, source-backed public data lookup and references using Bing RSS + Jina Reader, with optional DeepSeek GGUF local summaries. It is read-only; no PC commands or autonomous actions. See docs/SONIC_RESEARCH_AGENT_V160.md.
+## SONIC v1.7 Intelligence Experience
+
+Research Agent v1.7 repairs MITM/acronym search, adds Wikimedia source fallback, optional source-backed synthesis with the selected cloud provider when the local GGUF is stopped, and persistent owner-approved Research Memory. The iPhone UI uses a slim header, five-tab nav, keyboard-safe composer and a Knowledge List with an optional 3D graph. These are additive staging changes with no MT5/trading modifications. Technical details: [SONIC v1.7 Intelligence Rebuild](docs/SONIC_V170_INTELLIGENCE_REBUILD.md).
