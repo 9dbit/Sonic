@@ -31,7 +31,7 @@ def test_site_head_exposes_canonical_og_and_favicons(client,monkeypatch):
     assert "/favicon.ico?v=1.5.1" in html
     assert "/assets/favicon-16.png?v=1.5.1" in html
     assert "/assets/favicon-32.png?v=1.5.1" in html
-    assert client.get("/api/health").json()["version"]=="1.5.1"
+    assert client.get("/api/health").json()["version"]=="1.5.2"
 
 def test_open_preview_and_other_origins_use_their_own_image_url(client,monkeypatch):
     monkeypatch.setenv("SONIC_PUBLIC_URL","https://sonic.example.net")
