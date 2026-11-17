@@ -390,6 +390,8 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
 
 from .local_ai import router as local_ai_router
 app.include_router(local_ai_router)
+from .huggingface_hub import router as huggingface_hub_router
+app.include_router(huggingface_hub_router)
 from .research_agent import router as research_agent_router
 app.include_router(research_agent_router)
 from .research_memory import router as research_memory_router

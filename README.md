@@ -78,3 +78,7 @@ Owner-only Chat > Research Agent supports target discovery, source-backed public
 ## SONIC v1.7 Intelligence Experience
 
 Research Agent v1.7 repairs MITM/acronym search, adds Wikimedia source fallback, optional source-backed synthesis with the selected cloud provider when the local GGUF is stopped, and persistent owner-approved Research Memory. The iPhone UI uses a slim header, five-tab nav, keyboard-safe composer and a Knowledge List with an optional 3D graph. These are additive staging changes with no MT5/trading modifications. Technical details: [SONIC v1.7 Intelligence Rebuild](docs/SONIC_V170_INTELLIGENCE_REBUILD.md).
+
+## Hugging Face Hub (v1.8 module)
+
+Discover public GGUF models, inspect quantizations and manage SONIC's pinned local model through **Devices → Hugging Face Models**. Owner-only, search-only Hub API, with strict pinned runtime isolation. See [Hugging Face Hub v1.8](docs/SONIC_HUGGINGFACE_HUB_V180.md).
