@@ -55,8 +55,20 @@ with local_server(settings={'DEEPSEEK_API_KEY':'LOCAL-FAKE-DO-NOT-SEND','SONIC_B
         expect(page.locator('#orbitDevice')).to_have_text('Offline')
         expect(page.locator('#orbitModel')).to_have_text('deepseek-flash')
         expect(page.locator('#sonicHeaderOrb img')).to_be_visible()
+        # Mobile defaults to Knowledge List. Explicitly enter 3D before Canvas QA.
+        if size['width']<=720:
+            page.locator('#neuralGraphBtn').click()
         page.wait_for_timeout(900)
         layout(page,label)
+        # CI's headless RAF can throttle the first idle animation frame. The
+        # regression is about genuine Canvas2D output, so explicitly request
+        # a draw once the visible orb has non-zero layout dimensions.
+        page.wait_for_function("""() => {
+            const m=window.sonicMotion;
+            return !!m && !!m.float && m.float.offsetWidth>=20
+                 && m.float.offsetHeight>=20 && !!m.ctx;
+        }""",timeout=8000)
+        page.evaluate("() => window.sonicMotion.draw()")
         page.screenshot(path=str(OUT/f'{label}-brain.png'))
         pixels=page.evaluate('''()=>{const m=sonicMotion,c=m.canvas,p=m.ctx.getImageData(0,0,c.width,c.height).data;let visible=0,white=0,blue=0,purple=0;for(let i=0;i<p.length;i+=4){if(p[i+3]<25)continue;visible++;if(p[i]>180&&p[i+1]>180&&p[i+2]>180)white++;if(p[i+2]>p[i+1]&&p[i+1]>p[i])blue++;if(p[i]>p[i+1]&&p[i+2]>p[i+1])purple++;}return {renderer:m.renderer,visible,white,blue,purple,width:c.width,height:c.height}}''')
         assert pixels['renderer']=='orb-v140' and pixels['visible']>500 and pixels['white']>20 and pixels['blue']>30 and pixels['purple']>30,pixels
