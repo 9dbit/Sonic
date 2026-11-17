@@ -1,6 +1,6 @@
 # SONIC WiFi Finder 1.0.0
 
-**Status paket ini — 18 November 2026:** source dan UI sudah dibuat, 40 pengujian otomatis lulus, dan startup UI dengan data demo berhasil. File `.exe` dan `.dmg` belum dihasilkan. Lihat [STATUS-BUILD.md](STATUS-BUILD.md) untuk hambatan build dan langkah yang sudah disiapkan. Nama paket pada tabel di bawah adalah target hasil build.
+**Rilis 18 November 2026:** paket Windows x64, Mac Apple Silicon, dan Mac Intel sudah berhasil dibangun. Pada setiap platform, 40 pengujian otomatis dan tes startup executable dengan data demo lulus. Tes Windows memakai mode tampilan native dan memeriksa ketersediaan font. Lihat [hasil CI](https://github.com/9dbit/Sonic/actions/runs/44175832044) serta [STATUS-BUILD.md](STATUS-BUILD.md).
 
 Aplikasi desktop untuk melihat kembali password Wi-Fi yang sudah tersimpan pada perangkat Anda. Pilih satu jaringan, tampilkan password melalui izin sistem, lalu salin bila diperlukan.
 
@@ -12,10 +12,13 @@ Antarmuka berbahasa Indonesia menggunakan tema hitam–abu dan aksen biru. Tidak
 | --- | --- | --- |
 | Windows x64 | `SONIC-WiFi-Finder-1.0.0-Windows-x64.exe` | Klik dua kali file. Aplikasi bersifat portable. |
 | Mac dengan Apple Silicon | `SONIC-WiFi-Finder-1.0.0-macOS-AppleSilicon.dmg` | Buka DMG, seret **SONIC WiFi Finder.app** ke **Applications**, lalu buka aplikasinya. |
+| Mac dengan prosesor Intel | `SONIC-WiFi-Finder-1.0.0-macOS-Intel.dmg` | Buka DMG, seret **SONIC WiFi Finder.app** ke **Applications**, lalu buka aplikasinya. |
 
-Paket Apple Silicon ditujukan untuk Mac seri M, bukan Mac Intel. Lihat catatan build untuk lingkungan yang benar-benar diuji.
+Pilih paket Mac sesuai jenis prosesor: Apple Silicon untuk chip seri M, atau Intel untuk Mac Intel. Lihat catatan build untuk lingkungan yang benar-benar diuji.
 
 Build Windows belum memakai sertifikat penerbit. Build macOS memakai tanda tangan ad-hoc dan belum dinotarisasi Apple. Sistem mungkin meminta tinjauan saat pertama dibuka. Periksa nama file dan asal unduhan; jika macOS memblokir aplikasi, tinjau izin aplikasi tersebut melalui **System Settings → Privacy & Security**. Tidak perlu menonaktifkan perlindungan sistem secara global.
+
+EXE Windows mengekstrak dependensi sementara saat dijalankan dan membutuhkan ruang disk untuk proses tersebut. TRADEVICEPC sebelumnya melaporkan ruang disk habis dan koneksi perangkat belum dapat diverifikasi kembali. Paket ini diuji di CI; aplikasi belum dikonfirmasi berjalan atau terpasang pada TRADEVICEPC maupun SPARK.
 
 ## Cara menggunakan
 
@@ -54,7 +57,7 @@ Di Mac, gunakan `python3` bila perintah `python` tidak tersedia. Dependensi UI d
 
 Untuk membuat paket Windows, jalankan `scripts/build_windows.ps1` melalui PowerShell. Untuk macOS, jalankan `sh scripts/build_macos.sh` melalui Terminal. Masing-masing membuat lingkungan build terpisah dan menghasilkan paket di folder `dist`. Proses build memerlukan internet untuk mengunduh dependensi. Detail pengujian tersedia pada [BUILD-AND-VALIDATION.md](docs/BUILD-AND-VALIDATION.md).
 
-Workflow alternatif `ci/sonic-wifi-desktop.yml` disiapkan untuk repository SONIC dengan source aplikasi di `tools/wifi-finder/` dan workflow di `.github/workflows/sonic-wifi-desktop.yml`. Matrix build menargetkan Windows x64, Mac Apple Silicon, dan Mac Intel. Workflow belum dijalankan.
+Workflow `ci/sonic-wifi-desktop.yml` digunakan pada repository SONIC dengan source aplikasi di `tools/wifi-finder/` dan workflow di `.github/workflows/sonic-wifi-desktop.yml`. Build rilis berasal dari [commit `e397b79`](https://github.com/9dbit/Sonic/commit/e397b79f5e830ec8ae47f79f996a9230ebea1189), pada branch `build/wifi-finder-20261118`.
 
 ## Referensi resmi
 

@@ -1,41 +1,44 @@
-# Status SONIC WiFi Finder
+# Status rilis SONIC WiFi Finder 1.0.0
 
 Tanggal: 18 November 2026 (WIB)
 
-## Sudah selesai
+**Ketiga paket native berhasil dibangun dan lulus tes startup di CI.** Source, aset, dan workflow sudah dipublikasikan ke repository SONIC setelah persetujuan pengguna.
 
-- Aplikasi Python/PySide6 dengan UI bahasa Indonesia dan tema SONIC hitam–abu–biru.
-- Backend Windows Native WLAN dan macOS Keychain untuk satu jaringan tersimpan yang dipilih pengguna.
-- Pencarian jaringan, tampilkan/sembunyikan, salin, timer 30 detik, petunjuk izin OS, dan input SSID manual untuk Mac.
-- 40 pengujian otomatis lulus: 22 backend dan 18 UI. Semua memakai data sintetis atau stub OS.
-- Startup UI berhasil di lingkungan Linux untuk verifikasi antarmuka; 3 jaringan demo dimuat dan password awalnya tersembunyi.
-- Pemeriksaan visual pada ukuran 1040 × 740 dan 880 × 650.
-- Skrip native PyInstaller, spesifikasi aplikasi, ikon PNG/ICO/ICNS, lisensi, panduan, serta workflow CI alternatif.
+- [Hasil CI final](https://github.com/9dbit/Sonic/actions/runs/44175832044)
+- [Commit source rilis `e397b79`](https://github.com/9dbit/Sonic/commit/e397b79f5e830ec8ae47f79f996a9230ebea1189)
+- Branch: `build/wifi-finder-20261118`
 
-## Belum selesai
+## Paket hasil build
 
-- Belum ada executable Windows `.exe` atau disk image macOS `.dmg` yang berhasil dibuat.
-- Belum ada startup test pada executable Windows atau aplikasi macOS hasil bundling.
-- Tidak ada password Wi-Fi pribadi yang dibaca selama pengembangan/pengujian.
-- Kompatibilitas pemulihan pada profil Wi-Fi nyata dan kebijakan akun tertentu belum diuji langsung.
+| Platform | File | Hasil |
+| --- | --- | --- |
+| Windows x64 | `SONIC-WiFi-Finder-1.0.0-Windows-x64.exe` | Build dan startup lulus |
+| Mac Apple Silicon | `SONIC-WiFi-Finder-1.0.0-macOS-AppleSilicon.dmg` | Build dan startup lulus |
+| Mac Intel | `SONIC-WiFi-Finder-1.0.0-macOS-Intel.dmg` | Build dan startup lulus |
 
-## Hambatan yang diamati
+Setiap paket disertai manifest ukuran, SHA-256, arsitektur, versi runtime, dan status penandatanganan. Artefak CI juga menyediakan laporan startup dan preview UI memakai data demo.
 
-1. Instalasi dependensi untuk build Windows pada TRADEVICEPC gagal dengan `OSError: [Errno 28] No space left on device`. Jumlah ruang bebas per drive belum dapat diverifikasi karena pemeriksaan berikutnya timeout.
-2. Panggilan build dan pembacaan log ke Mac SPARK tidak mendapat respons hingga timeout; eksekusi setup Mac belum terkonfirmasi. Sambungan kedua perangkat kemudian tidak merespons stabil.
-3. Branch `build/wifi-finder-20261118` sudah dibuat pada `9dbit/Sonic`, menunjuk commit awal `89ba913ef2a4282d10ae7c54cb3170019d383bd8`. Belum ada source/aset aplikasi ini yang dipublikasikan.
-4. Peninjauan persetujuan otomatis menolak unggah aset pertama ke repository publik tersebut karena belum ada izin eksplisit untuk publikasi paket lokal. Tidak ada percobaan lanjutan untuk melewati penolakan.
+## Verifikasi yang selesai
 
-## Paket konkret yang siap dibangun
+- Pada **masing-masing platform**, 40 tes lulus: 22 backend dan 18 UI. Semua memakai profil sintetis atau stub OS.
+- Executable hasil bundling membuka UI, memuat tiga jaringan demo, dan menampilkan password dalam keadaan tersembunyi pada awal startup.
+- Pemeriksaan `font_ready` memastikan huruf Latin dan angka yang diuji tersedia. Tes paket Windows memakai backend tampilan normal dengan `qt_platform=windows`.
+- Skrip build Mac memeriksa tanda tangan aplikasi dan integritas DMG menggunakan fasilitas macOS.
+- Tidak ada password Wi-Fi pribadi yang dibaca selama pengembangan atau pengujian.
 
-Workflow CI yang disertakan menempatkan aplikasi pada `tools/wifi-finder/` dan menjalankan:
+Pemeriksaan font ditambahkan setelah screenshot dari mode uji tanpa layar di Windows menunjukkan karakter kotak. Jalur uji Windows telah diperbaiki dan build verifikasi ulang berhasil.
 
-1. Instalasi dependensi yang dipatok versinya.
-2. Pengujian backend dan UI memakai data sintetis.
-3. Build native pada Windows x64, macOS Apple Silicon, dan macOS Intel.
-4. Startup test executable hasil build menggunakan mode demo.
-5. Penyediaan paket, manifest SHA-256, laporan startup, dan preview UI.
+## Batas verifikasi dan penandatanganan
 
-Publikasi source, ikon, dokumentasi, lisensi, tes, dan workflow ke repository publik SONIC memerlukan persetujuan pengguna untuk menyelesaikan jalur CI. Alternatifnya, build dapat dilanjutkan pada perangkat native setelah sambungan dan ruang disk tersedia.
+Paket Windows belum memakai sertifikat penerbit. Paket Mac memakai tanda tangan ad-hoc dan belum dinotarisasi Apple. Izin pembukaan aplikasi serta akses profil/Keychain tetap mengikuti sistem operasi.
 
-Paket Windows direncanakan tanpa sertifikat penerbit; paket Mac memakai tanda tangan ad-hoc dan belum dinotarisasi Apple. Semua pemeriksaan izin OS tetap berlaku.
+Pengujian CI tidak membuktikan bahwa semua profil Wi-Fi nyata, versi OS, atau kebijakan akun memberi izin yang sama. Pemulihan password pada akun pengguna belum diuji langsung. Versi sistem yang benar-benar digunakan tercatat di manifest setiap paket; metadata versi minimum aplikasi bukan jaminan pengujian seluruh versi macOS.
+
+## Kondisi perangkat pengguna
+
+Build melalui CI menyelesaikan pembuatan paket. Kondisi ruang disk dan koneksi perangkat pengguna belum dinyatakan selesai:
+
+- Installer dependensi di TRADEVICEPC sebelumnya melaporkan `No space left on device`; pemeriksaan ruang bebas berikutnya timeout. EXE satu file memerlukan ruang sementara saat dijalankan.
+- Setup dan pembacaan log pada SPARK sebelumnya timeout; keberhasilan setup lokal belum dikonfirmasi.
+
+Aplikasi belum dikonfirmasi berjalan atau terpasang pada kedua perangkat tersebut. Panduan penggunaan tersedia pada [README.md](README.md), dan proses build dijelaskan pada [BUILD-AND-VALIDATION.md](docs/BUILD-AND-VALIDATION.md).
