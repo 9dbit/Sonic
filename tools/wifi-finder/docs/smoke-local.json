@@ -1,0 +1,8 @@
+{
+  "app": "SONIC WiFi Finder",
+  "version": "1.0.0",
+  "demo_only": true,
+  "startup_ok": true,
+  "profile_count": 3,
+  "password_initially_hidden": true
+}

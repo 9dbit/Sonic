@@ -1,0 +1,68 @@
+name: SONIC WiFi desktop packages
+
+on:
+  push:
+    branches: ['build/wifi-finder-20261118']
+    paths: ['tools/wifi-finder/**', '.github/workflows/sonic-wifi-desktop.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.package }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            package: Windows-x64
+          - os: macos-15
+            package: macOS-AppleSilicon
+          - os: macos-15-intel
+            package: macOS-Intel
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: tools/wifi-finder
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned build dependencies
+        run: python -m pip install -r requirements-build.txt
+      - name: Test backend and UI with synthetic profiles
+        run: python -m unittest discover -s tests -v
+      - name: Build native package
+        run: python scripts/build_native.py
+      - name: Launch packaged application with synthetic profiles
+        shell: python
+        run: |
+          import json, os, pathlib, subprocess, sys
+          root = pathlib.Path.cwd()
+          executable = root / 'dist' / 'SONIC-WiFi-Finder.exe' if sys.platform == 'win32' else root / 'dist' / 'SONIC WiFi Finder.app' / 'Contents' / 'MacOS' / 'SONIC WiFi Finder'
+          report = root / 'dist' / 'startup-test.json'
+          preview = root / 'dist' / 'UI-demo-preview.png'
+          subprocess.run([str(executable), '--smoke-test', '--smoke-report', str(report), '--screenshot', str(preview)], check=True, timeout=90)
+          result = json.loads(report.read_text(encoding='utf-8'))
+          assert result['demo_only'] and result['startup_ok'] and result['password_initially_hidden']
+          print(json.dumps(result, indent=2))
+      - name: Upload package and verification files
+        uses: actions/upload-artifact@v4
+        with:
+          name: SONIC-WiFi-Finder-1.0.0-${{ matrix.package }}
+          path: |
+            tools/wifi-finder/dist/SONIC-WiFi-Finder-1.0.0-*.exe
+            tools/wifi-finder/dist/SONIC-WiFi-Finder-1.0.0-*.dmg
+            tools/wifi-finder/dist/*.manifest.json
+            tools/wifi-finder/dist/startup-test.json
+            tools/wifi-finder/dist/UI-demo-preview.png
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
