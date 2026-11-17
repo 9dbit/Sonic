@@ -12,6 +12,7 @@ import shutil
 
 from playwright.sync_api import sync_playwright, expect
 from qa_server import local_server
+from e2e_auth_isolation_v181 import assert_locked
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "artifacts" / "owner-portal-v153"
@@ -62,6 +63,8 @@ with local_server(settings=settings) as (base, owner_token), sync_playwright() a
         page.goto(base + "/owner", wait_until="domcontentloaded")
         expect(page.locator("#loginOverlay")).to_be_visible()
         expect(page.locator("#ownerToken")).to_be_visible()
+        assert_locked(page)
+        page.screenshot(path=str(OUT / (name + "-before-login.png")), full_page=False)
         assert "sonic-open-preview" not in (page.locator("body").get_attribute("class") or "")
         manifest = page.request.get(base + "/owner.webmanifest").json()
         assert manifest["start_url"] == "/owner"
@@ -95,6 +98,8 @@ with local_server(settings=settings) as (base, owner_token), sync_playwright() a
         assert page.request.get(base + "/api/local-ai/status").status == 401
         page.reload(wait_until="domcontentloaded")
         expect(page.locator("#loginOverlay")).to_be_visible()
+        assert_locked(page)
+        page.screenshot(path=str(OUT / (name + "-after-logout.png")), full_page=False)
         results.append({"viewport": name, "guest": "isolated",
                         "private_login": "passed", "owner_status": "authenticated",
                         "after_logout": "guest", "no_overflow": True,
