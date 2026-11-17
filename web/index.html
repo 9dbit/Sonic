@@ -75,6 +75,8 @@
   <link rel="stylesheet" href="/assets/productivity-v148.css?v=1.5.1">
   <link rel="stylesheet" href="/assets/sonic-black-grey-blue-v152.css?v=1.5.3">
   <script src="/assets/local-ai-v152.js?v=1.5.2" defer></script>
+  <link rel="stylesheet" href="/assets/huggingface-v180.css?v=1.8.0">
+  <script src="/assets/huggingface-v180.js?v=1.8.0" defer></script>
   <link rel="stylesheet" href="/assets/mobile-v170.css?v=1.7.0">
   <script src="/assets/mobile-v170.js?v=1.7.0" defer></script>
   <script src="/assets/neural-knowledge-v170.js?v=1.7.0" defer></script>
@@ -268,8 +270,54 @@
       <section class="panel info-panel hidden" id="devicesPanel">
         <div class="section-head"><div><span class="eyebrow">AUTHORIZED CONNECTIONS</span><h2>Devices</h2><p>Status nyata dari companion yang terdaftar.</p></div></div>
         <div class="device-card"><svg class="device-icon"><use href="#i-device"/></svg><div><strong id="deviceName">TRADEVICEPC</strong><p id="deviceDetail">Waiting for companion pairing</p><small>Windows telemetry and owner-approved commands</small></div><span id="deviceBadge" class="pill offline">Offline</span></div>
-        <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button><button id="deviceRAM">Task Manager overview</button></div>
+        <div class="device-controls"><button id="refreshDevice">Refresh status</button><button id="snapshotDevice" disabled>Request system snapshot</button><button id="deviceRAM">Task Manager overview</button><button type="button" id="hfJump">Hugging Face Models</button></div>
         <p id="companionUpgradeHint" class="small-note hidden">PC online, RAM telemetry belum aktif. Jalankan installer companion dari <a href="https://github.com/9dbit/Sonic/blob/feature/sonic-motion-persona-fixes-v061-20261026/scripts/Install-Sonic-Companion.ps1" target="_blank" rel="noopener noreferrer">GitHub SONIC</a> secara lokal setelah review source. Jangan kirim token perangkat ke browser atau chat.</p><div id="deviceTelemetry" class="device-telemetry" aria-live="polite"><div class="telemetry-row"><span>TRADEVICEPC RAM</span><b id="telemetryValue">Not available</b></div><div class="telemetry-bar"><span id="telemetryFill"></span></div><small id="telemetrySource">Waiting for fresh companion telemetry.</small></div>
+        <section id="huggingFaceHub" class="operator-panel hf-hub" aria-labelledby="hfTitle">
+          <header class="hf-heading">
+            <div><span class="eyebrow">SONIC / MODELS / HUGGING FACE</span>
+            <h3 id="hfTitle">Hugging Face Hub <span class="hf-version">1.8</span></h3>
+            <p>Temukan GGUF, periksa repositori, dan kendalikan model lokal yang telah diverifikasi.</p></div>
+            <span id="hfConnection" class="hf-state" role="status">CHECKING</span>
+          </header>
+          <div class="hf-status-strip" aria-label="Hugging Face local model status">
+            <div><span>DEVICE</span><strong id="hfDevice">TRADEVICEPC</strong></div>
+            <div><span>LOCAL ENGINE</span><strong id="hfLocalState">Checking</strong></div>
+            <div><span>FREE VRAM</span><strong id="hfFreeVram">N/A</strong></div>
+          </div>
+          <div class="hf-layout">
+            <div class="hf-discover">
+              <div class="hf-panel-head"><strong>Discover models</strong><span>Hugging Face metadata</span></div>
+              <form id="hfSearchForm" class="hf-search">
+                <label class="sr-only" for="hfSearchInput">Search Hugging Face models</label>
+                <input id="hfSearchInput" type="search" value="Qwen3.5 GGUF" minlength="2" maxlength="110" autocomplete="off" placeholder="Cari model atau organisasi..." required>
+                <button type="submit" id="hfSearchButton">Search</button>
+              </form>
+              <div class="hf-quick-filters"><button type="button" data-hf-preset="Qwen3.5 GGUF">Qwen</button><button type="button" data-hf-preset="DeepSeek GGUF">DeepSeek</button><button type="button" data-hf-preset="Llama GGUF">Llama</button><button type="button" data-hf-preset="Gemma GGUF">Gemma</button></div>
+              <div class="hf-counter"><span id="hfSearchStatus" role="status" aria-live="polite">Masuk sebagai owner untuk mencari model.</span><span id="hfSearchCount"></span></div>
+              <div id="hfResults" class="hf-results" aria-label="Hugging Face model results"></div>
+            </div>
+            <div class="hf-inspect">
+              <div class="hf-panel-head"><strong>Model inspector</strong><span id="hfInspectionBadge">Pinned model</span></div>
+              <div class="hf-model-overview"><span class="hf-model-glyph">HF</span><div class="hf-model-copy"><strong id="hfSelectedTitle">DeepSeek-V4-Pro-Qwen3.5-9B</strong><span id="hfSelectedAuthor">mradermacher</span></div></div>
+              <div class="hf-stats"><span id="hfDownloads">Downloads: ...</span><span id="hfLikes">Likes: ...</span><span id="hfLicense">License: ...</span></div>
+              <div class="hf-inspect-actions">
+                <a id="hfOpenRepository" href="https://huggingface.co/mradermacher/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-GGUF" target="_blank" rel="noopener noreferrer">Open repository</a>
+                <button id="hfRefreshDetails" type="button">Refresh details</button>
+              </div>
+              <div class="hf-file-toolbar"><strong>GGUF files</strong><span id="hfFileCount">...</span></div>
+              <div id="hfFiles" class="hf-files" role="list"><p>Periksa metadata model untuk melihat quantization yang tersedia.</p></div>
+              <div class="hf-runtime-note"><strong>Runtime policy</strong><p id="hfRuntimeNotice">Hanya GGUF Q4_K_M yang telah diverifikasi di TRADEVICEPC dapat dioperasikan melalui SONIC. Model lain hanya bisa diperiksa dan dibuka di Hugging Face.</p></div>
+              <div class="hf-run-actions">
+                <button id="hfStartPinned" type="button" disabled>Start local</button>
+                <button id="hfStopPinned" type="button" disabled>Stop local</button>
+                <button id="hfUseChatPinned" type="button" disabled>Use for Chat</button>
+                <button id="hfGoChat" type="button">Open Chat</button>
+              </div>
+              <p id="hfActionStatus" role="status" aria-live="polite">Tidak ada unduhan atau instalasi otomatis.</p>
+            </div>
+          </div>
+          <p class="hf-footnote">Pencarian menggunakan API publik Hugging Face melalui backend SONIC. Tidak ada token Hugging Face di browser. Pencarian tidak memasang model. Runtime hanya berjalan setelah tindakan eksplisit owner, dan tidak mendapat akses perintah Windows atau MT5.</p>
+        </section>
         <section id="taskManagerPanel" class="operator-panel">
           <h3>Task Manager / Live Telemetry</h3>
           <div id="taskManagerStats" class="task-stat-grid">Waiting for fresh companion telemetry</div>
