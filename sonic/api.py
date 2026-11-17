@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.7.0'
+VERSION = '1.8.2'
 
 
 @asynccontextmanager
@@ -260,6 +260,9 @@ async def chat(payload: ChatForm, owner: dict = Depends(auth.require_owner_write
     text = payload.message.strip()
     if not text:
         raise HTTPException(422, "Message required")
+    from .model_runtime import is_model_status_question, status_answer
+    if not payload.approval_request_id and is_model_status_question(text):
+        return status_answer(db)
     from .engine import execute_chat
     return await execute_chat(db, text, payload.selected_node_id, owner, request_id=payload.request_id,
                               approval_request_id=payload.approval_request_id)
@@ -396,6 +399,8 @@ from .research_agent import router as research_agent_router
 app.include_router(research_agent_router)
 from .research_memory import router as research_memory_router
 app.include_router(research_memory_router)
+from .model_runtime import router as model_runtime_router
+app.include_router(model_runtime_router)
 from .activation import router as activation_router
 from .knowledge import router as knowledge_router
 from .integrations import router as integrations_router

@@ -167,6 +167,10 @@ def test_local_ai_summarizes_trusted_ids_only_with_no_tools(client, monkeypatch)
     monkeypatch.setenv("SONIC_RESEARCH_AGENT_ENABLED", "true")
     monkeypatch.setattr(agent, "search_and_read", mock_web)
     monkeypatch.setattr(agent, "_local_running", lambda db: True)
+    # v1.8.2: a running local process is not permission to replace a cloud selection.
+    from sonic import model_runtime, providers
+    monkeypatch.setattr(providers, 'selected_model', lambda db: providers.Selection('local', 'DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M'))
+    monkeypatch.setattr(model_runtime, 'runtime_snapshot', lambda db: {'enabled': True, 'device_online': True, 'bridge_online': True, 'state': 'running', 'checked_seconds_ago': 0})
     from sonic import local_ai
     seen = []
     async def fake_local(request):
@@ -195,6 +199,10 @@ def test_untrusted_page_cannot_request_windows_actions(client, monkeypatch):
     monkeypatch.setattr(agent, "search_and_read", lambda *args, **kwargs: {
         **mock_web(), "sources": dangerous})
     monkeypatch.setattr(agent, "_local_running", lambda db: True)
+    # v1.8.2: a running local process is not permission to replace a cloud selection.
+    from sonic import model_runtime, providers
+    monkeypatch.setattr(providers, 'selected_model', lambda db: providers.Selection('local', 'DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M'))
+    monkeypatch.setattr(model_runtime, 'runtime_snapshot', lambda db: {'enabled': True, 'device_online': True, 'bridge_online': True, 'state': 'running', 'checked_seconds_ago': 0})
     from sonic import local_ai
     calls = []
     async def simulate(request):

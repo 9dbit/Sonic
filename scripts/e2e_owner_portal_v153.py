@@ -110,3 +110,7 @@ with local_server(settings=settings) as (base, owner_token), sync_playwright() a
     (OUT / "report.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     print(json.dumps(results, indent=2))
 print("OWNER_PORTAL_BROWSER_QA_PASS")
+# Keep model-selection/runtime truth under the existing owner-browser CI gate.
+# This uses the same disposable QA server and synthetic tokens, not live APIs.
+import runpy
+runpy.run_path(str(ROOT / 'scripts' / 'e2e_model_truth_v182.py'), run_name='__main__')

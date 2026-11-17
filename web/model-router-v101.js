@@ -50,6 +50,7 @@
   function updateButton(){
     const option=lastModels.find(item=>item.provider+'|'+item.model===$('brainModelSelect').value);
     $('brainModelSelect').disabled=working;
+    $('applyBrainModel').textContent=option?.selected?'Sudah terpilih':'Simpan pilihan model';
     $('applyBrainModel').disabled=working||!option||!Object.hasOwn(providers,option.provider)||
       option.key_configured!==true||!!option.selected;
   }
@@ -101,15 +102,15 @@
     for(const item of lastModels){
       const option=document.createElement('option');
       option.value=item.provider+'|'+item.model;
-      option.textContent=item.label+(item.key_configured===true?'':(item.provider==='local'?' · Bridge disabled':' · API key missing'));
+      option.textContent=(item.provider==='local'?'Local - Qwen 9B (TRADEVICEPC)':item.label)+(item.key_configured===true?'':(item.provider==='local'?' · Bridge disabled':' · API key missing'));
       option.disabled=item.key_configured!==true||!Object.hasOwn(providers,item.provider);
       option.selected=draftSelection?option.value===draftSelection:!!item.selected;
       select.append(option);
     }
     const selected=data.selected||{};
-    status('Pilihan chat: '+selected.provider+' / '+selected.model+
+    status('Model terpilih: '+(selected.provider==='local'?'Local Qwen 9B Q4_K_M':selected.provider+' / '+selected.model)+
       (selected.key_configured===true?'':(selected.provider==='local'?'. Local bridge not enabled':'. API key pilihan ini belum terkonfigurasi'))+
-      '. Realtime Voice dan Vision tetap menggunakan OpenAI.');
+      '. Voice dan Vision terpisah. Status engine ditampilkan terpisah.');
     updateButton();renderProviderStatus();renderUsage(data.usage||[]);
   }
   async function refresh(){
@@ -144,7 +145,8 @@
       draftSelection=null;
       $('refreshSetup')?.click();
       await refresh();
-      status('Model chat aktif: '+provider+' / '+model+'. Voice tetap OpenAI Realtime.');
+      status('Pilihan model disimpan: '+provider+' / '+model+'. Ini bukan perintah Start engine.');
+      window.dispatchEvent(new Event('sonic:model-changed'));
     }catch(error){status('Perubahan dibatalkan: '+error.message);}
     finally{working=false;updateButton();}
   }
