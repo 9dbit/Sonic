@@ -49,9 +49,14 @@ jobs:
           executable = root / 'dist' / 'SONIC-WiFi-Finder.exe' if sys.platform == 'win32' else root / 'dist' / 'SONIC WiFi Finder.app' / 'Contents' / 'MacOS' / 'SONIC WiFi Finder'
           report = root / 'dist' / 'startup-test.json'
           preview = root / 'dist' / 'UI-demo-preview.png'
-          subprocess.run([str(executable), '--smoke-test', '--smoke-report', str(report), '--screenshot', str(preview)], check=True, timeout=90)
+          smoke_env = dict(os.environ)
+          if sys.platform == 'win32':
+              smoke_env.pop('QT_QPA_PLATFORM', None)
+          subprocess.run([str(executable), '--smoke-test', '--smoke-report', str(report), '--screenshot', str(preview)], env=smoke_env, check=True, timeout=90)
           result = json.loads(report.read_text(encoding='utf-8'))
-          assert result['demo_only'] and result['startup_ok'] and result['password_initially_hidden']
+          assert result['demo_only'] and result['startup_ok'] and result['password_initially_hidden'] and result['font_ready']
+          if sys.platform == 'win32':
+              assert result['qt_platform'] == 'windows'
           print(json.dumps(result, indent=2))
       - name: Upload package and verification files
         uses: actions/upload-artifact@v4

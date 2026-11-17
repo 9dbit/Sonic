@@ -24,13 +24,14 @@ def main() -> int:
     window = MainWindow(DemoBackend() if use_demo else None); window.show()
     if args.smoke_test or args.screenshot:
         def finish():
-            success = bool(window.networks.count()) and bool(window._selected) and window.password.text() == "" and window.reveal_btn.isEnabled()
+            font_ready = all(window.network_name.fontMetrics().inFont(c) for c in "SONICWiFiFinder0123456789")
+            success = bool(window.networks.count()) and bool(window._selected) and window.password.text() == "" and window.reveal_btn.isEnabled() and font_ready
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True, exist_ok=True)
                 success = window.grab().save(str(args.screenshot)) and success
             if args.smoke_report:
                 args.smoke_report.parent.mkdir(parents=True, exist_ok=True)
-                args.smoke_report.write_text(json.dumps({"app":"SONIC WiFi Finder","version":__version__,"demo_only":True,"startup_ok":success,"profile_count":window.networks.count(),"password_initially_hidden":window.password.text()==""}, indent=2), encoding="utf-8")
+                args.smoke_report.write_text(json.dumps({"app":"SONIC WiFi Finder","version":__version__,"demo_only":True,"startup_ok":success,"profile_count":window.networks.count(),"password_initially_hidden":window.password.text()=="","font_ready":font_ready,"qt_platform":app.platformName()}, indent=2), encoding="utf-8")
             window.close(); app.exit(0 if success else 1)
         QTimer.singleShot(1800, finish)
     return app.exec()
