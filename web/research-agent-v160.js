@@ -38,13 +38,8 @@
         btn.disabled=!enabled;
         btn.title=enabled?'Read-only web research, with citations':'Research Agent is disabled';
       }
-      if($('agentCapability'))$('agentCapability').textContent=!enabled
-        ?'Research unavailable'
-        :data.local_ai_running
-          ?'Web ready · Local AI running'
-          :data.cloud_synthesis_enabled
-            ?'Web ready · Selected cloud AI available'
-            :'Web ready · Source results available';
+      if($('agentCapability'))$('agentCapability').textContent=!enabled ? 'Research unavailable' : (data.runtime?.message || 'Status model belum terverifikasi');
+      if(data.runtime)window.sonicModelTruth?.update(data.runtime);
       if(!enabled)setMode(false);
       if(enabled)refreshMemory();
     }catch(_){enabled=false;setMode(false);}
@@ -56,6 +51,9 @@
   }
 
   function render(host,response){
+    window.sonicModelTruth?.receipt(host,response.answer_origin);
+    if(response.runtime)window.sonicModelTruth?.update(response.runtime);
+    if(['system_status','model_unavailable'].includes(response.mode))return;
     const box=document.createElement('section');box.className='agent-research-results';
     box.setAttribute('aria-label','Research results and sources');
     const heading=text('div','', 'agent-results-head');
@@ -68,7 +66,7 @@
     heading.append(text('span',String(response.sources?.length||0)+' sources'));
     box.append(heading);
     if(response.memory_saved){
-      box.append(text('p','Saved to Research Memory · '+String(response.research_id||'').slice(0,8),'agent-research-saved'));
+      box.append(text('p','Tersimpan di Research Memory','agent-research-saved'));
     }
     const sources=Array.isArray(response.sources)?response.sources:[];
     if(sources.length){
@@ -167,6 +165,7 @@
     $('agentRefreshMemory')?.addEventListener('click',refreshMemory);
     $('agentMemorySearch')?.addEventListener('input',()=>refreshMemory());
     window.addEventListener('sonic:owner-ready',refresh);
+    window.addEventListener('sonic:model-changed',refresh);
     window.addEventListener('sonic:logout',()=>{enabled=false;memoryOpen=false;setMode(false);lock();});
     refresh();
   }

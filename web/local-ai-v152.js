@@ -38,6 +38,7 @@
       }
       active = true; csrf = session.csrf;
       const s = await request('/api/local-ai/status');
+      window.dispatchEvent(new Event('sonic:runtime-updated'));
       const state = s.bridge_online ? s.state : 'offline';
       put('localAIState', state.toUpperCase());
       $('localAIState')?.setAttribute('data-state', state);
@@ -99,6 +100,7 @@
       if (!result.saved) throw Error('Model selection not confirmed');
       put('localAIMessage','Local GGUF dipilih sebagai SONIC chat model. Buka tab Chat.');
       $('refreshSetup')?.click();
+      window.dispatchEvent(new Event('sonic:model-changed'));
     } catch (e) { put('localAIMessage','Pemilihan gagal: '+e.message); }
     finally { lockControls(false); await refresh(); }
   }

@@ -138,6 +138,7 @@ def _record_answer(db: Session, answer: str) -> str:
 
 async def reply(db: Session, latest_user_text: str) -> str:
     db.info['memory_events'] = []
+    db.info.pop('answer_origin', None)
     intent = parse_memory_intent(latest_user_text)
     if intent:
         # Do not require a paid model call to carry out an unambiguous save.
@@ -227,6 +228,8 @@ async def reply(db: Session, latest_user_text: str) -> str:
                     answer = "\n".join(t for t in texts if t).strip()
                     if not answer:
                         raise HTTPException(502, 'Brain response was empty')
+                    from .model_runtime import origin
+                    db.info["answer_origin"] = origin("model_output", selection)
                     return _record_answer(db, answer)
                 if iteration >= 3:
                     break

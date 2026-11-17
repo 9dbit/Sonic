@@ -28,6 +28,7 @@ with local_server(settings=settings) as (base,token),sync_playwright() as p:
         page.locator('.nav[data-tab="chat"]').click()
         expect(page.locator("#chatPanel")).to_be_visible()
         page.locator("#agentModeResearch").click()
+        page.locator(".research-options > summary").click()
         expect(page.locator("#agentResearchPreferences")).to_be_visible(timeout=5000)
         expect(page.locator("#agentSaveMemory")).to_be_checked()
         boxes=page.evaluate("""() => {

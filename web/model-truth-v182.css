@@ -1,0 +1,75 @@
+/* Focused cleanup. Auth-isolation remains authoritative. No new z-index layers. */
+body.orbit-v140 .app .runtime-widget{flex:0 0 auto;min-width:0;margin:0;padding:10px 13px;background:#101923;color:#e6f1ff;border-bottom:1px solid #304052;font-size:12px}
+.runtime-widget>summary{display:flex;align-items:center;gap:10px;justify-content:space-between;cursor:pointer;list-style:none;min-height:30px}
+.runtime-widget>summary::-webkit-details-marker{display:none}
+.runtime-title{font-weight:650;overflow-wrap:anywhere;min-width:0}
+.runtime-state{flex-shrink:0;font-size:9px;font-weight:650;border:1px solid #3b5066;padding:6px 8px;border-radius:8px;color:#a8cfff}
+.runtime-widget[data-ready=false] .runtime-state{color:#f1c59a;border-color:#73583a}
+.runtime-message{font-size:12px;line-height:1.55;margin:10px 0;color:#b7c9dd}
+.runtime-privacy{font-size:10px;line-height:1.5;color:#8ea1b6;margin:10px 0 2px}
+.runtime-actions{display:flex;flex-wrap:wrap;gap:6px}
+body.orbit-v140 .app .runtime-actions button:not(.nav):not(.plain):not(.logout){border-radius:12px!important;min-height:38px!important;padding:8px 12px!important;background:#263547!important;color:#d6e9ff!important;border:1px solid #41556d!important}
+body.orbit-v140 .app .runtime-actions [data-runtime-action=start]:not(.nav):not(.plain):not(.logout){background:#236fe5!important;color:#fff!important}
+.runtime-actions button[hidden]{display:none!important}
+.answer-origin{font-size:10px;line-height:1.5;color:#86b6eb;border-top:1px solid #263949;margin-top:10px;padding-top:7px;overflow-wrap:anywhere}
+.answer-origin[data-origin=engine_unavailable]{color:#edbd86}
+.research-options{font-size:11px;color:#aac1db;padding:3px 0}
+.research-options>summary{cursor:pointer;padding:5px 0}
+body.orbit-v140 .app #chatPanel #agentCapability{display:none!important}
+body.orbit-v140 .app #chatPanel .agent-research-saved{font-size:10px;color:#93b3d3;margin:7px 0}
+body.orbit-v140 .app #chatPanel .agent-research-results{padding:11px!important;border-radius:14px!important}
+body.orbit-v140 .app #chatPanel .agent-results-head{font-size:11px!important;line-height:1.45;align-items:start}
+body.orbit-v140 .app #chatPanel .agent-results-head strong{font-size:11px!important;line-height:1.4}
+body.orbit-v140 .app #chatPanel .agent-sources-details>summary,
+body.orbit-v140 .app #chatPanel .agent-related-memory>summary{font-size:11px!important;padding:6px 0;color:#b2cdf0;cursor:pointer}
+body.orbit-v140 .app #chatPanel .agent-research-notice{font-size:9px!important;color:#7e93aa;line-height:1.4}
+body.orbit-v140 .app #chatPanel .agent-steps{font-size:9px!important;margin:7px 0 0}
+/* Specific IDs override legacy violet button selectors without theme-wide churn. */
+body.orbit-v140 .app #chatPanel #chatForm #chatExtras,
+body.orbit-v140 .app #chatPanel #chatForm #mic,
+body.orbit-v140 .app #chatPanel #chatForm #voice,
+body.orbit-v140 .app #brainPanel #neuralMobileSwitcher #neuralKnowledgeBtn,
+body.orbit-v140 .app #brainPanel #neuralMobileSwitcher #neuralGraphBtn,
+body.orbit-v140 .app #brainPanel .graph-toolbar button:not(.nav):not(.plain):not(.logout){background:#25313e!important;border:1px solid #3a4c60!important;color:#d5e5f7!important;box-shadow:none!important}
+body.orbit-v140 .app #brainPanel #neuralMobileSwitcher button[aria-pressed=true]#neuralKnowledgeBtn,
+body.orbit-v140 .app #brainPanel #neuralMobileSwitcher button[aria-pressed=true]#neuralGraphBtn{background:#236fe5!important;border-color:#4d9cff!important;color:white!important}
+body.orbit-v140 .app #huggingFaceHub button.hf-result:not(.nav):not(.plain):not(.logout){border-radius:14px!important;text-align:left!important;padding:11px 13px!important;min-height:65px!important;background:#1a2634!important}
+body.orbit-v140 .app #huggingFaceHub .hf-result-inner strong{font-size:12px!important;font-weight:600!important;line-height:1.4!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.orbit-v140 .app #huggingFaceHub .hf-result-inner span{font-size:10px!important;font-weight:400!important}
+body.orbit-v140 .app #brainModelControl .model-router-controls{min-width:0}
+body.orbit-v140 .app #brainModelControl #brainModelSelect{font-size:14px!important;font-weight:550!important;max-width:100%!important}
+body.orbit-v140 .app #brainModelControl #brainModelStatus{font-size:12px!important;line-height:1.5!important;overflow-wrap:anywhere}
+@media(max-width:720px){
+ body.orbit-v140 .app #chatPanel .compose-wrap{padding:7px 10px 10px!important}
+ body.orbit-v140 .app #chatPanel #chatForm{padding:7px 8px!important;gap:4px!important}
+ body.orbit-v140 .app #chatPanel #chatForm #message{min-height:42px!important;max-height:86px!important;padding:8px 6px!important;font-size:16px!important;line-height:1.4!important}
+ body.orbit-v140 .app #chatPanel .research-options{margin-bottom:2px}
+ body.orbit-v140 .app #chatPanel .agent-mode-buttons button{font-size:11px!important;padding:7px 10px!important}
+ body.orbit-v140 .app #brainPanel{min-height:0!important}
+ body.orbit-v140:not(.neural-knowledge-mode) .app #brainPanel #graphStage{height:calc(var(--sonic-visual-vh,100dvh) - 210px)!important;min-height:300px!important;max-height:520px!important}
+ body.orbit-v140:not(.sonic-focused) .sonic-motion-float{max-width:74px!important;max-height:74px!important}
+ body.orbit-v140 .app #brainModelControl{padding:15px!important}
+ body.orbit-v140 .app #brainModelControl h3{font-size:23px!important;margin:6px 0 14px!important}
+ body.orbit-v140 .app #brainModelControl>p{font-size:12px!important;line-height:1.55!important;margin:12px 0!important}
+ body.orbit-v140 .app #localAIControl{margin:10px 0 14px!important}
+ body.orbit-v140 .app #localAIControl h3{font-size:19px!important}
+ body.orbit-v140 .app #localAIControl #localAIModel{font-size:12px!important;line-height:1.45!important}
+ body.orbit-v140 .app #huggingFaceHub .hf-status-strip{grid-template-columns:1fr 1fr!important}
+ body.orbit-v140 .app #huggingFaceHub .hf-status-strip>div:first-child{grid-column:1/-1}
+ body.orbit-v140 .app #huggingFaceHub #hfDevice{white-space:nowrap!important;overflow-wrap:normal!important}
+ body.orbit-v140 .app #huggingFaceHub .hf-panel-head{flex-wrap:wrap;gap:4px}
+}
+
+body.sonic-open-preview .runtime-widget{display:none!important}
+body.orbit-v140 .app #brainModelControl #applyBrainModel:not(.nav):not(.plain):not(.logout){background:#263547!important;border:1px solid #465a71!important;color:#d6e8fb!important;border-radius:13px!important}
+body.orbit-v140 .app #brainModelControl .runtime-widget{border:1px solid #34485f;border-radius:13px;margin-bottom:12px}
+body.orbit-v140 .app #brainModelControl .model-router-heading{margin-bottom:7px!important}
+body.orbit-v140 .app #brainModelControl .model-router-controls{margin:10px 0 8px!important}
+body.orbit-v140 .app #brainModelControl .model-router-description{margin:10px 0!important;font-size:12px!important}
+.runtime-widget>summary .runtime-title::after{content:'  ▾';color:#8ca9c7}
+body.orbit-v140 .app #brainPanel #neuralMobileSwitcher button[aria-pressed=false]{background:#25313e!important;border:1px solid #3a4c60!important;color:#b8cce1!important}
+
+@media(max-width:720px){
+ body.orbit-v140 .app .sidebar .nav:not(.active):hover,body.orbit-v140 .app .sidebar .nav:not(.active):focus{background:transparent!important;color:#9caabb!important;box-shadow:none!important}
+ body.orbit-v140 .app .sidebar #mobileMoreNav[data-current=true]{background:#236fe5!important;color:#fff!important;border-color:#4d9cff!important}
+}

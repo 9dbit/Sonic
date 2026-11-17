@@ -206,7 +206,7 @@
     setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');if(!options.overrideText)input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
     try{const r=await API(agentRun?'/api/agent/research':'/api/chat',{method:'POST',body:JSON.stringify(agentRun?{query:text,purpose:window.sonicResearch.purpose(),...window.sonicResearch.options()}:{message:text,selected_node_id:graph.selected||null,request_id:requestId,...(options.approvalId?{approval_request_id:options.approvalId}:{})})});
       if(agentRun){pending.querySelector('.body').textContent=r.reply;window.sonicResearch.render(pending,r);window.sonicResearch.refreshMemory?.();activityState('idle');return;}
-      pending.querySelector('.body').textContent=r.reply;const events=r.memory_events||[];
+      pending.querySelector('.body').textContent=r.reply;window.sonicModelTruth?.receipt(pending,r.answer_origin);const events=r.memory_events||[];
       events.forEach(e=>appendReceipt(pending,e));
       if((r.operator_proposals||[]).length)inlineChatApproval(pending,source,r.operator_proposals[0].id);
       for(const job of (r.operator_jobs||[]))watchChatJob(job,source).catch(err=>notify(err.message));brainAnswer(r.reply,false,events);
@@ -218,7 +218,7 @@
       speak(r.reply,{force:!!options.readAloud});
     }catch(error){pending.classList.add('error');pending.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');
       if(!error.status||error.status>=500)pending.append(button('Periksa / coba kembali',()=>send(source,{...options,overrideText:text,requestId})));}
-    finally{setWaiting(false);$('chatFeed').scrollTop=$('chatFeed').scrollHeight;if(innerWidth>650&&currentTab!=='brain')input.focus();}
+    finally{setWaiting(false);if(!input.value)input.style.height='45px';$('chatFeed').scrollTop=$('chatFeed').scrollHeight;if(innerWidth>650&&currentTab!=='brain')input.focus();}
   }
   // Chat-first PC jobs: never require opening Devices merely to see progress.
   async function watchChatJob(job,source,options={}){

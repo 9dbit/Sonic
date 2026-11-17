@@ -30,6 +30,7 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
         replay=find_replay(db,identity)
         if replay:
             return replay_response(db,replay)
+    db.info.pop('answer_origin', None)
     db.info.update(ui_actions=[], memory_events=[], memory_references=[], engine_steps=[], selected_node_id=selected_node_id,
                    execution_identity=identity,execution_run_id=run_id,execution_task_id=None)
     from .operator import direct_device_command, direct_capability_question, capability_reply, device_metrics, metrics_reply
@@ -151,7 +152,7 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
             answer = _record_answer(db, direct_graph_reply(result, command[0]))
         else:
             answer = await reply(db, text)
-        response={'reply': answer, 'operator_jobs':operator_jobs, 'operator_proposals':operator_proposals, 'memory_events': db.info.get('memory_events', []),
+        response={'reply': answer, 'answer_origin': db.info.get('answer_origin', {'kind':'sonic_action','provider':None,'model':None,'inference_performed':False,'fallback':False}), 'operator_jobs':operator_jobs, 'operator_proposals':operator_proposals, 'memory_events': db.info.get('memory_events', []),
                 'ui_actions': db.info.get('ui_actions', []), 'memory_references': db.info.get('memory_references', []),
                 'engine': {'run_id': run_id, 'route': route, 'status': status}}
         task_id=db.info.get('execution_task_id')

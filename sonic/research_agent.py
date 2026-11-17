@@ -112,12 +112,12 @@ def _cloud_prompt(query: str, sources: list[dict], related: list[dict]) -> str:
     return "\n".join(lines)[:4600]
 
 
-async def _cloud_summarize(query: str, sources: list[dict], related: list[dict], db: Session):
+async def _cloud_summarize(query: str, sources: list[dict], related: list[dict], db: Session, selection=None):
     if not cloud_synthesis_enabled():
         return None
     from .providers import selected_model, configured, complete, record_usage
     import httpx
-    selection=selected_model(db)
+    selection=selection or selected_model(db)
     if selection.provider == "local" or not configured(selection.provider):
         return None
     # Explicit owner-selected provider, zero tools and no cross-provider fallback.
@@ -159,7 +159,10 @@ def _bounded_reply(text: str, allowed: set[int]) -> str:
 
 @router.get("/api/agent/capabilities")
 def capabilities(_: dict = Depends(auth.require_owner), db: Session = Depends(get_db)):
+    from .model_runtime import snapshot
+    runtime = snapshot(db)
     return {
+        "runtime": runtime,
         "mode": "read_only_research",
         "enabled": enabled(),
         "tools": ["web.search", "web.open", "local.summarize", "selected_cloud.summarize", "research.memory"],
@@ -178,9 +181,23 @@ def capabilities(_: dict = Depends(auth.require_owner), db: Session = Depends(ge
 async def research(payload: ResearchRequest,
                    owner: dict = Depends(auth.require_owner_write),
                    db: Session = Depends(get_db)):
+    query = " ".join(payload.query.split())
+    from .model_runtime import is_model_status_question, status_answer, snapshot, origin
+    from .providers import selected_model
+    # A question about SONIC itself is first-party state, never public search.
+    if is_model_status_question(query):
+        return status_answer(db)
     if not enabled():
         raise HTTPException(503, "Research Agent is disabled in this environment.")
-    query = " ".join(payload.query.split())
+    selection = selected_model(db)
+    runtime = snapshot(db, selection)
+    if selection.provider == "local" and not runtime["local"]["ready"]:
+        return {"reply": runtime["message"] + " Tidak ada inference atau pencarian web yang dijalankan.",
+                "mode": "model_unavailable", "answer_origin": origin("engine_unavailable"),
+                "runtime": runtime, "sources": [], "steps": [], "searched_queries": [],
+                "notice": "Tidak ada fallback ke cloud. Pilihan model tetap local.",
+                "model_provider": None, "local_ai_used": False, "read_only": True,
+                "memory_saved": False, "memory_matches": []}
     if not 5 <= len(query) <= 300 or SENSITIVE_QUERY.search(query):
         raise HTTPException(422, "Use a short research topic with no credentials.")
     _limit(owner)
@@ -204,7 +221,7 @@ async def research(payload: ResearchRequest,
         answer = _safe_sources_only(sources)
         status = "sources_only"
         model_provider = None
-        if sources and _local_running(db):
+        if sources and selection.provider == "local" and _local_running(db):
             try:
                 # Small 9B GGUF context and 6GB VRAM: send only 1090 chars of
                 # untrusted evidence, with no model tool schemas or permissions.
@@ -223,9 +240,9 @@ async def research(payload: ResearchRequest,
                               "detail": type(exc).__name__})
         elif sources:
             steps.append({"tool": "local.summarize", "status": "skipped", "reason": "local_ai_stopped"})
-        if status != "local_summary" and cloud_synthesis_enabled() and (sources or payload.purpose == "references"):
+        if selection.provider != "local" and cloud_synthesis_enabled() and (sources or payload.purpose == "references"):
             try:
-                result=await _cloud_summarize(query,sources,previous,db)
+                result=await _cloud_summarize(query,sources,previous,db,selection=selection)
                 if result:
                     generated,model_provider=result
                     answer=_bounded_reply(generated,{item["id"] for item in sources})
@@ -257,6 +274,8 @@ async def research(payload: ResearchRequest,
             "steps": steps,
             "searched_queries": web["queries"],
             "notice": web["notice"],
+            "answer_origin": origin("model_output", selection) if model_provider else origin("source_listing"),
+            "selected_model": {"provider": selection.provider, "model": selection.model},
             "local_ai_used": status == "local_summary",
             "model_provider": model_provider,
             "research_id":research_id,
