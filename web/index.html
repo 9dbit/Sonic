@@ -80,8 +80,10 @@
   <link rel="stylesheet" href="/assets/mobile-v170.css?v=1.7.0">
   <script src="/assets/mobile-v170.js?v=1.7.0" defer></script>
   <script src="/assets/neural-knowledge-v170.js?v=1.7.0" defer></script>
+<link rel="stylesheet" href="/assets/auth-isolation-v181.css?v=20261118">
+  <script src="/assets/auth-isolation-v181.js?v=20261118" defer></script>
 </head>
-<body class="sonic-shell-v100 orbit-v140">
+<body class="sonic-shell-v100 orbit-v140 sonic-auth-locked">
   <svg class="icon-sprite" aria-hidden="true"><defs>
     <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="5" cy="5" r="1.6"/><circle cx="19" cy="4" r="1.6"/><circle cx="20" cy="18" r="1.6"/><circle cx="5" cy="19" r="1.6"/><path d="M6 6.2 10.5 10.5M13.5 10.7 17.8 5.2M13.3 13.5l5.2 3.8M10.5 13.5 6.3 17.7M7 4.9l10.4-1M20.5 6l-.2 9.7M18.6 19 6.5 19"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H6L3 22V11.5a8.5 8.5 0 0 1 18 0Z"/><path d="M8 11h9m-9 4h5"/></symbol>
@@ -504,6 +506,6 @@
   <div id="orbitVoiceCaption" class="orbit-voice-caption" hidden aria-live="polite">
     <strong>SONIC</strong><span id="orbitVoiceState">Ready</span><small>VOICE / OPENAI</small>
   </div>
-  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb"><img src="/assets/sonic-mark.svg?v=1.5.1" width="68" height="68" alt="SONIC logo"></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Intelligence,<br><span class="gradient-heading">in your orbit.</span></h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>NEURAL BRAIN &middot; VERSION 1.6.0</small></form></div>
+  <div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="login-orb"><img src="/assets/sonic-mark.svg?v=1.5.1" width="68" height="68" alt="SONIC logo"></div><span class="eyebrow">SONIC / PERSONAL INTELLIGENCE</span><h2>Intelligence,<br><span class="gradient-heading">in your orbit.</span></h2><p>Masuk dengan owner access token. Token tidak disimpan di browser.</p><label for="ownerToken">Owner access token</label><input id="ownerToken" type="password" autocomplete="off" required placeholder="Private access token"><button type="submit">Unlock SONIC &#8594;</button><span id="loginError" role="alert"></span><small>SONIC &middot; VERSION __SONIC_VERSION__</small></form></div>
 </body>
 </html>
