@@ -85,3 +85,28 @@ def test_code_is_stored_but_not_executed(client):
     assert "artifact-studio-v200.js" in html
     assert "artifact-studio-v200.css" in html
     assert "frame-src" in client.get("/").headers.get("Content-Security-Policy","")
+
+
+def test_isolated_preview_is_owner_scoped_and_expires(client):
+    from datetime import timedelta
+    from sonic.db import ArtifactPreview, session_factory, utcnow
+    h=owner(client)
+    assert client.post("/api/artifacts/previews",json={"content":"<script>alert(1)</script>"}).status_code == 403
+    made=client.post("/api/artifacts/previews",headers=h,json={"content":"<div>safe sample</div>"}).json()
+    uri=made["url"]
+    view=client.get(uri)
+    assert view.status_code == 200
+    assert "safe sample" in view.text
+    csp=view.headers.get("Content-Security-Policy","")
+    assert "sandbox allow-scripts" in csp
+    assert "connect-src 'none'" in csp
+    assert "script-src 'unsafe-inline'" in csp
+    assert view.headers.get("X-Frame-Options") == "SAMEORIGIN"
+    preview_id=uri.rsplit("/",1)[-1]
+    with session_factory()() as db:
+        row=db.get(ArtifactPreview,preview_id)
+        row.expires_at=utcnow()-timedelta(seconds=1)
+        db.commit()
+    assert client.get(uri).status_code==404
+    client.post("/api/logout",headers=h)
+    assert client.get(uri).status_code==401
