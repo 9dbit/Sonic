@@ -87,7 +87,9 @@ async def generate(body: Generate, owner: dict = Depends(auth.require_owner_writ
             raise HTTPException(422, "Local Coding hanya mendukung draft pendek. Untuk revisi source panjang, pilih DeepSeek Cloud secara eksplisit.")
         if len(prompt) > 450:
             raise HTTPException(413, "Local Coding dibatasi 450 karakter untuk konteks GGUF 1.024 token. Ringkas prompt atau pilih DeepSeek Cloud.")
-        require_available(db, chat=True)
+        status = require_available(db, chat=True)
+        if status.get("hardware", {}).get("supports_code") is not True:
+            raise HTTPException(409, "Windows Companion belum mendukung Coding v2.1. Perbarui Companion secara terkontrol di Devices sebelum mencoba Local Coding.")
         messages = [{"role": "system", "content": LOCAL_PROMPT},
                     {"role": "user", "content": "Create a tiny HTML tool for: " + prompt}]
         job = create_job(db, "code", {"messages": messages, "task": "code"},
