@@ -36,6 +36,7 @@ with local_server(settings=settings) as (base,token), sync_playwright() as playw
         expect(page.locator("#asNewBtn")).to_be_visible()
         expect(page.locator("#asQuota")).to_contain_text("items",timeout=15000)
         page.screenshot(path=str(OUT/(BROWSER+"-"+label+"-studio-empty.png")),full_page=True)
+        initial_artifact_count=page.locator("#asLibrary .as-entry").count()
 
         page.locator("#asNewBtn").click()
         expect(page.locator("#asEditor")).to_be_visible()
@@ -51,7 +52,7 @@ with local_server(settings=settings) as (base,token), sync_playwright() as playw
 
         page.locator("#asSaveBtn").click()
         expect(page.locator("#asNotice")).to_contain_text("Saved to owner-only SONIC database",timeout=14000)
-        expect(page.locator("#asLibrary .as-entry")).to_have_count(1)
+        expect(page.locator("#asLibrary .as-entry")).to_have_count(initial_artifact_count+1)
         page.locator("#asEditBtn").click()
         expect(page.locator("#asEditor")).to_be_visible()
         page.locator("#asDraftName").fill("RAB Calculator v2")
