@@ -98,6 +98,8 @@ def settle(db: Session, delivery_id: str) -> ChatDelivery:
                 result = json.loads(job.result_json or '{}')
                 answer = result.get('text')
                 if isinstance(answer, str) and answer.strip():
+                    if result.get('truncated') is True:
+                        answer = answer[:3650].rstrip() + '\n\n⚠ Jawaban model lokal terpotong pada batas output. Untuk HTML lengkap, gunakan Coding Studio dengan DeepSeek Cloud secara eksplisit.'
                     from .local_ai import MODEL
                     from .providers import Selection, record_usage
                     from .model_runtime import origin
@@ -115,8 +117,13 @@ def settle(db: Session, delivery_id: str) -> ChatDelivery:
                     db.commit()
                     return row
             if not job or job.state in ('failed', 'expired'):
-                _mark_failed(db, row,
-                    'Model lokal tidak menyelesaikan jawaban. Tidak ada pengiriman ulang atau perpindahan ke cloud otomatis. Periksa engine, lalu kirim permintaan baru.')
+                from .coding_studio import error_label
+                receipt = json.loads(job.result_json or '{}') if job else {}
+                if job and job.state == 'expired':
+                    message = 'Tugas Local AI kedaluwarsa sebelum hasil terverifikasi. Tidak ada pengiriman ulang otomatis.'
+                else:
+                    message = error_label(receipt.get('error_code', receipt.get('error', 'unknown')))
+                _mark_failed(db, row, message)
                 db.commit()
         if row.state not in ('done', 'failed') and row.created_at < utcnow()-timedelta(seconds=190):
             _mark_failed(db, row,
