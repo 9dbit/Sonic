@@ -351,3 +351,14 @@ body.sonic-ux-v220 .v22-orb-dock.v22-live-motion .v22-orb-fallback{opacity:.15}
   transform:none!important;
  }
 }
+
+/* Exactly one active mobile destination, irrespective of legacy button styles. */
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140 .sidebar-content .nav:not(.active){
+  background:transparent!important;background-image:none!important;
+  border-color:transparent!important;box-shadow:none!important;color:#a9bcd5!important;
+ }
+ body.sonic-ux-v220.orbit-v140 .sidebar-content .nav:not(.active):before{
+  display:none!important;content:none!important;
+ }
+}
