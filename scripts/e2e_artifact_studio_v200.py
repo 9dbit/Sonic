@@ -1,0 +1,72 @@
+"""Artifact Studio desktop/mobile browser acceptance with synthetic owner and files.
+
+Never executes Windows commands, external model requests, installer or deployment.
+"""
+import base64
+import json
+import os
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright, expect
+from qa_server import local_server
+
+OUT = Path("artifacts/artifact-studio-v200")
+OUT.mkdir(parents=True, exist_ok=True)
+BROWSER = os.environ.get("SONIC_QA_BROWSER", "chromium")
+settings = {"SONIC_OPEN_PREVIEW":"true", "SONIC_OWNER_ENTRY_ENABLED":"true",
+            "SONIC_PASSWORDLESS_LOGIN":"false", "SONIC_PREVIEW_PAID_ACTIONS":"false"}
+reports = []
+
+with local_server(settings=settings) as (base,token), sync_playwright() as playwright:
+    browser = getattr(playwright, BROWSER).launch(
+        headless=True,
+        **({"args":["--no-sandbox","--enable-unsafe-swiftshader"]}
+           if BROWSER=="chromium" else {}))
+    for label,width,height in [("desktop",1440,900),("iphone",390,844)]:
+        page=browser.new_page(viewport={"width":width,"height":height},
+                              is_mobile=label=="iphone",has_touch=label=="iphone")
+        errors=[]
+        page.on("pageerror",lambda e: errors.append(str(e)))
+        page.goto(base+"/owner",wait_until="domcontentloaded")
+        page.locator("#ownerToken").fill(token)
+        page.locator("#loginForm button[type=submit]").click()
+        expect(page.locator("#loginOverlay")).to_be_hidden(timeout=20000)
+        page.locator('.sidebar [data-tab="studio"]').click()
+        expect(page.locator("#studioPanel")).to_be_visible(timeout=15000)
+        expect(page.locator("#asNewBtn")).to_be_visible()
+        expect(page.locator("#asQuota")).to_contain_text("items",timeout=15000)
+        page.screenshot(path=str(OUT/(BROWSER+"-"+label+"-studio-empty.png")),full_page=True)
+
+        page.locator("#asNewBtn").click()
+        expect(page.locator("#asEditor")).to_be_visible()
+        expect(page.locator("#asCode")).to_contain_text("Kalkulator RAB Interior")
+        page.locator("#asPreviewBtn").click()
+        expect(page.locator("#asStage iframe.as-iframe")).to_be_visible()
+        # Preview must be opaque-origin, not privileged SONIC.
+        assert page.locator("#asStage iframe.as-iframe").get_attribute("sandbox")=="allow-scripts"
+        frame=page.frame_locator("#asStage iframe.as-iframe")
+        expect(frame.locator("#vol")).to_be_visible(timeout=7000)
+        expect(frame.locator("#out")).to_contain_text("33.000.000",timeout=7000)
+        page.screenshot(path=str(OUT/(BROWSER+"-"+label+"-html-preview.png")),full_page=True)
+
+        page.locator("#asSaveBtn").click()
+        expect(page.locator("#asNotice")).to_contain_text("Saved to owner-only SONIC database",timeout=14000)
+        expect(page.locator("#asLibrary .as-entry")).to_have_count(1)
+        page.locator("#asEditBtn").click()
+        expect(page.locator("#asEditor")).to_be_visible()
+        page.locator("#asDraftName").fill("RAB Calculator v2")
+        page.locator("#asSaveBtn").click()
+        expect(page.locator("#asSubtitle")).to_contain_text("v2",timeout=14000)
+        page.locator('[data-as-tab="versions"]').click()
+        expect(page.locator("#asHistory .as-history-btn")).to_have_count(2)
+        page.screenshot(path=str(OUT/(BROWSER+"-"+label+"-versions.png")),full_page=True)
+        assert not errors, errors
+        if label=="iphone":
+            assert page.evaluate("document.documentElement.scrollWidth<=innerWidth+2"),"horizontal overflow"
+        reports.append({"browser":BROWSER,"viewport":label,"owner_api":True,
+                        "sandbox_executable":True,"version_history":True,"js_errors":errors})
+        page.close()
+    browser.close()
+(OUT/(BROWSER+"-report.json")).write_text(json.dumps(reports,indent=2),encoding="utf-8")
+print(json.dumps(reports))
+print("SONIC_ARTIFACT_V200_"+BROWSER.upper()+"_PASS")
