@@ -25,6 +25,17 @@ function placeOrb(tab){
  if(!anchor||document.body.classList.contains('sonic-focused'))return;
  const dock=(tab==='studio'?docks.studio:tab==='brain'||tab==='memory'?docks.knowledge:tab==='chat'?docks.chat:docks.global);
  if(!dock)return;
+ // Safari and Chromium can scroll the Artifact panel independently. Move its
+ // presence dock outside the scrolling panel on phones, so fixed positioning
+ // is relative to the viewport and the orb is never clipped offscreen.
+ const studioHome=$('sonicArtifactRoot')?.querySelector('.v22-studio-hero');
+ if(docks.studio&&studioHome){
+   if(mobile()&&tab==='studio'){
+     if(docks.studio.parentElement!==document.body)document.body.append(docks.studio);
+   }else if(docks.studio.parentElement===document.body){
+     studioHome.append(docks.studio);
+   }
+ }
  if(anchor.parentElement!==dock)dock.append(anchor);
  const update=()=>{
    if(!document.body.classList.contains('sonic-focused'))window.sonicMotion?.updateHome?.(true);
