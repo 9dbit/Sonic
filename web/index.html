@@ -87,8 +87,10 @@
 <link rel="stylesheet" href="/assets/pc-tools-v183.css?v=1.8.3">
 <link rel="stylesheet" href="/assets/auth-isolation-v181.css?v=20261118">
   <link rel="stylesheet" href="/assets/sonic-ia-v190.css?v=1.9.0">
+  <link rel="stylesheet" href="/assets/artifact-studio-v200.css?v=2.0.0">
   <script src="/assets/auth-isolation-v181.js?v=20261118" defer></script>
   <script src="/assets/sonic-ia-v190.js?v=1.9.0" defer></script>
+  <script src="/assets/artifact-studio-v200.js?v=2.0.0" defer></script>
 </head>
 <body class="sonic-shell-v100 orbit-v140 sonic-auth-locked">
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -122,6 +124,7 @@
         <button class="nav active" data-tab="dashboard" aria-label="Dashboard" aria-current="page"><svg><use href="#i-brain"/></svg><span data-short="Home">Dashboard</span></button>
         <button class="nav" data-tab="brain" aria-label="Knowledge"><svg><use href="#i-brain"/></svg><span data-short="Know">Knowledge</span></button>
         <button class="nav" data-tab="chat" aria-label="Chat"><svg><use href="#i-chat"/></svg><span data-short="Chat">Chat</span></button>
+        <button class="nav" data-tab="studio" aria-label="Artifact Studio"><svg><use href="#i-image"/></svg><span data-short="Studio">Artifact Studio</span></button>
         <button class="nav" data-tab="workspace" aria-label="Workspace"><svg><use href="#i-memory"/></svg><span data-short="Files">Workspace</span></button>
         <button class="nav sonic-subnav-only" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span data-short="Memory">Memory Vault</span></button>
         <button class="nav" data-tab="devices" aria-label="Devices"><svg><use href="#i-device"/></svg><span data-short="Devices">Devices</span></button>
@@ -130,6 +133,7 @@
       </nav>
       <div id="mobileMoreMenu" class="mobile-more-menu" hidden>
         <button type="button" data-mobile-go="devices">Devices &amp; PC Control</button>
+        <button type="button" data-mobile-go="studio">Artifact Studio</button>
         <button type="button" data-mobile-go="workspace">Workspace &amp; Files</button>
         <button type="button" data-mobile-go="setup">Settings &amp; Models</button>
       </div>
@@ -302,6 +306,9 @@
              </details>
            </div>
            <form id="chatForm" class="composer"><label class="sr-only" for="message">Pesan untuk SONIC</label><textarea id="message" rows="1" maxlength="3500" placeholder="Ask SONIC anything..."></textarea><div class="compose-actions"><div class="compose-left"><button id="chatExtras" type="button" class="icon-button chat-extras" aria-expanded="false" title="More attachment tools" aria-label="More tools">+</button><button id="mic" type="button" class="icon-button mic-control" aria-label="Voice input"><svg><use href="#i-mic"/></svg></button><button id="voice" type="button" class="voice-button voice-control" aria-pressed="false"><svg><use href="#i-audio"/></svg><span>Voice off</span></button><button id="camera" type="button" class="icon-button" aria-label="Camera"><svg><use href="#i-camera"/></svg></button><button id="screen" type="button" class="icon-button screen-control" aria-label="Screen capture"><svg><use href="#i-device"/></svg></button><button id="image" type="button" class="icon-button" aria-label="Upload image"><svg><use href="#i-image"/></svg></button></div><button id="send" class="send-button" aria-label="Send message"><svg><use href="#i-send"/></svg></button></div></form><details class="chat-security-details"><summary>Keamanan Chat &amp; PC</summary><p class="disclaimer">Perintah PC aman diproses di chat atau voice; operasi sensitif memerlukan persetujuan dalam percakapan.</p></details></div>
+      </section>
+      <section class="panel sonic-artifact-panel hidden" id="studioPanel" aria-label="SONIC Artifact Studio">
+        <div id="sonicArtifactRoot" class="sonic-artifact-root" aria-live="polite"></div>
       </section>
       <section class="panel workspace-panel hidden" id="workspacePanel" aria-label="Workspace SONIC">
         <div class="ws-heading"><div><span class="eyebrow">YOUR FILES &amp; NOTES</span><h2>Workspace</h2><p>Folder dan catatan dalam satu ruang. Ketik, dikte, atau panggil SONIC.</p></div><div class="ws-actions"><button id="wsNewFolder" type="button" class="ws-button">+ Folder</button><button id="wsNewNote" type="button" class="ws-button primary">+ Catatan</button></div></div>
