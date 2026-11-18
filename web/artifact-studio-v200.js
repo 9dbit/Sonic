@@ -85,7 +85,10 @@ function render(){
  }else if(a.kind==="website"){
   const box=make("div","as-website");
   box.append(make("span","as-kicker","EXTERNAL WEBSITE"),make("h3",null,a.name),make("code",null,text));
-  const l=make("a","as-button as-primary","Open external website ↗");l.target="_blank";l.rel="noopener noreferrer";l.referrerPolicy="no-referrer";l.href=text;box.append(l);
+  const l=make("a","as-button as-primary","Open external website ↗");l.target="_blank";l.rel="noopener noreferrer";l.referrerPolicy="no-referrer";
+  let valid=false;try{const parsed=new URL(text);valid=parsed.protocol==="https:"&&!parsed.username&&!parsed.password&&!!parsed.hostname}catch{}
+  if(valid)l.href=text;else{l.removeAttribute("href");l.textContent="HTTPS URL invalid";l.setAttribute("aria-disabled","true")}
+  box.append(l);
   box.append(make("p","as-disclaimer","Website dibuka di tab baru karena banyak situs melarang embedding. Ini bukan remote-browser execution."));
   stage.append(box);
  }else{
@@ -199,8 +202,8 @@ async function importFile(file){
  newDraft(kind,src,mime,"import",file.name);
  show("preview");inform("Local preview ready; tekan Save Version untuk menyimpan.");
 }
-function draftFromMessage(text){
- if(!state.owner){inform("Sign in as owner first.",true);return}
+async function draftFromMessage(text){
+ if(!await session()){inform("Sign in as owner first.",true);return}
  const ticks=String.fromCharCode(96).repeat(3),input=String(text);
  let start=input.toLowerCase().indexOf(ticks+"html");
  if(start<0)start=input.toLowerCase().indexOf(ticks+"htm");
@@ -295,7 +298,7 @@ function init(){
  }
  const feed=$("chatFeed");if(feed){new MutationObserver(scanChat).observe(feed,{childList:true});scanChat()}
  window.addEventListener("sonic:tab",e=>{if(e.detail?.tab==="studio")refresh().catch(err=>inform(err.message,true))});
- const clear=()=>{state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";library();updateMeta();render()};
+ const clear=()=>{state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";library();updateMeta();render()};
  window.addEventListener("sonic:overview",e=>{if(e.detail?.kind==="clear")clear()});
  window.addEventListener("sonic:logout",clear);
  window.SonicArtifactStudio={open,newDraft,fromChat:draftFromMessage};
