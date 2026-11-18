@@ -117,6 +117,7 @@ class Heartbeat(BaseModel):
     ram_free_mb: int = Field(ge=0, le=10_000_000)
     gpu_free_mb: int | None = Field(default=None, ge=0, le=100_000)
     gpu_used_mb: int | None = Field(default=None, ge=0, le=100_000)
+    supports_code: bool = False
 
 
 class Receipt(BaseModel):
@@ -168,7 +169,7 @@ def device_heartbeat(data: Heartbeat, request: Request, db: Session = Depends(ge
     row.state = data.state
     row.metrics_json = json.dumps({
         "ram_free_mb": data.ram_free_mb,
-        "gpu_free_mb": data.gpu_free_mb, "gpu_used_mb": data.gpu_used_mb
+        "gpu_free_mb": data.gpu_free_mb, "gpu_used_mb": data.gpu_used_mb, "supports_code": data.supports_code
     })
     row.updated_at = utcnow()
     db.commit()
