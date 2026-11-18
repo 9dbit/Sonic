@@ -10,6 +10,14 @@ HTML = """<!doctype html><html lang="id"><head><style>body{font:16px system-ui}<
 </body></html>"""
 
 
+def code_heartbeat(client):
+    return client.post("/api/device/local-ai/heartbeat",headers=device_headers(),json={
+        "device_id":"TRADEVICEPC","state":"running",
+        "ram_free_mb":7000,"gpu_free_mb":3000,"gpu_used_mb":2800,
+        "supports_code":True
+    })
+
+
 def test_owner_security_and_validation(client):
     path = "/api/coding/generate"
     assert client.post(path, json={"provider":"local","prompt":"Buat kalkulator mini"}).status_code == 401
@@ -26,6 +34,7 @@ def test_local_coding_uses_signed_companion_and_does_not_switch_model(client, mo
     monkeypatch.setenv("SONIC_LOCAL_AI_ENABLED", "true")
     h = owner(client)
     heartbeat(client)
+    assert code_heartbeat(client).status_code == 200
     old = client.get("/api/models").json()["selected"]
     r = client.post("/api/coding/generate",headers=h,
                     json={"provider":"local","prompt":"Buat kalkulator harga sederhana"})
@@ -56,6 +65,7 @@ def test_local_partial_and_diagnostics(client, monkeypatch):
     monkeypatch.setenv("SONIC_LOCAL_AI_ENABLED", "true")
     h = owner(client)
     heartbeat(client)
+    assert code_heartbeat(client).status_code == 200
     queued=client.post("/api/coding/generate",headers=h,json={
         "provider":"local","prompt":"Buat timer minimal dengan angka"}).json()
     job=client.post("/api/device/local-ai/next",headers=device_headers()).json()["job"]
