@@ -71,7 +71,11 @@ def website_url(value: str) -> str:
     url = urlsplit(value)
     if url.scheme != "https" or not url.hostname or url.username or url.password:
         fail(422, "Hanya URL website HTTPS publik yang diizinkan")
-    if url.port not in (None, 443):
+    try:
+        port = url.port
+    except ValueError:
+        fail(422, "Format port URL tidak valid")
+    if port not in (None, 443):
         fail(422, "Port URL harus HTTPS standar")
     host = url.hostname.lower().rstrip(".")
     if host in ("localhost", "localhost.localdomain") or host.endswith((".local", ".internal", ".localhost")):
