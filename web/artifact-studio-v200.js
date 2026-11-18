@@ -16,7 +16,7 @@ const demo=[
  'function update(){o.textContent="Rp "+((Number(v.value)||0)*(Number(p.value)||0)).toLocaleString("id-ID")}',
  'v.oninput=p.oninput=update;update();</script>'
 ].join("");
-const state={items:[],selection:null,draft:null,content:"",csrf:null,owner:false,filter:"all",historical:false,busy:false,seq:0};
+const state={items:[],selection:null,draft:null,content:"",csrf:null,owner:false,filter:"all",historical:false,busy:false,seq:0,previewSeq:0};
 const types={app:"Web App",code:"Source",image:"Image",audio:"Audio",video:"Video",website:"Website"};
 const icon={app:"▣",code:"⌘",image:"▧",audio:"♫",video:"▷",website:"◎"};
 const size=n=>n>=1048576?(n/1048576).toFixed(1)+" MB":n>=1024?(n/1024).toFixed(1)+" KB":(n||0)+" B";
@@ -48,34 +48,38 @@ function updateMeta(){
  $("asEditBtn").disabled=!a||!["app","code","website"].includes(a.kind)||state.historical;
  $("asDeleteBtn").disabled=!state.selection||!state.owner;
 }
-function show(view){
+function show(view,approved=false){
  for(const b of host.querySelectorAll("[data-as-tab]"))b.setAttribute("aria-selected",String(b.dataset.asTab===view));
  for(const id of ["asStage","asEditor","asHistory"])$(id).hidden=!(id===({preview:"asStage",code:"asEditor",versions:"asHistory"})[view]);
- if(view==="preview")render();
+ if(view==="preview")render(approved);
  if(view==="code")$("asCode").value=content()||"";
  if(view==="versions")history();
 }
-function sandbox(html){
- const iframe=make("iframe","as-iframe");iframe.title="Artifact preview: isolated browser origin";
- iframe.setAttribute("sandbox","allow-scripts"); // intentionally no same-origin, forms, popups, navigation or downloads
- iframe.referrerPolicy="no-referrer";
- const policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'";
- const documentHtml='<meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta charset="utf-8">'+html;
- const bytes=new TextEncoder().encode(documentHtml);
- let binary="";
- for(let offset=0;offset<bytes.length;offset+=8192){
-  binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));
- }
- // data: creates an opaque-origin child that does not inherit the owner's script-src.
- iframe.src="data:text/html;charset=utf-8;base64,"+btoa(binary);
- return iframe;
+function sandbox(url){
+ const frame=make("iframe","as-iframe");
+ frame.title="SONIC isolated HTML preview";
+ frame.setAttribute("sandbox","allow-scripts"); // no same-origin, forms, downloads, popups or top navigation
+ frame.referrerPolicy="no-referrer";
+ frame.src=url;
+ return frame;
 }
-function render(){
+function render(approved=false){
+ const token=++state.previewSeq;
  const stage=$("asStage");stage.replaceChildren();const a=current();
  if(!a){stage.append(make("div","as-empty","No artifact selected. Create an HTML tool or import an image, audio or video."));return}
  const text=content();
  if(a.kind==="app"){
-  stage.append(sandbox(text),make("p","as-disclaimer","Isolated HTML preview: tidak ada akses ke cookie SONIC, PC, shell, atau jaringan."));
+  if(!approved){
+   const notice=make("div","as-empty","Source HTML tersedia. Tekan Preview untuk menjalankan tool di browser sandbox.");
+   const launch=button("▷ Run isolated preview",()=>render(true),"as-button as-primary");
+   stage.append(notice,launch);return;
+  }
+  stage.append(make("p","as-empty","Preparing isolated preview…"));
+  api("/previews",{method:"POST",body:JSON.stringify({content:text})}).then(result=>{
+   if(token!==state.previewSeq||$("asStage").hidden)return;
+   stage.replaceChildren(sandbox(result.url),make("p","as-disclaimer",
+      "Preview kedaluwarsa setelah 8 menit. Kode berjalan dengan origin terisolasi tanpa cookie, filesystem, shell atau jaringan."));
+  }).catch(err=>{if(token===state.previewSeq){stage.replaceChildren(make("p","as-empty",err.message));inform(err.message,true)}});
  }else if(a.kind==="image"){
   const img=make("img","as-image");img.src=text;img.alt=a.name;stage.append(img);
  }else if(a.kind==="audio"){
@@ -267,7 +271,7 @@ function init(){
  $("asSearch").oninput=library;
  for(const b of $("asKindTabs").querySelectorAll("button"))b.onclick=()=>{state.filter=b.dataset.kind;for(const n of $("asKindTabs").querySelectorAll("button"))n.classList.toggle("active",n===b);library()};
  for(const b of host.querySelectorAll("[data-as-tab]"))b.onclick=()=>show(b.dataset.asTab);
- $("asPreviewBtn").onclick=()=>{syncEditor();show("preview");inform("Browser sandbox preview. No Windows commands are executed.")};
+ $("asPreviewBtn").onclick=()=>{syncEditor();show("preview",true);inform("Loading owner-only sandbox preview. No Windows commands are executed.")};
  $("asEditBtn").onclick=editing;
  $("asSaveBtn").onclick=save;
  $("asDeleteBtn").onclick=remove;
