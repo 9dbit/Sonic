@@ -456,7 +456,20 @@ async def security_headers(request: Request, call_next):
         "object-src 'none'; connect-src 'self'; "
         "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     )
-    response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), display-capture=(self)"
+    if request.method == "GET" and request.url.path.startswith("/api/artifacts/previews/") and response.status_code == 200:
+        # A distinct CSP on this authenticated preview response allows
+        # interactive HTML without weakening SONIC's main script policy.
+        # CSP sandbox forces an opaque origin even for direct navigation.
+        response.headers["Content-Security-Policy"] = (
+            "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; "
+            "style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; "
+            "font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; "
+            "worker-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'"
+        )
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), display-capture=()"
+    else:
+        response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), display-capture=(self)"
     if request.url.path.startswith(("/api/", "/assets/")):
         response.headers["Cache-Control"] = "no-store"
     if setting("RAILWAY_ENVIRONMENT_NAME") or public_url().startswith("https://"):
