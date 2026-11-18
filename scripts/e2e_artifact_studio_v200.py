@@ -61,6 +61,11 @@ with local_server(settings=settings) as (base,token), sync_playwright() as playw
         page.locator('[data-as-tab="versions"]').click()
         expect(page.locator("#asHistory .as-history-btn")).to_have_count(2)
         page.screenshot(path=str(OUT/(BROWSER+"-"+label+"-versions.png")),full_page=True)
+        page.locator('.sidebar [data-tab="workspace"]').click()
+        expect(page.locator(".as-workspace-strip")).to_be_visible(timeout=7000)
+        expect(page.locator(".as-workspace-items .as-workspace-entry")).to_have_count(
+            min(initial_artifact_count+1,4),timeout=10000)
+        page.screenshot(path=str(OUT/(BROWSER+"-"+label+"-workspace-artifacts.png")),full_page=True)
         # Assistant replies arrive asynchronously. Studio must detect HTML only
         # after the final message text has been populated.
         page.locator('.sidebar [data-tab="chat"]').click()
