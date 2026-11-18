@@ -5,6 +5,8 @@ deployment. HTML tools are previewed separately in an opaque-origin browser ifra
 """
 from __future__ import annotations
 
+from datetime import timedelta
+
 import base64
 import binascii
 import hashlib
@@ -15,13 +17,14 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import auth
-from .db import ArtifactGate, ArtifactItem, ArtifactVersion, get_db, utcnow
+from .db import ArtifactGate, ArtifactItem, ArtifactVersion, ArtifactPreview, get_db, utcnow
 
 router = APIRouter(prefix="/api/artifacts", tags=["artifacts"])
 Kind = Literal["app", "code", "image", "audio", "video", "website"]
@@ -46,6 +49,11 @@ class CreateArtifact(BaseModel):
     content: str = Field(min_length=1, max_length=23_000_000)
     mime: str = Field(default="", max_length=80)
     source: Source = "manual"
+
+
+class PreviewHTML(BaseModel):
+    """Ephemeral source, never executable on the server or Windows."""
+    content: str = Field(min_length=1, max_length=800_000)
 
 
 class ReviseArtifact(BaseModel):
@@ -181,6 +189,45 @@ def required_item(db: Session, artifact_id: str) -> ArtifactItem:
     if item is None:
         fail(404, "Artifact tidak ditemukan")
     return item
+
+
+
+@router.post("/previews", status_code=201)
+def create_preview(payload: PreviewHTML, owner: dict = Depends(auth.require_owner_write),
+                   db: Session = Depends(get_db)):
+    # Browser iframe content is always owner-scoped, expiring and isolated.
+    if len(payload.content.encode("utf-8")) > 800_000:
+        fail(413, "Preview HTML maksimal 800 KB")
+    now = utcnow()
+    db.execute(delete(ArtifactPreview).where(ArtifactPreview.expires_at <= now))
+    session_id = auth.sha256(owner["sid"])
+    n = db.scalar(select(func.count()).select_from(ArtifactPreview).where(
+        ArtifactPreview.owner_session == session_id)) or 0
+    if n >= 8:
+        fail(429, "Terlalu banyak preview aktif. Tutup preview atau coba lagi setelah kedaluwarsa")
+    ident = str(uuid4())
+    db.add(ArtifactPreview(id=ident, owner_session=session_id, html=payload.content,
+                           expires_at=now + timedelta(minutes=8)))
+    db.commit()
+    return {"url": "/api/artifacts/previews/" + ident, "expires_seconds": 480,
+            "mode": "opaque-origin-browser-sandbox"}
+
+
+@router.get("/previews/{preview_id}")
+def render_preview(preview_id: str, owner: dict = Depends(auth.require_owner),
+                   db: Session = Depends(get_db)):
+    try:
+        UUID(preview_id)
+    except (ValueError, AttributeError):
+        fail(404, "Preview tidak ditemukan")
+    row = db.get(ArtifactPreview, preview_id)
+    if row is None or row.expires_at <= utcnow() or row.owner_session != auth.sha256(owner["sid"]):
+        fail(404, "Preview tidak tersedia atau kedaluwarsa")
+    # The API security middleware overrides ordinary CSP and XFO on this URL
+    # with a response-enforced 'sandbox allow-scripts' and zero network.
+    return HTMLResponse("<!doctype html><meta charset='utf-8'>" + row.html,
+                        headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
+                                 "X-Robots-Tag": "noindex, nofollow"})
 
 
 @router.get("")
