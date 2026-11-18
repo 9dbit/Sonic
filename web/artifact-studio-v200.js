@@ -60,7 +60,14 @@ function sandbox(html){
  iframe.setAttribute("sandbox","allow-scripts"); // intentionally no same-origin, forms, popups, navigation or downloads
  iframe.referrerPolicy="no-referrer";
  const policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'";
- iframe.srcdoc='<meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta charset="utf-8">'+html;
+ const documentHtml='<meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta charset="utf-8">'+html;
+ const bytes=new TextEncoder().encode(documentHtml);
+ let binary="";
+ for(let offset=0;offset<bytes.length;offset+=8192){
+  binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));
+ }
+ // data: creates an opaque-origin child that does not inherit the owner's script-src.
+ iframe.src="data:text/html;charset=utf-8;base64,"+btoa(binary);
  return iframe;
 }
 function render(){
