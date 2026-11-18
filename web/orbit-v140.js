@@ -19,7 +19,7 @@
  window.addEventListener('sonic:focus',event=>{const on=event.detail?.focused===true;el('orbitVoiceCaption').hidden=!on;});
  window.addEventListener('sonic:activity',event=>{if(!window.sonicRealtimeActive)put('orbitVoiceState','Ready');});
  window.addEventListener('sonic:voice-state',event=>{put('orbitVoiceState',stateLabels[event.detail?.state]||'Ready');document.body.dataset.orbitVoice=event.detail?.state||'idle';});
- window.addEventListener('sonic:tab',event=>{el('orbitOverview').hidden=event.detail?.tab!=='brain';});
+ window.addEventListener('sonic:tab',event=>{el('orbitOverview').hidden=event.detail?.tab!=='dashboard';});
  document.querySelectorAll('[data-orbit-tab]').forEach(node=>node.addEventListener('click',()=>document.querySelector('.nav[data-tab="'+node.dataset.orbitTab+'"]')?.click()));
  const login=el('loginOverlay');
  if(login){new MutationObserver(()=>{if(!login.classList.contains('hidden'))clear();}).observe(login,{attributes:true,attributeFilter:['class']});if(!login.classList.contains('hidden'))clear();}
