@@ -57,6 +57,8 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
         expect(page.locator("#studioPanel")).to_be_visible()
         expect(page.locator("#asCodingPrompt")).to_have_value("Buat kalkulator sederhana ui modern")
         expect(page.locator("#v22RecentArtifacts")).to_be_visible()
+        expect(page.locator("#asQuota")).to_contain_text("items",timeout=9000)
+        prior_count=page.locator("#v22RecentGrid .v22-artifact-card").count()
         expect(page.locator("#asCodingProvider")).to_have_value("local")
         expect(page.locator("#asGenerate")).to_be_enabled()
         expect(page.locator(".v22-studio-hero")).to_be_visible()
@@ -71,7 +73,7 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
         expect(iframe.locator("#out")).to_contain_text("33.000.000",timeout=8000)
         page.locator("#asSaveBtn").click()
         expect(page.locator("#asNotice")).to_contain_text("Saved to owner-only SONIC database",timeout=14000)
-        expect(page.locator("#v22RecentGrid .v22-artifact-card")).to_have_count(1,timeout=7000)
+        expect(page.locator("#v22RecentGrid .v22-artifact-card")).to_have_count(min(prior_count+1,4),timeout=7000)
         page.screenshot(path=str(OUT/f"{BROWSER}-{label}-gallery.png"),full_page=True)
 
         # Knowledge uses WebGL engine and a real graph route for its light trace.
