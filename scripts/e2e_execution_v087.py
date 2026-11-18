@@ -96,7 +96,7 @@ def run():
                     assert finish(job,{'created':True,'exists':True,'name':'Resume '+name,
                         'path':'C:/Users/Owner/Desktop/Resume '+name,'scope':'owner_desktop'})['state']=='done'
                     expect(page.locator('#chatFeed')).to_contain_text('Folder Desktop berhasil dibuat')
-                    expect(page.locator('#chatFeed')).to_contain_text('Folder diperiksa oleh Windows companion')
+                    expect(page.locator('#chatFeed')).to_contain_text('Hasil diperiksa oleh Windows companion')
 
                     send('PowerShell: Get-Date')
                     expect(page.locator('#chatFeed .chat-approve-button')).to_have_count(1)
