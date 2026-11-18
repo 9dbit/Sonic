@@ -26,6 +26,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install SONIC and Playwright dependencies
         run: python -m pip install -r requirements.txt playwright==1.56.0
       - name: Check JavaScript and Python syntax
