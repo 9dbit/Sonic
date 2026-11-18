@@ -282,3 +282,18 @@ body.sonic-ux-v220 .v22-chat-advanced #pcTools{margin:4px 0!important}
  body.sonic-ux-v220 .v22-live-light,body.sonic-ux-v220 .v22-signal-bars i{animation:none!important}
  body.sonic-ux-v220 *{scroll-behavior:auto!important}
 }
+
+/* Route-aware display: the Knowledge orb belongs only to Knowledge. */
+body.sonic-ux-v220:not([data-sonic-page="brain"]):not([data-sonic-page="memory"]) .v22-knowledge-intro{display:none!important}
+body.sonic-ux-v220:not([data-sonic-page="brain"]):not([data-sonic-page="memory"]) #knowledgeViews{display:none!important}
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="dashboard"] #v22GlobalOrbDock,
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="workspace"] #v22GlobalOrbDock,
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="devices"] #v22GlobalOrbDock,
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="setup"] #v22GlobalOrbDock{
+  display:block!important;position:absolute!important;right:15px;top:67px!important;
+  width:58px!important;height:58px!important;min-height:58px!important;
+  min-width:58px!important;z-index:15;pointer-events:none;
+ }
+ body.sonic-ux-v220.orbit-v140 #mobileMoreMenu[hidden]{display:none!important}
+}
