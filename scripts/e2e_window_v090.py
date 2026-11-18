@@ -40,7 +40,11 @@ with local_server(settings=settings) as (url,owner),sync_playwright() as p:
         page.locator('#ownerToken').fill(owner)
         page.locator('#loginForm button[type=submit]').click()
         expect(page.locator('#loginOverlay')).to_have_class(re.compile('.*hidden.*'))
-        page.locator('.nav[data-tab=devices]').click()
+        if device=='mobile':
+            page.locator('#mobileMoreNav').click()
+            page.locator('[data-mobile-go=devices]').click()
+        else:
+            page.locator('.nav[data-tab=devices]').click()
         expect(page.locator('#pcWindowControl')).to_be_visible()
         expect(page.locator('#pcWindowStatus')).to_contain_text('mendukung Window Control',timeout=12000)
         assert page.locator('[data-window-action=\"window.close\"]').is_enabled()
