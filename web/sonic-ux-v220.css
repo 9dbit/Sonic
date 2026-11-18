@@ -362,3 +362,9 @@ body.sonic-ux-v220 .v22-orb-dock.v22-live-motion .v22-orb-fallback{opacity:.15}
   display:none!important;content:none!important;
  }
 }
+
+/* Advanced Research settings are context-specific, not permanent Chat clutter. */
+body.sonic-ux-v220 .v22-chat-research .research-options{display:none!important}
+body.sonic-ux-v220 .v22-chat-research:has(#agentModeResearch[aria-pressed="true"]) .research-options{
+ display:block!important;margin-top:6px!important;
+}
