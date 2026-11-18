@@ -99,6 +99,8 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
             page.locator("#neuralKnowledgeBtn").click()
             expect(page.locator("#neuralKnowledgeList")).to_be_visible()
             page.locator("#neuralGraphBtn").click()
+            expect(page.locator("#neuralGraphBtn")).to_have_attribute("aria-pressed","true")
+            expect(page.locator("#neuralKnowledgeBtn")).to_have_attribute("aria-pressed","false")
             expect(page.locator("#graphStage")).to_be_visible()
         page.screenshot(path=str(OUT/f"{BROWSER}-{label}-knowledge.png"),full_page=True)
 
