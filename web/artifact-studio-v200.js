@@ -223,11 +223,12 @@ async function draftFromMessage(text){
 function scanChat(){
  const feed=$("chatFeed");if(!feed)return;
  const ticks=String.fromCharCode(96).repeat(3);
- for(const message of feed.querySelectorAll(".message.assistant:not([data-as-reviewed])")){
-  message.dataset.asReviewed="1";const text=message.querySelector(".body")?.textContent||"";
+ for(const message of feed.querySelectorAll(".message.assistant:not([data-as-artifact-ready])")){
+  const text=message.querySelector(".body")?.textContent||"";
   if(text.length<25||text.length>100000)continue;
   if(!text.toLowerCase().includes(ticks+"html")&&!/^\s*(?:<!doctype html|<html[\s>])/i.test(text))continue;
-  message.append(button("▣ Open code in Artifact Studio",()=>draftFromMessage(text),"as-chat-action"));
+  message.dataset.asArtifactReady="1";
+  message.append(button("▣ Open code in Artifact Studio",()=>draftFromMessage(message.querySelector(".body")?.textContent||""),"as-chat-action"));
  }
 }
 function open(){document.querySelector('.sidebar [data-tab="studio"]')?.click()}
@@ -302,7 +303,7 @@ function init(){
    make("p",null,"Local AI creates text. HTML previews do not execute on TRADEVICEPC. Host install/deploy requires a separate authorized workflow."));
   box.append(button("Open Artifact Studio ↗",open,"as-button"));dev.append(box);
  }
- const feed=$("chatFeed");if(feed){new MutationObserver(scanChat).observe(feed,{childList:true});scanChat()}
+ const feed=$("chatFeed");if(feed){new MutationObserver(scanChat).observe(feed,{childList:true,subtree:true,characterData:true});scanChat()}
  window.addEventListener("sonic:tab",e=>{if(e.detail?.tab==="studio")refresh().catch(err=>inform(err.message,true))});
  const clear=()=>{state.epoch++;state.seq++;state.previewSeq++;state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";library();updateMeta();render()};
  window.addEventListener("sonic:overview",e=>{if(e.detail?.kind==="clear")clear()});
