@@ -321,3 +321,19 @@ body.sonic-ux-v220 .v22-orb-dock.v22-live-motion .v22-orb-fallback{opacity:.15}
 @media(prefers-reduced-motion:reduce){
  body.sonic-ux-v220 .v22-orb-fallback:before,body.sonic-ux-v220 .v22-orb-fallback img{animation:none!important}
 }
+
+/* Scroll-independent SONIC presence. The studio panel has its own scroll
+ * container: an in-flow orb would disappear after browsing a saved artifact. */
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140 #v22StudioOrbDock,
+ body.sonic-ux-v220.orbit-v140 #v22KnowledgeOrbDock,
+ body.sonic-ux-v220.orbit-v140 #v22ChatOrbDock{
+  position:fixed!important;top:76px!important;right:14px!important;left:auto!important;
+  width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;
+  flex-basis:58px!important;margin:0!important;z-index:24!important;pointer-events:none;
+ }
+ body.sonic-ux-v220.orbit-v140 .v22-studio-hero{padding-right:75px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-chat-model{padding-right:65px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-knowledge-intro{padding-right:77px!important}
+ body.sonic-ux-v220.orbit-v140 #v22GlobalOrbDock{position:fixed!important;top:76px!important;right:14px!important}
+}
