@@ -39,7 +39,7 @@ with local_server(settings=settings) as (base,token), sync_playwright() as playw
 
         page.locator("#asNewBtn").click()
         expect(page.locator("#asEditor")).to_be_visible()
-        expect(page.locator("#asCode")).to_have_value(lambda value: "Kalkulator RAB Interior" in value)
+        assert "Kalkulator RAB Interior" in page.locator("#asCode").input_value()
         page.locator("#asPreviewBtn").click()
         expect(page.locator("#asStage iframe.as-iframe")).to_be_visible()
         # Preview must be opaque-origin, not privileged SONIC.
