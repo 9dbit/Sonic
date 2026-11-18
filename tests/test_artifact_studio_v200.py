@@ -85,6 +85,7 @@ def test_code_is_stored_but_not_executed(client):
     assert "artifact-studio-v200.js" in html
     assert "artifact-studio-v200.css" in html
     assert "frame-src" in client.get("/").headers.get("Content-Security-Policy","")
+    assert "media-src 'self' blob: data:" in client.get("/").headers.get("Content-Security-Policy","")
 
 
 def test_isolated_preview_is_owner_scoped_and_expires(client):
