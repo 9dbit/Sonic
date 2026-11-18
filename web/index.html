@@ -86,7 +86,9 @@
 <script src="/assets/model-truth-v182.js?v=20261118" defer></script>
 <link rel="stylesheet" href="/assets/pc-tools-v183.css?v=1.8.3">
 <link rel="stylesheet" href="/assets/auth-isolation-v181.css?v=20261118">
+  <link rel="stylesheet" href="/assets/sonic-ia-v190.css?v=1.9.0">
   <script src="/assets/auth-isolation-v181.js?v=20261118" defer></script>
+  <script src="/assets/sonic-ia-v190.js?v=1.9.0" defer></script>
 </head>
 <body class="sonic-shell-v100 orbit-v140 sonic-auth-locked">
   <svg class="icon-sprite" aria-hidden="true"><defs>
@@ -117,10 +119,11 @@
       </div>
       <div class="sidebar-caption"><span>WORKSPACE</span><small>CORE / 01</small></div>
       <nav class="sidebar-content" aria-label="Main sections">
-        <button class="nav active" data-tab="brain" aria-label="Neural Brain"><svg><use href="#i-brain"/></svg><span data-short="Neural">Neural Brain</span></button>
+        <button class="nav active" data-tab="dashboard" aria-label="Dashboard"><svg><use href="#i-brain"/></svg><span data-short="Home">Dashboard</span></button>
+        <button class="nav" data-tab="brain" aria-label="Knowledge"><svg><use href="#i-brain"/></svg><span data-short="Know">Knowledge</span></button>
         <button class="nav" data-tab="chat" aria-label="Chat"><svg><use href="#i-chat"/></svg><span data-short="Chat">Chat</span></button>
         <button class="nav" data-tab="workspace" aria-label="Workspace"><svg><use href="#i-memory"/></svg><span data-short="Files">Workspace</span></button>
-        <button class="nav" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span data-short="Memory">Memory Vault</span></button>
+        <button class="nav sonic-subnav-only" data-tab="memory" aria-label="Memory Vault"><svg><use href="#i-memory"/></svg><span data-short="Memory">Memory Vault</span></button>
         <button class="nav" data-tab="devices" aria-label="Devices"><svg><use href="#i-device"/></svg><span data-short="Devices">Devices</span></button>
         <button class="nav" data-tab="setup" aria-label="Setup"><svg><use href="#i-settings"/></svg><span data-short="Setup">Settings</span></button>
         <button id="mobileMoreNav" class="mobile-more-nav" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More navigation"><svg><use href="#i-settings"/></svg><span>More</span></button>
@@ -137,27 +140,89 @@
     <main class="content">
       <header class="topbar">
         <button id="sonicHeaderOrb" class="orbit-header-orb" type="button" title="Double tap untuk panggil SONIC" aria-label="Double tap to summon SONIC"><img src="/assets/sonic-mark.svg?v=1.5.1" width="50" height="56" alt=""></button>
-        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V__SONIC_VERSION__</b></span><h1 id="pageTitle">Neural Brain</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
+        <div class="topbar-intro"><div class="top-title"><span class="eyebrow">SONIC / INTELLIGENCE CONSOLE <b>V__SONIC_VERSION__</b></span><h1 id="pageTitle">Dashboard</h1></div><p id="pageSubtitle" class="top-subtitle">A living map of your connected knowledge.</p></div>
         <div class="top-right"><button id="wakeToggle" type="button" class="wake-pill" aria-pressed="false" title="Explicit foreground wake-word standby">Standby off</button><button id="talkSonic" type="button" class="talk-button" aria-haspopup="dialog"><svg><use href="#i-mic"/></svg><span>Talk to SONIC</span></button><span id="brainPill" class="pill muted">Model: checking</span><span id="devicePill" class="pill offline">PC offline</span></div>
       </header>
       <section id="orbitOverview" class="orbit-overview" aria-label="SONIC live overview">
         <button class="orbit-overview-card" type="button" data-orbit-tab="memory" aria-label="Open Memory Vault">
-          <span class="orbit-card-top"><span>◈ MEMORY VAULT</span><small>01</small></span>
+          <span class="orbit-card-top"><span>◈ MEMORY</span><small>01</small></span>
           <strong id="orbitMemory">Locked</strong>
           <span class="orbit-card-foot">Saved notes, always yours</span>
         </button>
         <button class="orbit-overview-card" type="button" data-orbit-tab="devices" aria-label="Open TRADEVICEPC devices">
-          <span class="orbit-card-top"><span>⌘ TRADEVICEPC</span><small>02</small></span>
+          <span class="orbit-card-top"><span>⌘ DEVICE</span><small>02</small></span>
           <strong id="orbitDevice">Not connected</strong>
           <span id="orbitTelemetry" class="orbit-card-foot">Sign in to view telemetry</span>
         </button>
         <button class="orbit-overview-card" type="button" data-orbit-tab="chat" aria-label="Open AI chat">
-          <span class="orbit-card-top"><span>✧ CHAT INTELLIGENCE</span><small>03</small></span>
+          <span class="orbit-card-top"><span>✧ AI ENGINE</span><small>03</small></span>
           <strong id="orbitModel">Not available</strong>
           <span class="orbit-card-foot">Chat model · Voice uses OpenAI</span>
         </button>
+        <button class="orbit-overview-card sonic-task-card" type="button" data-orbit-tab="devices" data-sonic-devices="activity" aria-label="Lihat tugas dan persetujuan">
+          <span class="orbit-card-top"><span>▤ TASKS &amp; APPROVALS</span><small>04</small></span>
+          <strong>Review activity</strong>
+          <span class="orbit-card-foot">Owner-only execution &amp; audit</span>
+        </button>
       </section>
-      <section class="panel brain-panel" id="brainPanel" aria-label="Knowledge and neural exploration">
+      <section class="panel sonic-dashboard" id="dashboardPanel" aria-label="Dashboard operasional SONIC">
+        <div class="sonic-dash-main">
+          <section class="sonic-dash-welcome">
+            <div><span class="eyebrow">SONIC / YOUR CONTROL DECK</span><h2>What can SONIC do for you?</h2>
+              <p>Mulai percakapan, lakukan riset, atau jalankan pekerjaan PC dengan persetujuan Anda.</p></div>
+            <button id="dashTalk" class="sonic-dash-voice" type="button"><svg><use href="#i-mic"/></svg> Talk to SONIC</button>
+          </section>
+          <form id="dashAskForm" class="sonic-dash-ask">
+            <label class="sr-only" for="dashAsk">Pesan untuk SONIC</label>
+            <svg aria-hidden="true"><use href="#i-brain"/></svg>
+            <input id="dashAsk" type="text" maxlength="3500" autocomplete="off" placeholder="Ask SONIC anything…">
+            <button type="submit" aria-label="Kirim ke SONIC"><svg><use href="#i-send"/></svg></button>
+          </form>
+          <div class="sonic-dash-quick" aria-label="Akses cepat">
+            <button type="button" data-sonic-open="chat"><svg><use href="#i-chat"/></svg><span>AI Chat</span></button>
+            <button type="button" data-sonic-open="research"><svg><use href="#i-search"/></svg><span>Research Agent</span></button>
+            <button type="button" data-sonic-open="knowledge"><svg><use href="#i-brain"/></svg><span>Explore Knowledge</span></button>
+            <button type="button" data-sonic-open="pc"><svg><use href="#i-device"/></svg><span>Control PC</span></button>
+          </div>
+          <div class="sonic-dash-detail-grid">
+            <section class="sonic-dash-section">
+              <div class="sonic-dash-heading"><h3>Activity &amp; Approvals</h3><button type="button" data-sonic-open="activity">View all ↗</button></div>
+              <div class="sonic-dash-activity">
+                <span class="sonic-dash-status-dot" aria-hidden="true"></span>
+                <div><strong id="dashActivityState">Execution log protected</strong>
+                <p id="dashActivityText">Masuk sebagai owner untuk meninjau pekerjaan aktif dan riwayat persetujuan.</p></div>
+              </div>
+              <button class="sonic-dash-minor" type="button" data-sonic-open="activity">Open execution history</button>
+            </section>
+            <section class="sonic-dash-section">
+              <div class="sonic-dash-heading"><h3>Knowledge &amp; Research</h3><button type="button" data-sonic-open="memory">View memory ↗</button></div>
+              <div class="sonic-dash-activity">
+                <span class="sonic-dash-status-dot is-blue" aria-hidden="true"></span>
+                <div><strong id="dashKnowledgeState">Saved knowledge</strong>
+                <p id="dashKnowledgeText">Memories, research references, dan koneksi Neural Graph disimpan terpisah dari demo publik.</p></div>
+              </div>
+              <button class="sonic-dash-minor" type="button" data-sonic-open="knowledge">Open Neural Graph</button>
+            </section>
+          </div>
+        </div>
+        <aside class="sonic-dash-aside">
+          <div class="sonic-dash-sidecard"><span class="eyebrow">SYSTEM STATUS</span><h3>Connected intelligence</h3>
+            <div class="sonic-status-row"><span>Chat model</span><strong id="dashModelState">Checking</strong></div>
+            <div class="sonic-status-row"><span>TRADEVICEPC</span><strong id="dashPCState">Protected</strong></div>
+            <div class="sonic-status-row"><span>Privacy</span><strong>Owner approval</strong></div>
+            <p>Model lokal dan cloud memiliki alur terpisah. Tidak ada fallback otomatis.</p></div>
+          <div class="sonic-dash-sidecard"><span class="eyebrow">YOUR NEXT STEP</span><h3>Start here</h3>
+            <p>Tulis permintaan di atas. Untuk aksi pada perangkat, SONIC akan menampilkan detail tindakan dan meminta izin sebelum menjalankannya.</p>
+            <button type="button" data-sonic-open="settings">System settings ↗</button></div>
+        </aside>
+      </section>
+      <nav id="knowledgeViews" class="sonic-knowledge-views" aria-label="Knowledge sections" hidden>
+        <button type="button" data-sonic-knowledge="brain" aria-current="page">Neural Graph</button>
+        <button type="button" data-sonic-knowledge="memory">Memories</button>
+        <button type="button" data-sonic-knowledge="research">Research Archive</button>
+        <span>Explore · Inspect · Remember</span>
+      </nav>
+      <section class="panel brain-panel hidden" id="brainPanel" aria-label="Knowledge and neural exploration">
         <div id="neuralMobileSwitcher" class="neural-mobile-switcher" hidden>
           <strong>Knowledge</strong>
           <div class="neural-switch-buttons"><button id="neuralKnowledgeBtn" type="button" aria-pressed="true">List</button><button id="neuralGraphBtn" type="button" aria-pressed="false">Explore 3D</button></div>
