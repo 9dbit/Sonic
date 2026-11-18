@@ -47,6 +47,37 @@ class WorkspaceItem(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
+class ArtifactGate(Base):
+    """Single-row write lock serializes owner artifact quotas and revisions."""
+    __tablename__ = "artifact_gate_v200"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class ArtifactItem(Base):
+    """Owner-only artifacts; no direct PC filesystem or model execution."""
+    __tablename__ = "artifact_items_v200"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    mime: Mapped[str] = mapped_column(String(80), nullable=False)
+    source: Mapped[str] = mapped_column(String(24), default="manual", nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class ArtifactVersion(Base):
+    """Immutable artifact version payloads, within a bounded owner quota."""
+    __tablename__ = "artifact_versions_v200"
+    artifact_id: Mapped[str] = mapped_column(ForeignKey("artifact_items_v200.id", ondelete="CASCADE"), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    size: Mapped[int] = mapped_column(Integer, nullable=False)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
