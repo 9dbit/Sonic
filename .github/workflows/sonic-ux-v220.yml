@@ -1,0 +1,47 @@
+name: SONIC v2.2 Premium UI Acceptance
+on:
+  pull_request:
+    paths:
+      - 'web/sonic-ux-v220.*'
+      - 'web/index.html'
+      - 'web/graph.js'
+      - 'scripts/e2e_ui_v220.py'
+      - '.github/workflows/sonic-ux-v220.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  layout-and-workflow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
+      options: --ipc=host --init
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SONIC and Playwright dependencies
+        run: python -m pip install -r requirements.txt playwright==1.56.0
+      - name: Check JavaScript and Python syntax
+        run: |
+          node --check web/sonic-ux-v220.js
+          node --check web/graph.js
+          python -m py_compile scripts/e2e_ui_v220.py
+      - name: Test Chat / Artifact Studio / Knowledge desktop + mobile
+        env:
+          SONIC_QA_BROWSER: ${{ matrix.browser }}
+        run: python scripts/e2e_ui_v220.py
+      - name: Upload screenshots and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-ux-v220-${{ matrix.browser }}
+          path: artifacts/ux-v220/
+          retention-days: 14
+          if-no-files-found: warn
