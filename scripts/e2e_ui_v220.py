@@ -18,8 +18,11 @@ SETTINGS={"SONIC_OWNER_ENTRY_ENABLED":"true","SONIC_PASSWORDLESS_LOGIN":"false",
 results=[]
 
 with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwright:
+    binary=os.environ.get("SONIC_QA_CHROME_PATH") if BROWSER=="chromium" else None
     browser=getattr(playwright,BROWSER).launch(
-        headless=True,**({"args":["--no-sandbox","--enable-unsafe-swiftshader"]} if BROWSER=="chromium" else {}))
+        headless=True,
+        **({"executable_path":binary} if binary else {}),
+        **({"args":["--no-sandbox","--enable-unsafe-swiftshader"]} if BROWSER=="chromium" else {}))
     for label,width,height in [("desktop",1440,900),("iphone",390,844),("compact",360,740)]:
         mobile=width<721
         page=browser.new_page(viewport={"width":width,"height":height},
