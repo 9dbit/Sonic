@@ -16,7 +16,7 @@ const demo=[
  'function update(){o.textContent="Rp "+((Number(v.value)||0)*(Number(p.value)||0)).toLocaleString("id-ID")}',
  'v.oninput=p.oninput=update;update();</script>'
 ].join("");
-const state={items:[],selection:null,draft:null,content:"",csrf:null,owner:false,filter:"all",historical:false,busy:false,seq:0,previewSeq:0,epoch:0};
+const state={items:[],selection:null,draft:null,content:"",csrf:null,owner:false,filter:"all",historical:false,busy:false,generating:false,generationSeq:0,seq:0,previewSeq:0,epoch:0};
 const types={app:"Web App",code:"Source",image:"Image",audio:"Audio",video:"Video",website:"Website"};
 const icon={app:"▣",code:"⌘",image:"▧",audio:"♫",video:"▷",website:"◎"};
 const size=n=>n>=1048576?(n/1048576).toFixed(1)+" MB":n>=1024?(n/1024).toFixed(1)+" KB":(n||0)+" B";
@@ -32,6 +32,88 @@ async function api(path,options={}){
  let data={};try{data=await r.json()}catch{}
  if(!r.ok)throw Error(typeof data.detail==="string"?data.detail:"Artifact API error "+r.status);
  return data;
+}
+async function codingApi(path,opts={}){
+ if(!await session())throw Error("Hanya owner yang dapat menjalankan generator.");
+ const response=await fetch("/api/coding"+path,{
+  credentials:"same-origin",cache:"no-store",...opts,
+  headers:{"Content-Type":"application/json",...(opts.method?{"X-Sonic-CSRF":state.csrf}:{}),...opts.headers}
+ });
+ let payload={};try{payload=await response.json()}catch{}
+ if(!response.ok)throw Error(typeof payload.detail==="string"?payload.detail:"Coding request failed (HTTP "+response.status+")");
+ return payload;
+}
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function codingNotice(text,error=false){
+ const holder=$("asCodingStatus");
+ if(holder){holder.textContent=text;holder.classList.toggle("is-error",error)}
+}
+function codingEngineChanged(){
+ const provider=$("asCodingProvider").value;
+ const hint=$("asCodingHint");
+ if(provider==="local"){
+  hint.textContent="Local GGUF (TRADEVICEPC): draft mini, konteks 1.024 token, respons hingga 384 token. Tidak bisa menjamin aplikasi kompleks.";
+ }else if(provider==="deepseek"){
+  hint.textContent="DeepSeek Cloud: prompt dan source revisi dikirim ke API DeepSeek. Biaya API mungkin berlaku. Tidak mengubah model Chat.";
+ }else{
+  hint.textContent="Pilih engine secara sadar. Tidak ada fallback cloud otomatis. Source hanya menjadi draft sebelum disimpan.";
+ }
+ $("asGenerate").disabled=state.generating||!provider;
+}
+async function generateCode(){
+ if(state.generating)return;
+ const provider=$("asCodingProvider").value;
+ const prompt=$("asCodingPrompt").value.trim();
+ if(!["local","deepseek"].includes(provider))return codingNotice("Pilih engine Local atau DeepSeek Cloud terlebih dahulu.",true);
+ if(prompt.length<10)return codingNotice("Jelaskan tool dalam sedikitnya 10 karakter.",true);
+ if(provider==="local"&&prompt.length>450)return codingNotice("Local GGUF hanya menerima prompt maksimal 450 karakter. Gunakan DeepSeek Cloud untuk instruksi panjang.",true);
+ const revise=$("asCodeRevise").checked;
+ const existing=revise?content():"";
+ if(revise&&(!current()||current().kind!=="app"))return codingNotice("Pilih terlebih dahulu aplikasi HTML yang ingin direvisi.",true);
+ if(provider==="local"&&revise)return codingNotice("Revisi source panjang memerlukan pilihan DeepSeek Cloud.",true);
+ if(state.draft&&!confirm("Draft belum disimpan akan diganti setelah generator berhasil. Lanjut?"))return;
+ if(provider==="deepseek"&&!confirm("Kirim instruksi"+(revise?" dan source HTML":"")+" ke API DeepSeek? Pilihan Chat tetap. Biaya API mungkin berlaku."))return;
+ const initialEpoch=state.epoch;
+ const request=++state.generationSeq;
+ state.generating=true;codingEngineChanged();
+ codingNotice(provider==="local"?"Mengirim satu tugas Local AI ke TRADEVICEPC…":"Meminta kode HTML dari DeepSeek Cloud…");
+ try{
+  const result=await codingApi("/generate",{method:"POST",body:JSON.stringify({provider,prompt,...(revise?{existing_html:existing}:{})})});
+  let finished=result;
+  if(result.state==="queued"){
+   const start=Date.now();
+   while(Date.now()-start<240000){
+    if(initialEpoch!==state.epoch||request!==state.generationSeq)return;
+    await delay(2300);
+    finished=await codingApi("/local/"+encodeURIComponent(result.job_id));
+    if(finished.state==="done"||finished.state==="failed")break;
+    codingNotice("Local AI "+finished.state+" · "+Math.round((Date.now()-start)/1000)+" detik. Tidak ada kirim ulang.");
+   }
+   if(finished.state!=="done"&&finished.state!=="failed")throw Error("Tugas masih belum terverifikasi. Jangan mengirim ulang saat pekerjaan masih berjalan.");
+  }
+  if(initialEpoch!==state.epoch||request!==state.generationSeq)return;
+  if(finished.state!=="done"||!finished.html)throw Error(finished.error||"Generasi HTML tidak selesai. Draft sebelumnya tidak berubah.");
+  const title=revise?(current()?.name||"Revised HTML Tool"):"Generated HTML Tool";
+  if(revise&&state.selection){
+   state.draft={...state.selection,content:finished.html};
+   state.historical=false;
+   $("asDraftName").value=state.draft.name;
+   updateMeta();
+  }else{
+   newDraft("app",finished.html,"text/html","chat-draft",title);
+  }
+  show("code");codingNotice("Source lengkap diterima dari "+(provider==="local"?"Local AI":"DeepSeek")+"; periksa, Preview, lalu Save Version.");
+  inform("Generated source is a draft; not executed, installed, saved, or deployed.");
+ }catch(error){
+  codingNotice(error.message||"Coding request failed",true);
+ }finally{
+  if(request===state.generationSeq){state.generating=false;codingEngineChanged()}
+ }
+}
+function openGenerator(prefill=""){
+ open();
+ if(prefill)$("asCodingPrompt").value=prefill;
+ $("asCodingPrompt").focus();
 }
 function current(){return state.draft||state.selection}
 function content(){return state.draft?state.draft.content:state.content}
@@ -265,6 +347,12 @@ function init(){
  '<div class="as-heading-actions"><button id="asNewBtn" type="button" class="as-button as-primary">+ New HTML Tool</button>',
  '<label class="as-button as-import">↑ Import File<input id="asFile" type="file" hidden accept=".html,.js,.css,.json,.txt,.md,.py,image/png,image/jpeg,image/webp,audio/*,video/mp4,video/webm"></label></div></div>',
  '<div class="as-steps"><span>1 · Generate / Import</span><span>2 · Review Source</span><span>3 · Browser Sandbox</span><span>4 · Save Version</span><span class="as-muted">5 · Deploy approval (not enabled)</span></div>',
+ '<section class="as-coding-card" aria-label="SONIC Coding Studio"><div class="as-coding-head"><div><span class="as-kicker">CODE GENERATOR / OWNER CONTROLLED</span><h3>Generate a working HTML tool</h3><p>Local untuk draft ringkas, DeepSeek untuk aplikasi lengkap. Tidak ada eksekusi PC atau deploy otomatis.</p></div></div>',
+ '<div class="as-coding-fields"><label class="as-coding-prompt">Tool request<textarea id="asCodingPrompt" maxlength="1200" rows="2" placeholder="Contoh: buat kalkulator RAB interior dengan volume, harga satuan, subtotal, dan total."></textarea></label>',
+ '<div class="as-coding-controls"><label class="as-coding-provider">Generation engine<select id="asCodingProvider"><option value="" selected>Pilih engine…</option><option value="local">Local GGUF · small draft</option><option value="deepseek">DeepSeek Cloud · full HTML</option></select></label>',
+ '<label class="as-coding-revise"><input type="checkbox" id="asCodeRevise"> Revise selected HTML</label><button id="asGenerate" type="button" class="as-button as-primary" disabled>✦ Generate</button></div></div>',
+ '<p id="asCodingHint" class="as-coding-hint">Pilih engine secara sadar. Tidak ada fallback cloud otomatis. Source hanya menjadi draft sebelum disimpan.</p>',
+ '<p id="asCodingStatus" class="as-coding-status" role="status" aria-live="polite">Ready to generate a draft. Preview dan Save merupakan langkah terpisah.</p></section>',
  '<div class="as-controls"><label class="as-search">⌕ <input id="asSearch" type="search" placeholder="Search artifacts…" autocomplete="off"></label>',
  '<div class="as-kind-tabs" id="asKindTabs"><button class="active" data-kind="all">All</button><button data-kind="app">Apps</button>',
  '<button data-kind="image">Images</button><button data-kind="audio">Audio</button><button data-kind="video">Video</button><button data-kind="website">Website</button>',
@@ -295,7 +383,9 @@ function init(){
  '<div class="as-box"><span class="as-kicker">SECURITY</span><p>Iframe tanpa same-origin, filesystem, cookie, shell atau network. File besar membutuhkan object storage lanjutan.</p></div>',
  '</aside></div><p id="asNotice" role="status" aria-live="polite" class="as-notice">Owner login required.</p>'
  ].join("");
- $("asNewBtn").onclick=()=>newDraft();
+ $("asCodingProvider").addEventListener("change",codingEngineChanged);
+ $("asGenerate").addEventListener("click",generateCode);
+  $("asNewBtn").onclick=()=>newDraft();
  $("asRefresh").onclick=()=>refresh().catch(e=>inform(e.message,true));
  $("asSearch").oninput=library;
  for(const b of $("asKindTabs").querySelectorAll("button"))b.onclick=()=>{state.filter=b.dataset.kind;for(const n of $("asKindTabs").querySelectorAll("button"))n.classList.toggle("active",n===b);library()};
@@ -317,9 +407,7 @@ function init(){
  const chat=$("chatPanel");if(chat){
   const bar=make("div","as-chat-banner");
   bar.append(make("span",null,"▣ Generate → Review → Preview → Save"));
-  bar.append(button("+ Build Tool",()=>{
-   const input=$("message");if(input){input.value="Buat satu file HTML lengkap dengan CSS dan JavaScript inline untuk tool berikut: ";input.focus();input.setSelectionRange(input.value.length,input.value.length);}
-  },"as-button"));
+  bar.append(button("✦ Coding Studio",()=>openGenerator(""),"as-button"));
   bar.append(button("Artifact Studio ↗",open,"as-button"));chat.prepend(bar);
  }
  const workspace=$("workspacePanel");
@@ -345,10 +433,10 @@ function init(){
  if(e.detail?.tab==="studio")refresh().catch(err=>inform(err.message,true));
  if(e.detail?.tab==="workspace")refreshWorkspaceArtifacts().catch(err=>inform(err.message,true));
  });
- const clear=()=>{state.epoch++;state.seq++;state.previewSeq++;state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";renderWorkspaceItems([]);library();updateMeta();render()};
+ const clear=()=>{state.epoch++;state.generationSeq++;state.seq++;state.previewSeq++;state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";renderWorkspaceItems([]);library();updateMeta();render()};
  window.addEventListener("sonic:overview",e=>{if(e.detail?.kind==="clear")clear()});
  window.addEventListener("sonic:logout",clear);
- window.SonicArtifactStudio={open,newDraft,fromChat:draftFromMessage};
+ window.SonicArtifactStudio={open,newDraft,fromChat:draftFromMessage,openGenerator};
  updateMeta();render();
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();

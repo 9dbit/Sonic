@@ -173,3 +173,29 @@ body.orbit-v140 .as-workspace-entry-name small{display:block;font-size:9px;color
  body.orbit-v140 .as-workspace-items{display:flex;overflow-x:auto;gap:8px;scrollbar-width:thin}
  body.orbit-v140 .as-workspace-entry{min-width:177px;max-width:205px}
 }
+
+/* SONIC v2.1: compact, owner-controlled Coding Studio within Artifact Studio. */
+#studioPanel .as-coding-card{display:flex;flex-direction:column;gap:10px;padding:15px 17px;background:linear-gradient(125deg,#141d2c,#101824);border:1px solid #30465e;border-radius:15px;min-width:0}
+#studioPanel .as-coding-head h3{color:#edf4ff;font-size:15px!important;letter-spacing:-.02em;line-height:1.4;margin:5px 0 3px!important}
+#studioPanel .as-coding-head p{margin:0;font-size:11px;color:#95a9c3;line-height:1.6}
+#studioPanel .as-coding-fields{display:flex;align-items:stretch;gap:10px;min-width:0}
+#studioPanel .as-coding-prompt{flex:1;min-width:0;font-size:10px;display:flex;flex-direction:column;gap:6px;color:#a9c2df}
+#studioPanel .as-coding-prompt textarea{width:100%;resize:vertical;min-height:60px;max-height:180px;border-radius:11px!important;padding:10px 12px!important;background:#0a121f!important;border:1px solid #32445e!important;color:#e9f1fb!important;font-size:12px!important;line-height:1.6;box-shadow:none!important}
+#studioPanel .as-coding-controls{width:234px;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+#studioPanel .as-coding-provider{width:100%;display:flex;flex-direction:column;gap:5px;color:#a8bdd8;font-size:10px}
+#studioPanel .as-coding-provider select{height:34px;width:100%;min-width:0;color:#e7f0fa!important;font-size:11px!important;border:1px solid #354c67!important;background:#151f2d!important;border-radius:10px!important;padding:5px 10px!important}
+#studioPanel .as-coding-revise{font-size:10px;color:#acbfd9;display:flex;gap:6px;align-items:center}
+#studioPanel .as-coding-revise input{accent-color:#428bf5}
+#studioPanel .as-coding-controls #asGenerate{align-self:flex-end;min-width:112px}
+#studioPanel .as-coding-hint,#studioPanel .as-coding-status{font-size:10px;color:#9bb0cb;margin:0;line-height:1.55}
+#studioPanel .as-coding-status{padding:8px 10px;background:#10243b;border:1px solid #284b72;border-radius:9px;color:#9fcefb}
+#studioPanel .as-coding-status.is-error{background:#2b1e27;border-color:#654051;color:#ecb0b4}
+@media(max-width:1040px){#studioPanel .as-coding-controls{width:210px}}
+@media(max-width:720px){
+ #studioPanel .as-coding-card{padding:12px;gap:9px}
+ #studioPanel .as-coding-fields{flex-direction:column}
+ #studioPanel .as-coding-controls{width:100%;display:grid;grid-template-columns:1fr auto;gap:10px}
+ #studioPanel .as-coding-provider{grid-column:1 / -1}
+ #studioPanel .as-coding-revise{grid-column:1}
+ #studioPanel .as-coding-controls #asGenerate{grid-column:2;justify-self:end;align-self:center}
+}

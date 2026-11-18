@@ -12,6 +12,7 @@ from pathlib import Path
 import subprocess
 import threading
 import time
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 ROOT = Path(r"E:\AI\DeepSeek-V4-Pro-Qwen3.5-9B")
@@ -94,7 +95,7 @@ class LocalAIBroker:
         with self._lock:
             starting = bool(self._process and self._process.poll() is None and not running)
         return {"state": "running" if running else "starting" if starting else "stopped" if model_verified() else "unavailable",
-                "ram_free_mb": free, "gpu_free_mb": gpu_free, "gpu_used_mb": gpu_used}
+                "ram_free_mb": free, "gpu_free_mb": gpu_free, "gpu_used_mb": gpu_used, "supports_code": True}
 
     def start(self) -> dict:
         if not is_enabled() or not model_verified():
@@ -157,17 +158,20 @@ class LocalAIBroker:
             raise ValueError("INVALID_CHAT_MESSAGE")
         if messages[-1]["role"] != "user":
             raise ValueError("LAST_MESSAGE_MUST_BE_USER")
+        code_draft = payload.get("task") == "code"
+        if payload.get("task") not in (None, "code"):
+            raise ValueError("INVALID_LOCAL_TASK")
         local_messages = [dict(item) for item in messages]
         local_messages[-1]["content"] = "/no_think " + local_messages[-1]["content"]
         body = json.dumps({
-            "messages": local_messages, "temperature": 0, "max_tokens": 256,
+            "messages": local_messages, "temperature": 0, "max_tokens": 384 if code_draft else 256,
             "stream": False, "chat_template_kwargs": {"enable_thinking": False}
         }, ensure_ascii=False).encode("utf-8")
         if len(body) > 5400:
             raise ValueError("LOCAL_CONTEXT_TOO_LONG")
         req = Request(LOCAL + "/v1/chat/completions", data=body, method="POST",
                       headers={"Content-Type": "application/json"})
-        with urlopen(req, timeout=75) as response:
+        with urlopen(req, timeout=125 if code_draft else 75) as response:
             if response.status != 200:
                 raise RuntimeError("LOCAL_INFERENCE_REJECTED")
             raw = response.read(16384)
@@ -176,8 +180,10 @@ class LocalAIBroker:
         content = choice["message"]["content"]
         if choice.get("finish_reason") not in ("stop", "length") or not isinstance(content, str) or not content.strip():
             raise RuntimeError("LOCAL_INFERENCE_EMPTY")
+        if code_draft and choice.get("finish_reason") != "stop":
+            raise RuntimeError("LOCAL_CODE_OUTPUT_TRUNCATED")
         usage = data.get("usage", {})
-        return {"text": content[:MAX_OUTPUT],
+        return {"text": content[:MAX_OUTPUT], "truncated": choice.get("finish_reason") == "length",
                 "usage": {"input_tokens": usage.get("prompt_tokens"),
                           "output_tokens": usage.get("completion_tokens")}}
 
@@ -200,18 +206,33 @@ class LocalAIBroker:
         item = api("/api/device/local-ai/next", {}).get("job")
         if not item:
             return
-        if not isinstance(item, dict) or item.get("action") not in ("chat", "start", "stop"):
+        if not isinstance(item, dict) or item.get("action") not in ("chat", "code", "start", "stop"):
             return
         def run():
             try:
                 action = item["action"]
-                result = self.chat(item.get("payload", {})) if action == "chat" else (
+                result = self.chat(item.get("payload", {})) if action in ("chat", "code") else (
                     self.start() if action == "start" else self.stop())
                 receipt = {"device_id": device_id, "job_id": item["id"],
                            "success": True, "result": result}
             except Exception as exc:
+                # Return a bounded diagnostic code only, not prompts, paths or exceptions.
+                if isinstance(exc, TimeoutError):
+                    code = "LOCAL_INFERENCE_TIMEOUT"
+                elif isinstance(exc, HTTPError):
+                    code = "LOCAL_INFERENCE_REJECTED"
+                elif isinstance(exc, URLError):
+                    code = "LOCAL_MODEL_NOT_RUNNING"
+                elif isinstance(exc, RuntimeError) and str(exc) in {
+                    "LOCAL_INFERENCE_EMPTY", "LOCAL_CODE_OUTPUT_TRUNCATED",
+                    "LOCAL_AI_NOT_RUNNING", "LOCAL_INFERENCE_REJECTED"}:
+                    code = str(exc)
+                elif isinstance(exc, ValueError):
+                    code = "LOCAL_CONTEXT_TOO_LONG" if str(exc) == "LOCAL_CONTEXT_TOO_LONG" else "INVALID_LOCAL_INPUT"
+                else:
+                    code = "LOCAL_INFERENCE_FAILED"
                 receipt = {"device_id": device_id, "job_id": item["id"], "success": False,
-                           "result": {"error": type(exc).__name__}}
+                           "result": {"error_code": code}}
             # No automatic rerun of inference or process actions after upload failure.
             with self._lock:
                 self._pending_receipt = receipt

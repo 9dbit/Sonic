@@ -53,7 +53,7 @@ def runtime_snapshot(db: Session) -> dict:
         "bridge_online": fresh,
         "state": state,
         "model": MODEL,
-        "capabilities": ["text-chat", "start", "stop", "read-only-metrics"],
+        "capabilities": ["text-chat", "code-draft", "start", "stop", "read-only-metrics"],
         "hardware": json.loads(row.metrics_json) if fresh else {},
         "checked_seconds_ago": max(0, int((utcnow()-row.updated_at).total_seconds())) if fresh else None,
         "notice": "SONIC relay passes chat text through Railway and sends it only to authenticated TRADEVICEPC; no external model API is called. Local model cannot invoke PC tools.",
@@ -91,8 +91,8 @@ def create_job(db: Session, action: str, payload: dict, owner_sid: str,
     now = utcnow()
     db.execute(delete(LocalAIJob).where(LocalAIJob.created_at < now - timedelta(days=1)))
     # One resource-heavy inference at a time on the 6 GB RTX 2060.
-    if action == "chat" and db.scalar(select(LocalAIJob.id).where(
-        LocalAIJob.device_id == target(), LocalAIJob.action == "chat",
+    if action in ("chat", "code") and db.scalar(select(LocalAIJob.id).where(
+        LocalAIJob.device_id == target(), LocalAIJob.action.in_(("chat", "code")), 
         LocalAIJob.state.in_(("queued", "leased"))).limit(1)):
         raise HTTPException(429, "Local model is busy. Try again after the active reply.")
     job = LocalAIJob(id=str(uuid4()), device_id=target(), owner_sid=owner_sid,
@@ -117,6 +117,7 @@ class Heartbeat(BaseModel):
     ram_free_mb: int = Field(ge=0, le=10_000_000)
     gpu_free_mb: int | None = Field(default=None, ge=0, le=100_000)
     gpu_used_mb: int | None = Field(default=None, ge=0, le=100_000)
+    supports_code: bool = False
 
 
 class Receipt(BaseModel):
@@ -168,7 +169,7 @@ def device_heartbeat(data: Heartbeat, request: Request, db: Session = Depends(ge
     row.state = data.state
     row.metrics_json = json.dumps({
         "ram_free_mb": data.ram_free_mb,
-        "gpu_free_mb": data.gpu_free_mb, "gpu_used_mb": data.gpu_used_mb
+        "gpu_free_mb": data.gpu_free_mb, "gpu_used_mb": data.gpu_used_mb, "supports_code": data.supports_code
     })
     row.updated_at = utcnow()
     db.commit()
@@ -201,7 +202,7 @@ def device_next(request: Request, db: Session = Depends(get_db)):
             db.commit()
             # Sanitized, fixed action and bounded text payload only.
             return {"job": {"id": job.id, "action": job.action,
-                            "payload": payload if job.action == "chat" else {}}}
+                            "payload": payload if job.action in ("chat", "code") else {}}}
         db.rollback()
     return {"job": None}
 
@@ -217,9 +218,9 @@ def device_result(body: Receipt, request: Request, db: Session = Depends(get_db)
                     .with_for_update().execution_options(populate_existing=True))
     if not job or job.device_id != body.device_id:
         raise HTTPException(409, "Local AI job is not leased.")
-    if job.action == "chat" and job.state == "expired":
+    if job.action in ("chat", "code") and job.state == "expired":
         return {"ok": True, "ignored": True, "reason": "expired_not_replayed"}
-    if job.action == "chat" and job.state in ("done", "failed"):
+    if job.action in ("chat", "code") and job.state in ("done", "failed"):
         # A lost receipt upload acknowledgment must not wedge the Companion
         # forever. Accept identical chat receipts, never changed terminal data.
         if job.state == ("done" if body.success else "failed") and json.loads(job.result_json or '{}') == body.result:
@@ -227,12 +228,12 @@ def device_result(body: Receipt, request: Request, db: Session = Depends(get_db)
         raise HTTPException(409, "Conflicting local AI receipt")
     if job.state != "leased":
         raise HTTPException(409, "Local AI job is not leased.")
-    if job.action not in CONTROL | {"chat"}:
+    if job.action not in CONTROL | {"chat", "code"}:
         raise HTTPException(403, "Unsupported local AI operation.")
     raw = json.dumps(body.result, ensure_ascii=False)
     if len(raw) > MAX_RESULT:
         raise HTTPException(413, "Local AI receipt too large.")
-    if job.action == "chat" and body.success:
+    if job.action in ("chat", "code") and body.success:
         answer = body.result.get("text")
         if not isinstance(answer, str) or not 1 <= len(answer.strip()) <= 4000:
             raise HTTPException(422, "Invalid local AI text result.")
