@@ -95,7 +95,7 @@ class LocalAIBroker:
         with self._lock:
             starting = bool(self._process and self._process.poll() is None and not running)
         return {"state": "running" if running else "starting" if starting else "stopped" if model_verified() else "unavailable",
-                "ram_free_mb": free, "gpu_free_mb": gpu_free, "gpu_used_mb": gpu_used}
+                "ram_free_mb": free, "gpu_free_mb": gpu_free, "gpu_used_mb": gpu_used, "supports_code": True}
 
     def start(self) -> dict:
         if not is_enabled() or not model_verified():
