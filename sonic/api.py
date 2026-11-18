@@ -434,6 +434,8 @@ app.include_router(preview_router)
 app.include_router(persona_router)
 from .workspace import router as workspace_router
 app.include_router(workspace_router)
+from .artifact_studio import router as artifact_router
+app.include_router(artifact_router)
 from .productivity import router as productivity_router
 app.include_router(productivity_router)
 from .uptime import router as uptime_router
@@ -450,10 +452,24 @@ async def security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; "
+        "img-src 'self' data: blob:; media-src 'self' blob: data:; frame-src 'self' about: blob: data:; "
+        "object-src 'none'; connect-src 'self'; "
         "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     )
-    response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), display-capture=(self)"
+    if request.method == "GET" and request.url.path.startswith("/api/artifacts/previews/") and response.status_code == 200:
+        # A distinct CSP on this authenticated preview response allows
+        # interactive HTML without weakening SONIC's main script policy.
+        # CSP sandbox forces an opaque origin even for direct navigation.
+        response.headers["Content-Security-Policy"] = (
+            "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; "
+            "style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; "
+            "font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; "
+            "worker-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'"
+        )
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), display-capture=()"
+    else:
+        response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), display-capture=(self)"
     if request.url.path.startswith(("/api/", "/assets/")):
         response.headers["Cache-Control"] = "no-store"
     if setting("RAILWAY_ENVIRONMENT_NAME") or public_url().startswith("https://"):

@@ -1,0 +1,57 @@
+name: SONIC Artifact Studio v2.0 Acceptance
+on:
+  pull_request:
+    paths:
+      - 'sonic/artifact_studio.py'
+      - 'sonic/db.py'
+      - 'sonic/api.py'
+      - 'web/artifact-studio-v200.*'
+      - 'web/index.html'
+      - 'web/app.js'
+      - 'scripts/e2e_artifact_studio_v200.py'
+      - 'tests/test_artifact_studio_v200.py'
+      - '.github/workflows/artifact-studio-v200.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  artifact-studio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
+      options: --ipc=host --init
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt playwright==1.56.0
+      - name: Static validation
+        run: |
+          python -m compileall -q sonic scripts
+          node --check web/app.js
+          node --check web/artifact-studio-v200.js
+          node --check web/sonic-ia-v190.js
+      - name: Owner permissions, metadata and immutable revisions
+        run: python -m pytest -q tests/test_artifact_studio_v200.py
+      - name: Browser acceptance with saved artifacts
+        env:
+          SONIC_QA_BROWSER: ${{ matrix.browser }}
+        run: python scripts/e2e_artifact_studio_v200.py
+      - name: Attach screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-artifact-studio-v200-${{ matrix.browser }}
+          path: artifacts/artifact-studio-v200/
+          retention-days: 14
+          if-no-files-found: warn
