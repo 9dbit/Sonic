@@ -37,11 +37,15 @@ with local_server(settings=settings) as (base,token),sync_playwright() as p:
         expect(page.locator("#asGenerate")).to_be_disabled()
         expect(page.locator("#asCodingProvider")).to_have_value("")
         page.screenshot(path=str(OUT/f"{BROWSER}-{device}-coding-empty.png"),full_page=True)
-        page.route("**/api/coding/generate",lambda route:route.fulfill(
-            status=200,content_type="application/json",
-            body=json.dumps({"state":"done","provider":"deepseek",
-                             "model":"deepseek-flash","html":HTML,
-                             "saved":False,"previewed":False})))
+        def generated_reply(route):
+            incoming=route.request.post_data_json or {}
+            result_html=(HTML.replace("RAB Calculator","RAB Calculator Revised")
+                         if incoming.get("existing_html") else HTML)
+            route.fulfill(status=200,content_type="application/json",
+                          body=json.dumps({"state":"done","provider":"deepseek",
+                                           "model":"deepseek-flash","html":result_html,
+                                           "saved":False,"previewed":False}))
+        page.route("**/api/coding/generate",generated_reply)
         page.locator("#asCodingProvider").select_option("deepseek")
         page.locator("#asCodingPrompt").fill("Create a small RAB calculator for interior construction.")
         expect(page.locator("#asGenerate")).to_be_enabled()
