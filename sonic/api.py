@@ -25,7 +25,7 @@ from .passkey_ui import render as render_passkey_page
 from .preview import router as preview_router, issue_browser_guest, preview_active
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '1.8.2'
+VERSION = '1.8.3'
 
 
 @asynccontextmanager
@@ -255,7 +255,7 @@ def history(_: dict = Depends(auth.require_owner), db: Session = Depends(get_db)
 
 
 @app.post("/api/chat")
-async def chat(payload: ChatForm, owner: dict = Depends(auth.require_owner_write), db: Session = Depends(get_db)):
+async def chat(payload: ChatForm, request: Request, response: Response, owner: dict = Depends(auth.require_owner_write), db: Session = Depends(get_db)):
     check_db()
     text = payload.message.strip()
     if not text:
@@ -263,6 +263,13 @@ async def chat(payload: ChatForm, owner: dict = Depends(auth.require_owner_write
     from .model_runtime import is_model_status_question, status_answer
     if not payload.approval_request_id and is_model_status_question(text):
         return status_answer(db)
+    if request.headers.get("X-Sonic-Async") == "1":
+        from .chat_delivery import submit
+        result = await submit(db, payload, owner)
+        if result.get("delivery", {}).get("state") in ("preparing", "queued"):
+            response.status_code = 202
+        response.headers["Cache-Control"] = "no-store"
+        return result
     from .engine import execute_chat
     return await execute_chat(db, text, payload.selected_node_id, owner, request_id=payload.request_id,
                               approval_request_id=payload.approval_request_id)
@@ -393,6 +400,10 @@ async def vision(payload: VisionForm, _: dict = Depends(auth.require_owner_write
 
 from .local_ai import router as local_ai_router
 app.include_router(local_ai_router)
+from .chat_delivery import router as chat_delivery_router
+app.include_router(chat_delivery_router)
+from .pc_agent import router as pc_agent_router
+app.include_router(pc_agent_router)
 from .huggingface_hub import router as huggingface_hub_router
 app.include_router(huggingface_hub_router)
 from .research_agent import router as research_agent_router

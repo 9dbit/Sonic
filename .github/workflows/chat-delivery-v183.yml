@@ -1,0 +1,79 @@
+name: SONIC v1.8.3 Local Chat and PC Controls
+on:
+  pull_request:
+    paths:
+      - 'sonic/**'
+      - 'web/**'
+      - 'tests/**'
+      - 'scripts/e2e_*v183.py'
+      - 'scripts/qa_server.py'
+      - '.github/workflows/chat-delivery-v183.yml'
+permissions:
+  contents: read
+jobs:
+  durable-delivery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: sonic_delivery
+          POSTGRES_PASSWORD: synthetic_ci_only
+          POSTGRES_DB: sonic_delivery_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sonic_delivery"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Receipt races, owner isolation and PostgreSQL serialization
+        env:
+          SONIC_DELIVERY_TEST_POSTGRES_URL: postgresql+psycopg://sonic_delivery:synthetic_ci_only@127.0.0.1:5432/sonic_delivery_ci
+        run: python -m pytest -q tests/test_chat_delivery_v183.py tests/test_chat_delivery_postgres.py tests/test_local_ai_v152.py tests/test_software.py tests/test_software_integration.py
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
+      options: --ipc=host --init
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Python dependencies matching the browser image
+        run: python -m pip install -r requirements.txt playwright==1.56.0
+      - name: Browser script syntax
+        run: |
+          node --check web/app.js
+          node --check web/chat-delivery-v183.js
+          node --check web/pc-tools-v183.js
+      - name: Lost responses, reload and mobile composer hit targets
+        env:
+          SONIC_QA_BROWSER: ${{ matrix.browser }}
+        run: python scripts/e2e_chat_delivery_v183.py
+      - name: Inspection, consent, approval and verified receipt in chat
+        env:
+          SONIC_QA_BROWSER: ${{ matrix.browser }}
+        run: python scripts/e2e_pc_agent_v183.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sonic-v183-${{ matrix.browser }}
+          path: |
+            artifacts/chat-delivery-v183/
+            artifacts/pc-agent-v183/
+          retention-days: 14
+          if-no-files-found: error

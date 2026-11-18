@@ -38,6 +38,11 @@ def run():
                     'metrics':{},'gui_targets':[]})
                 assert heartbeat.ok
                 requests=[]
+                recovery_requests=[]
+                def record_recovery(request):
+                    if request.method=='GET' and request.url.startswith(url+'/api/chat/delivery/'):
+                        recovery_requests.append(request.url.rsplit('/',1)[-1])
+                page.on('request',record_recovery)
                 lose_response=[True]
                 def intercept(route):
                     data=route.request.post_data_json;requests.append(data)
@@ -61,10 +66,17 @@ def run():
                     def finish(job,result):
                         return page.request.post(url+'/api/device/operator/result',headers=DEVICE,data={
                             'request_id':job['id'],'lease':job['lease'],'success':True,'result':result}).json()
-                    send('Buat folder “Engine '+name+'” di Desktop TRADEVICEPC')
-                    page.get_by_role('button',name='Periksa / coba kembali',exact=True).click()
+                    with page.expect_response(lambda r:r.request.method=='GET' and bool(requests)
+                            and r.url==url+'/api/chat/delivery/'+requests[0]['request_id']
+                            and r.status==200) as recovered:
+                        send('Buat folder “Engine '+name+'” di Desktop TRADEVICEPC')
+                    assert recovered.value.json()['delivery']['state']=='done'
                     expect(page.locator('#chatFeed')).to_contain_text('Menunggu Windows')
-                    assert requests[0]['request_id']==requests[1]['request_id']
+                    # Accepted requests recover through GET without repeating the
+                    # chat POST or requiring the obsolete manual retry button.
+                    assert len(requests)==1,'Lost response must not repeat the chat POST'
+                    assert recovery_requests,'Accepted request must recover through delivery GET'
+                    assert set(recovery_requests)=={requests[0]['request_id']}
                     active=[t for t in tasks() if t['state']=='queued']
                     assert len(active)==1
                     job=next_job();assert job['payload']=={'name':'Engine '+name}
@@ -84,7 +96,7 @@ def run():
                     assert finish(job,{'created':True,'exists':True,'name':'Resume '+name,
                         'path':'C:/Users/Owner/Desktop/Resume '+name,'scope':'owner_desktop'})['state']=='done'
                     expect(page.locator('#chatFeed')).to_contain_text('Folder Desktop berhasil dibuat')
-                    expect(page.locator('#chatFeed')).to_contain_text('Folder diperiksa oleh Windows companion')
+                    expect(page.locator('#chatFeed')).to_contain_text('Hasil diperiksa oleh Windows companion')
 
                     send('PowerShell: Get-Date')
                     expect(page.locator('#chatFeed .chat-approve-button')).to_have_count(1)
@@ -99,15 +111,21 @@ def run():
                     page.locator('[data-tab=chat]').click()
                     send('PowerShell: Get-Service')
                     expect(page.locator('#chatFeed .chat-approve-button')).to_have_count(2)
-                    page.locator('#chatFeed .chat-approve-button').first.click()
+                    with page.expect_response(lambda r:r.url==url+'/api/chat'
+                            and r.request.method=='POST' and r.status==200
+                            and r.request.post_data_json.get('approval_request_id')==old):
+                        page.locator('#chatFeed .chat-approve-button').first.click()
                     expect(page.locator('#chatFeed')).to_contain_text('Perintah lain tidak disetujui')
                     assert requests[-1]['approval_request_id']==old
+                    assert len(requests)==5,'Only the five explicit user actions may submit chat'
+                    assert len({request['request_id'] for request in requests})==5
                     assert next_job() is None
                     assert len([t for t in tasks() if t['state']=='pending'])==1
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                     assert not errors,errors
                     page.screenshot(path=str(OUT/(name+'.png')))
-                    results.append({'viewport':name,'lost_response_replay':'PASS','one_job':'PASS',
+                    results.append({'viewport':name,'lost_response_recovery':'PASS','recovery_method':'GET',
+                        'lost_response_post_count':1,'total_chat_posts':len(requests),'one_job':'PASS',
                         'wrong_target_rejected':'PASS','refresh_resumes_task':'PASS',
                         'agent_evidence':'PASS','stale_approval_rejected':'PASS','javascript_errors':0})
                     # This fixture is one owner database; cancel the remaining

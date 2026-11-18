@@ -29,7 +29,7 @@ POLITE = re.compile(r'^(?:(?:tolong|please|coba|mohon)\s+)+', re.I)
 TRAILING = re.compile(r'(?:[,\s]+(?:ya|dong|sekarang|please|untuk saya))+$', re.I)
 VERBS = (
     (re.compile(r'^(?:tutup|close|keluar dari|quit|matikan|matiin)(?:\s+kamu)?(?:\s+(?:close|tutup))?\b\s*', re.I), 'window.close'),
-    (re.compile(r'^(?:buka|open|jalankan|launch|start)\b\s*', re.I), 'window.open'),
+    (re.compile(r'^(?:buka|open|jalankan|launch|start|run)\b\s*', re.I), 'window.open'),
     (re.compile(r'^(?:fokus(?:kan)?|focus|tampilkan|show|pindah ke|aktifkan)\b\s*', re.I), 'window.focus'),
 )
 TARGET_PREFIX = re.compile(r'^(?:(?:jendela|window|aplikasi|app|program|software)\s+)+', re.I)

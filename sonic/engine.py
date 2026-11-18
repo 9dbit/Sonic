@@ -120,7 +120,7 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
                         if chat_action.action.startswith('software.'):
                             answer=_record_answer(db,'Saya periksa software melalui WinGet di TRADEVICEPC. '
                                 'Ini pencarian/pemeriksaan; belum ada software yang diinstal. '
-                                'Hasil dari Windows akan muncul di sini. Tinjau paket dan versi di Devices > Software Manager untuk memasang.')
+                                'Hasil dari Windows akan muncul di chat ini. Periksa paket, versi, penerbit, dan lisensi pada hasilnya sebelum meninjau instalasi.')
                         else:
                             answer=_record_answer(db,'Saya jalankan '+desc+' di TRADEVICEPC tanpa konfirmasi tambahan. Menunggu konfirmasi hasil dari Windows agent...')
                     else:
@@ -152,6 +152,8 @@ async def execute_chat(db: Session, text: str, selected_node_id: str | None, own
             answer = _record_answer(db, direct_graph_reply(result, command[0]))
         else:
             answer = await reply(db, text)
+        if db.info.get('answer_origin', {}).get('kind') == 'queued':
+            status = 'queued'
         response={'reply': answer, 'answer_origin': db.info.get('answer_origin', {'kind':'sonic_action','provider':None,'model':None,'inference_performed':False,'fallback':False}), 'operator_jobs':operator_jobs, 'operator_proposals':operator_proposals, 'memory_events': db.info.get('memory_events', []),
                 'ui_actions': db.info.get('ui_actions', []), 'memory_references': db.info.get('memory_references', []),
                 'engine': {'run_id': run_id, 'route': route, 'status': status}}
