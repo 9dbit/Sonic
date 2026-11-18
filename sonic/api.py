@@ -436,6 +436,8 @@ from .workspace import router as workspace_router
 app.include_router(workspace_router)
 from .artifact_studio import router as artifact_router
 app.include_router(artifact_router)
+from .coding_studio import router as coding_router
+app.include_router(coding_router)
 from .productivity import router as productivity_router
 app.include_router(productivity_router)
 from .uptime import router as uptime_router
