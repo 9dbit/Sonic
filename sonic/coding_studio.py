@@ -90,7 +90,7 @@ async def generate(body: Generate, owner: dict = Depends(auth.require_owner_writ
         require_available(db, chat=True)
         messages = [{"role": "system", "content": LOCAL_PROMPT},
                     {"role": "user", "content": "Create a tiny HTML tool for: " + prompt}]
-        job = create_job(db, "chat", {"messages": messages, "task": "code"},
+        job = create_job(db, "code", {"messages": messages, "task": "code"},
                          auth.sha256(owner["sid"]))
         return {"state": "queued", "job_id": job.id, "provider": "local",
                 "message": "TRADEVICEPC sedang membuat draft kode ringkas. Tidak ada fallback cloud atau PC execution."}
@@ -146,7 +146,7 @@ def local_result(job_id: str, owner: dict = Depends(auth.require_owner),
     except (ValueError, AttributeError):
         raise HTTPException(404, "Pekerjaan Coding tidak ditemukan.") from None
     row = db.get(LocalAIJob, job_id)
-    if not row or row.device_id != target() or row.action != "chat" or row.owner_sid != auth.sha256(owner["sid"]):
+    if not row or row.device_id != target() or row.action != "code" or row.owner_sid != auth.sha256(owner["sid"]):
         raise HTTPException(404, "Pekerjaan Coding tidak ditemukan.")
     if row.state not in ("done", "failed", "expired"):
         return {"state": row.state, "job_id": row.id, "provider": "local"}
