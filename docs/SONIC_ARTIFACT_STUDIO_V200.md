@@ -17,6 +17,8 @@
 - Workspace and Devices link to the Studio. Original read-only Windows
   Workspace and PC approval workflows remain unchanged.
 - Source export is a browser download; it is NOT host install or deployment.
+- Temporary previews are created only on an explicit Preview click, require
+  owner auth/CSRF to create, and expire after eight minutes.
 
 ## Non-capabilities
 - Local GGUF is currently text-only. It cannot autonomously execute commands,
@@ -33,9 +35,11 @@
 ## Threat boundary
 HTML preview runs in a sandboxed iframe with allow-scripts only; NO
 allow-same-origin, allow-forms, allow-popups, allow-downloads, or top navigation.
-The iframe has an opaque origin and restrictive meta CSP: no network,
-worker, frames, object/embed, or cross-origin data. The parent CSP restricts
-frame sources. Preview carries no SONIC owner credentials. The public guest
+The iframe loads an owner-session-scoped, 8-minute temporary preview URL.
+Its HTML response has a dedicated CSP enforced via HTTP headers including
+`sandbox allow-scripts`, no network, worker, frame nesting, object/embed or
+form submission. The parent SONIC page keeps its stricter normal script CSP.
+The browser iframe itself has no `allow-same-origin` capability. Preview carries no SONIC owner credentials. The public guest
 and trusted-iPhone preview APIs remain unable to fetch owner artifacts.
 
 Server validates media MIME and binary signature, enforces size quotas, and
