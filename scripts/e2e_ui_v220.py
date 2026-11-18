@@ -39,6 +39,7 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
         # Chat: real model widget, real device status and a single composer.
         page.locator('.sidebar .nav[data-tab="chat"]').click()
         expect(page.locator("#chatPanel")).to_be_visible()
+        expect(page.locator(".sidebar .nav.active")).to_have_count(1)
         expect(page.locator("#v22ChatTop")).to_be_visible()
         expect(page.locator("#v22ModelControl .runtime-widget")).to_be_visible(timeout=8000)
         expect(page.locator("#chatForm")).to_be_visible()
@@ -58,6 +59,7 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
         expect(page.locator(".message.error .v22-open-coding")).to_be_visible(timeout=6000)
         page.locator(".message.error .v22-open-coding").last.click()
         expect(page.locator("#studioPanel")).to_be_visible()
+        expect(page.locator(".sidebar .nav.active")).to_have_count(1)
         expect(page.locator("#asCodingPrompt")).to_have_value("Buat kalkulator sederhana ui modern")
         expect(page.locator("#v22RecentArtifacts")).to_be_visible()
         expect(page.locator("#asQuota")).to_contain_text("items",timeout=9000)
@@ -82,6 +84,7 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
         # Knowledge uses WebGL engine and a real graph route for its light trace.
         page.locator('.sidebar .nav[data-tab="brain"]').click()
         expect(page.locator("#brainPanel")).to_be_visible()
+        expect(page.locator(".sidebar .nav.active")).to_have_count(1)
         expect(page.locator("#v22KnowledgeStatus")).to_be_visible()
         expect(page.locator("#graphStage")).to_be_visible(timeout=8000)
         assert page.evaluate("""() => typeof window.SonicGraph?.prototype.signalIntegration==="function" """)
