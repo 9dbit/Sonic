@@ -202,9 +202,14 @@
     const agentRun=source==='chat'&&!!window.sonicResearch?.active()&&!options.approvalId;
     if(agentRun&&(text.length<5||text.length>300)){notify('Research Agent menerima 5-300 karakter per pertanyaan.');return;}
     const requestId=options.requestId||crypto.randomUUID();
+    const existingDelivery=!agentRun&&!openPreview?window.sonicDelivery?.pending():null;
+    if(existingDelivery&&existingDelivery.id!==requestId){notify('Jawaban sebelumnya masih dipulihkan. Pesan baru Anda tetap tersimpan di kolom chat.');recoverChatDelivery();return;}
     if(!agentRun&&window.sonicMotion?.handleCommand(text)){input.value='';notify('SONIC Motion Core kembali ke posisi semula.');return;}
-    setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');if(!options.overrideText)input.value='';line('user',text);const pending=line('assistant','SONIC is thinking...');brainAnswer('SONIC is thinking...');
-    try{const r=await API(agentRun?'/api/agent/research':'/api/chat',{method:'POST',body:JSON.stringify(agentRun?{query:text,purpose:window.sonicResearch.purpose(),...window.sonicResearch.options()}:{message:text,selected_node_id:graph.selected||null,request_id:requestId,...(options.approvalId?{approval_request_id:options.approvalId}:{})})});
+    setWaiting(true);speech?.stop();window.speechSynthesis?.cancel();activityState('thinking');if(!options.overrideText)input.value='';if(!options.pending)line('user',text);const pending=options.pending||line('assistant','SONIC sedang memproses...');pending.classList.remove('error');pending.querySelectorAll('.delivery-retry').forEach(n=>n.remove());brainAnswer('SONIC sedang memproses...');
+    try{const payload=agentRun?{query:text,purpose:window.sonicResearch.purpose(),...window.sonicResearch.options()}:{message:text,selected_node_id:graph.selected||null,request_id:requestId,...(options.approvalId?{approval_request_id:options.approvalId}:{})};
+      const r=(!agentRun&&!openPreview&&window.sonicDelivery)
+        ?await window.sonicDelivery.send(API,payload,status=>{pending.querySelector('.body').textContent=status;})
+        :await API(agentRun?'/api/agent/research':'/api/chat',{method:'POST',body:JSON.stringify(payload)});
       if(agentRun){pending.querySelector('.body').textContent=r.reply;window.sonicResearch.render(pending,r);window.sonicResearch.refreshMemory?.();activityState('idle');return;}
       pending.querySelector('.body').textContent=r.reply;window.sonicModelTruth?.receipt(pending,r.answer_origin);const events=r.memory_events||[];
       events.forEach(e=>appendReceipt(pending,e));
@@ -217,8 +222,26 @@
       if(r.engine)pending.append(el('span','execution-note',taskLabel(r.engine.status)+(r.engine.task_id?' · Tugas '+r.engine.task_id.slice(0,8):'')+(applied.length?' / graph '+applied.map(x=>x.status).join(', '):'')));
       speak(r.reply,{force:!!options.readAloud});
     }catch(error){pending.classList.add('error');pending.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');
-      if(!error.status||error.status>=500)pending.append(button('Periksa / coba kembali',()=>send(source,{...options,overrideText:text,requestId})));}
+      if(!error.status||error.status>=500)pending.append(button(error.terminal?'Kirim permintaan baru':'Periksa hasil',()=>send(source,{...options,overrideText:text,requestId:error.terminal?crypto.randomUUID():requestId,pending}),'delivery-retry'));}
     finally{setWaiting(false);if(!input.value)input.style.height='45px';$('chatFeed').scrollTop=$('chatFeed').scrollHeight;if(innerWidth>650&&currentTab!=='brain')input.focus();}
+  }
+  function renderPCInspection(host,state){
+    const result=state.result||{},plan=result.plan||{},evidence=result.evidence||{};
+    const card=el('section','pc-inspection');
+    card.setAttribute('aria-label','Hasil pemeriksaan paket');
+    card.append(el('strong','','Paket yang diperiksa'));
+    const fields=el('dl','pc-inspection-plan');
+    for(const [label,value] of [['Package ID',plan.package_id],['Versi',plan.version],['Sumber',plan.source],['Lingkup diminta',plan.scope==='user'?'Akun Windows saat ini':plan.scope],['Restart otomatis',plan.allow_reboot===false?'Tidak':'Tidak diketahui']]){
+      fields.append(el('dt','',label),el('dd','',String(value??'Tidak tersedia').slice(0,160)));
+    }
+    card.append(fields);
+    const details=el('details','pc-inspection-metadata');details.open=true;
+    details.append(el('summary','','Penerbit, URL & lisensi dari WinGet'));
+    const raw=typeof evidence.stdout==='string'?evidence.stdout:'';
+    details.append(el('pre','',raw.slice(0,6000)||'Metadata belum tersedia. Periksa paket kembali.'));
+    if(evidence.truncated||raw.length>6000)details.append(el('p','execution-note','Output metadata terpotong. Jangan anggap detail lisensi sudah lengkap.'));
+    details.append(el('p','execution-note','Data dari Windows Companion. Tanda tangan penerbit belum diverifikasi secara terpisah.'));
+    card.append(details);host.append(card);
   }
   // Chat-first PC jobs: never require opening Devices merely to see progress.
   async function watchChatJob(job,source,options={}){
@@ -228,7 +251,8 @@
     const body=tag.querySelector('.body');
     const stop=button('Batalkan tugas',async()=>{stop.disabled=true;try{await API('/api/operator/requests/'+encodeURIComponent(job.id),{method:'DELETE'});notify('Pembatalan diminta. Tindakan yang sudah dimulai mungkin sudah mengubah perangkat.');}catch(e){stop.disabled=false;notify(e.message);}},'plain');tag.append(stop);
     try{
-    for(let attempt=0;attempt<105;attempt++){
+    // Installer timeout may be twenty minutes. Poll the same receipt only.
+    for(let attempt=0;attempt<(job.action==='software.install'?800:150);attempt++){
       await new Promise(done=>setTimeout(done,1700));
       if(!csrf)return;
       try{
@@ -239,7 +263,13 @@
             state.state==='failed'?'Perintah gagal di Windows Agent.':
             'Perintah dibatalkan atau kedaluwarsa.');
           tag.classList.toggle('error',state.state==='failed');
-          if(state.task?.verification?.status==='agent_verified')tag.append(el('small','execution-note','Folder diperiksa oleh Windows companion'));
+          if(state.task?.verification?.status==='agent_verified')tag.append(el('small','execution-note',job.action==='software.install'?'Versi terpasang diperiksa oleh Windows companion':'Hasil diperiksa oleh Windows companion'));
+          if(job.action==='software.inspect'&&state.state==='done'&&state.result?.plan){
+            renderPCInspection(tag,state);
+            const plan=state.result.plan;
+            if(plan.accept_source_agreements&&plan.accept_package_agreements){tag.append(button('Tinjau instalasi',()=>pcRequest('install-review',{inspection_id:job.id})));}
+            else{tag.append(button('Tinjau paket & lisensi',()=>window.sonicPCTools?.prefill(plan)));}
+          }
           else if(state.task?.verification?.status==='agent_reported')tag.append(el('small','execution-note','Hasil dilaporkan perangkat; perubahan aplikasi belum diperiksa terpisah'));
           stop.remove();
           $('chatFeed').scrollTop=$('chatFeed').scrollHeight;
@@ -256,8 +286,40 @@
     body.textContent='Pemeriksaan waktu nyata berhenti. Perintah masih dapat dilihat di histori chat setelah agent memberi hasil.';
     }finally{watchingJobs.delete(job.id);stop.remove();}
   }
+  async function recoverChatDelivery(){
+    const pending=window.sonicDelivery?.pending();if(!pending||waiting||openPreview||!csrf)return;
+    setTab('chat');setWaiting(true);const item=line('assistant','Memulihkan jawaban TRADEVICEPC...');
+    try{
+      const r=await window.sonicDelivery.poll(API,pending.id,s=>{item.querySelector('.body').textContent=s;});
+      const duplicate=[...$('chatFeed').querySelectorAll('.message.assistant .body')].reverse().find(n=>n!==item.querySelector('.body')&&n.textContent===r.reply);
+      const host=duplicate?.closest('.message')||item;
+      if(duplicate)item.remove();else{item.querySelector('.body').textContent=r.reply;window.sonicModelTruth?.receipt(item,r.answer_origin);}
+      for(const job of r.operator_jobs||[])watchChatJob(job,'chat').catch(e=>notify(e.message));
+      const proposalId=r.operator_proposals?.[0]?.id;
+      if(proposalId&&![...$('chatFeed').querySelectorAll('.chat-inline-approval')].some(n=>n.dataset.approvalId===proposalId))inlineChatApproval(host,'chat',proposalId);
+    }catch(e){item.querySelector('.body').textContent=e.message;item.classList.add('error');
+      if(!e.terminal&&![401,403].includes(e.status))item.append(button('Periksa hasil',()=>{item.remove();recoverChatDelivery();},'delivery-retry'));
+    }finally{setWaiting(false);$('chatFeed').scrollTop=$('chatFeed').scrollHeight;}
+  }
+  async function pcRequest(action,body){
+    if(openPreview||!csrf||waiting)return;
+    if(!['inspect','install-review'].includes(action))return;
+    $('agentModeChat')?.click();setTab('chat');setWaiting(true);
+    const message=line('assistant','Memeriksa izin dan paket di TRADEVICEPC...');
+    try{
+      const r=await API('/api/pc-agent/'+action,{method:'POST',body:JSON.stringify({...body,request_id:crypto.randomUUID()})});
+      message.querySelector('.body').textContent=r.reply;window.sonicModelTruth?.receipt(message,r.answer_origin);
+      if(r.operator_proposals?.length)inlineChatApproval(message,'chat',r.operator_proposals[0].id);
+      for(const job of r.operator_jobs||[])watchChatJob(job,'chat').catch(e=>notify(e.message));
+    }catch(e){message.classList.add('error');message.querySelector('.body').textContent=e.message;}
+    finally{setWaiting(false);}
+  }
+  window.sonicPCChat={inspect:args=>pcRequest('inspect',args),command:command=>{
+    if(openPreview||!csrf)return;
+    $('agentModeChat')?.click();setTab('chat');send('chat',{overrideText:String(command).slice(0,3500)});
+  }};
   function inlineChatApproval(message,source,approvalId){
-    const row=el('div','chat-inline-approval');
+    const row=el('div','chat-inline-approval');row.dataset.approvalId=approvalId;
     const yes=button('Setujui',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'setuju',approvalId});},'chat-approve-button');
     const no=button('Batal',()=>{yes.disabled=true;no.disabled=true;send(source,{overrideText:'batal',approvalId});},'chat-reject-button');
     row.append(yes,no);message.append(row);
@@ -481,6 +543,7 @@
     csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(innerWidth<=720?'chat':(brainConfigured?'brain':'setup')):currentTab);
     await loadTasks(true);
     window.dispatchEvent(new Event('sonic:owner-ready'));
+    recoverChatDelivery().catch(e=>notify(e.message));
   }
   async function signOut(){await liveVoice?.stop('logout');try{await API('/api/logout',{method:'POST'});}catch(error){notify('Sign out gagal: '+error.message);return;}
     csrf=null;speech?.stop();window.speechSynthesis?.cancel();clearPrivateUI();location.reload();}

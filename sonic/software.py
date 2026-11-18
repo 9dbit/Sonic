@@ -237,7 +237,7 @@ def result_text(action: str, result: dict, success: bool) -> str:
     if action == 'software.inspect':
         plan = result.get('plan') or {}
         return ('Metadata installer ditemukan: ' + str(plan.get('package_id', ''))[:128] + ' versi ' +
-                str(plan.get('version', ''))[:80] + '. Periksa publisher, URL, lisensi, dan rencana di Software Manager sebelum memilih Install. Belum ada instalasi.')
+                str(plan.get('version', ''))[:80] + '. Periksa penerbit, URL, lisensi, dan rencana pada hasil pemeriksaan sebelum meninjau instalasi. Belum ada instalasi.')
     if action == 'software.inventory':
         packages = (result.get('evidence') or {}).get('packages', [])
         return ('Inventaris WinGet dari TRADEVICEPC: ' + ', '.join(

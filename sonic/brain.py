@@ -202,6 +202,9 @@ async def reply(db: Session, latest_user_text: str) -> str:
                  [tool for tool in TOOLS if tool['name'] != 'memory_save'],
         "store": False, "max_output_tokens": 1000, "parallel_tool_calls": False
     }
+    if selection.provider == "local" and db.info.get("delivery_id"):
+        from .chat_delivery import queue_local
+        return queue_local(db, request, selection)
     try:
         async with httpx.AsyncClient(timeout=75) as client:
             for iteration in range(4):

@@ -71,7 +71,23 @@ def require_available(db: Session, *, chat: bool = False):
     return status
 
 
-def create_job(db: Session, action: str, payload: dict, owner_sid: str) -> LocalAIJob:
+def expire_stale_jobs(db: Session):
+    now = utcnow()
+    db.execute(update(LocalAIJob).where(LocalAIJob.device_id == target(),
+        LocalAIJob.state == "queued", LocalAIJob.created_at < now-timedelta(seconds=MAX_QUEUE_AGE))
+        .values(state="expired", payload_json="", updated_at=now))
+    # The Windows request has a bounded 75-second inference timeout. Never
+    # requeue a leased job; discard abandoned leases after a generous margin.
+    db.execute(update(LocalAIJob).where(LocalAIJob.device_id == target(),
+        LocalAIJob.state == "leased", LocalAIJob.updated_at < now-timedelta(seconds=180))
+        .values(state="expired", payload_json="", updated_at=now))
+
+
+def create_job(db: Session, action: str, payload: dict, owner_sid: str,
+               *, commit: bool = True) -> LocalAIJob:
+    # Serialize slot admission on PostgreSQL, even across workers.
+    db.scalar(select(Device).where(Device.id == target()).with_for_update())
+    expire_stale_jobs(db)
     now = utcnow()
     db.execute(delete(LocalAIJob).where(LocalAIJob.created_at < now - timedelta(days=1)))
     # One resource-heavy inference at a time on the 6 GB RTX 2060.
@@ -82,7 +98,10 @@ def create_job(db: Session, action: str, payload: dict, owner_sid: str) -> Local
     job = LocalAIJob(id=str(uuid4()), device_id=target(), owner_sid=owner_sid,
                      action=action, state="queued", payload_json=json.dumps(payload, ensure_ascii=False))
     db.add(job)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return job
 
 
@@ -161,6 +180,7 @@ def device_next(request: Request, db: Session = Depends(get_db)):
     auth.require_device(request)
     if not enabled():
         return {"job": None}
+    expire_stale_jobs(db)
     now = utcnow()
     # Expired jobs cannot be revived or executed after delayed reconnects.
     db.execute(update(LocalAIJob).where(
@@ -191,8 +211,21 @@ def device_result(body: Receipt, request: Request, db: Session = Depends(get_db)
     auth.require_device(request)
     if body.device_id != target():
         raise HTTPException(403, "Device identity mismatch.")
-    job = db.get(LocalAIJob, body.job_id)
-    if not job or job.device_id != body.device_id or job.state != "leased":
+    # Serialize receipt acceptance with lease expiry and other receipts.
+    # A stale ORM read must never revive expired work or replace terminal data.
+    job = db.scalar(select(LocalAIJob).where(LocalAIJob.id == body.job_id)
+                    .with_for_update().execution_options(populate_existing=True))
+    if not job or job.device_id != body.device_id:
+        raise HTTPException(409, "Local AI job is not leased.")
+    if job.action == "chat" and job.state == "expired":
+        return {"ok": True, "ignored": True, "reason": "expired_not_replayed"}
+    if job.action == "chat" and job.state in ("done", "failed"):
+        # A lost receipt upload acknowledgment must not wedge the Companion
+        # forever. Accept identical chat receipts, never changed terminal data.
+        if job.state == ("done" if body.success else "failed") and json.loads(job.result_json or '{}') == body.result:
+            return {"ok": True, "duplicate": True}
+        raise HTTPException(409, "Conflicting local AI receipt")
+    if job.state != "leased":
         raise HTTPException(409, "Local AI job is not leased.")
     if job.action not in CONTROL | {"chat"}:
         raise HTTPException(403, "Unsupported local AI operation.")
@@ -208,6 +241,11 @@ def device_result(body: Receipt, request: Request, db: Session = Depends(get_db)
     job.result_json = raw
     job.updated_at = utcnow()
     db.commit()
+    if job.action == "chat":
+        from .chat_delivery import ChatDelivery, settle
+        turn = db.scalar(select(ChatDelivery).where(ChatDelivery.local_job_id == job.id))
+        if turn and turn.response_json:
+            settle(db, turn.id)
     return {"ok": True}
 
 
@@ -224,15 +262,25 @@ def compact_messages(request: dict) -> list[dict]:
         if content.startswith(("VERIFIED SONIC PLATFORM CONTEXT", "UNTRUSTED UI CONTEXT",
                                "UNTRUSTED REFERENCE DATA")):
             continue
-        messages.append({"role": item["role"], "content": content[:1100]})
+        messages.append({"role": item["role"], "content": content})
     messages = messages[-5:]
     if not messages or messages[-1]["role"] != "user":
         raise HTTPException(422, "Text user request required.")
-    total = sum(len(item["content"]) for item in messages)
-    if total > 2600:
-        raise HTTPException(413, "Local model context is limited to 1024 tokens. Shorten the request.")
-    return [{"role": "system", "content": "You are SONIC, a helpful private AI. Answer in the user's language, briefly and accurately. No tool access, PC control, or external browsing."},
-            *messages]
+    # Never silently cut the current request. Trim OLD turns to fit the
+    # existing 1024-token deployment instead of failing every longer session.
+    if len(messages[-1]["content"]) > 1100:
+        raise HTTPException(413, "Model lokal saat ini memakai konteks 1024 token. Kirim pertanyaan kurang dari 1100 karakter atau pilih cloud.")
+    latest = messages[-1]
+    previous = []
+    budget = 2200 - len(latest["content"])
+    for item in reversed(messages[:-1]):
+        text = item["content"][:min(650, budget)]
+        if len(text) < 80:
+            break
+        previous.append({"role": item["role"], "content": text})
+        budget -= len(text)
+    return [{"role": "system", "content": "You are SONIC, a private assistant. Reply accurately in the user's language. PC commands are handled separately by an authenticated SONIC executor, never by text you generate. Never claim software was installed, an app ran or an installer file was built without a device receipt."},
+            *reversed(previous), latest]
 
 
 async def infer(request: dict) -> dict:
