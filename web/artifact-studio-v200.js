@@ -99,6 +99,32 @@ function render(approved=false){
   stage.append(make("pre","as-code-preview",text),make("p","as-disclaimer","Source non-HTML tidak dieksekusi."));
  }
 }
+let workspaceStrip=null;
+function renderWorkspaceItems(items){
+ if(!workspaceStrip)return;
+ const content=workspaceStrip.querySelector(".as-workspace-items");
+ if(!content)return;
+ content.replaceChildren();
+ if(!items.length){content.append(make("p","as-caption","Belum ada artifact tersimpan. Buat di Artifact Studio."));return}
+ for(const item of items.slice(0,4)){
+  const card=button("",()=>{open();load(item.id)},"as-workspace-entry");
+  card.append(make("span","as-entry-icon",icon[item.kind]||"▤"));
+  const body=make("span","as-workspace-entry-name");
+  body.append(make("strong",null,item.name),make("small",null,types[item.kind]+" · v"+item.version));
+  card.append(body);content.append(card);
+ }
+}
+async function refreshWorkspaceArtifacts(){
+ if(!workspaceStrip)return;
+ const epoch=state.epoch;
+ if(!await session()){
+  if(epoch===state.epoch){const c=workspaceStrip.querySelector(".as-workspace-items");if(c)c.replaceChildren(make("p","as-caption","Artifact pribadi hanya tersedia untuk owner."))}
+  return;
+ }
+ const data=await api("");
+ if(epoch!==state.epoch)return;
+ renderWorkspaceItems(data.items);
+}
 function card(a){
  const b=button("",()=>load(a.id),"as-entry");b.dataset.id=a.id;
  b.append(make("span","as-entry-icon",icon[a.kind]||"▤"));
@@ -296,7 +322,18 @@ function init(){
   },"as-button"));
   bar.append(button("Artifact Studio ↗",open,"as-button"));chat.prepend(bar);
  }
- const ws=$("workspacePanel")?.querySelector(".ws-heading .ws-actions");if(ws)ws.prepend(button("▣ Artifacts",open,"as-button"));
+ const workspace=$("workspacePanel");
+ const ws=workspace?.querySelector(".ws-heading .ws-actions");
+ if(ws)ws.prepend(button("▣ Artifacts",open,"as-button"));
+ const wsHeading=workspace?.querySelector(".ws-heading");
+ if(wsHeading){
+  workspaceStrip=make("section","as-workspace-strip");
+  const heading=make("div","as-workspace-strip-head");
+  heading.append(make("strong",null,"Recent Artifacts"));
+  heading.append(button("Open Library ↗",open,"as-button"));
+  workspaceStrip.append(heading,make("div","as-workspace-items"));
+  wsHeading.after(workspaceStrip);
+ }
  const dash=document.querySelector(".sonic-dash-quick");if(dash)dash.append(button("▣ Artifact Studio",open,"as-button"));
  const dev=document.querySelector('#devicesPanel [data-ia-group="ai"]');if(dev){
   const box=make("div","as-device-card");box.append(make("strong",null,"Artifact Pipeline (browser sandbox)"),
@@ -304,8 +341,11 @@ function init(){
   box.append(button("Open Artifact Studio ↗",open,"as-button"));dev.append(box);
  }
  const feed=$("chatFeed");if(feed){new MutationObserver(scanChat).observe(feed,{childList:true,subtree:true,characterData:true});scanChat()}
- window.addEventListener("sonic:tab",e=>{if(e.detail?.tab==="studio")refresh().catch(err=>inform(err.message,true))});
- const clear=()=>{state.epoch++;state.seq++;state.previewSeq++;state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";library();updateMeta();render()};
+ window.addEventListener("sonic:tab",e=>{
+ if(e.detail?.tab==="studio")refresh().catch(err=>inform(err.message,true));
+ if(e.detail?.tab==="workspace")refreshWorkspaceArtifacts().catch(err=>inform(err.message,true));
+ });
+ const clear=()=>{state.epoch++;state.seq++;state.previewSeq++;state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";renderWorkspaceItems([]);library();updateMeta();render()};
  window.addEventListener("sonic:overview",e=>{if(e.detail?.kind==="clear")clear()});
  window.addEventListener("sonic:logout",clear);
  window.SonicArtifactStudio={open,newDraft,fromChat:draftFromMessage};
