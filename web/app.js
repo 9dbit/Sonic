@@ -2,11 +2,11 @@
   'use strict';
   const $=id=>document.getElementById(id);
   const ownerEntry=location.pathname==='/owner';
-  const tabs={brain:'brainPanel',chat:'chatPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
-  const titles={brain:'Neural Brain',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
+  const tabs={dashboard:'dashboardPanel',brain:'brainPanel',chat:'chatPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
+  const titles={dashboard:'Dashboard',brain:'Knowledge',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   const providerLabels={openai:'OpenAI',openrouter:'OpenRouter',deepseek:'DeepSeek',local:'Local GGUF'};
-  let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab=(innerWidth<=720?'chat':'brain'),waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,compatibleVoice=null,wake=null,speechAudio=null;
+  let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab='dashboard',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,compatibleVoice=null,wake=null,speechAudio=null;
   let graphData={nodes:[],edges:[],counts:{categories:{},memories:0}},graphFingerprint='',activity='idle';
   const watchingJobs=new Set();
   const taskLabels={awaiting_approval:'Menunggu persetujuan',pending:'Menunggu persetujuan',queued:'Menunggu Windows',leased:'Sedang berjalan',running:'Sedang berjalan',completed:'Selesai',done:'Selesai',failed:'Gagal',cancelled:'Dibatalkan',expired:'Kedaluwarsa',rejected:'Tidak dijalankan',approved:'Persetujuan dicatat',needs_clarification:'Perlu nama dan tujuan yang jelas'};
@@ -81,7 +81,7 @@
   }
   function setTab(tab){if(!tabs[tab])return;currentTab=tab;for(const [name,id] of Object.entries(tabs))$(id).classList.toggle('hidden',name!==tab);
     if(window.sonicWorkspace){window.sonicWorkspace.visible=tab==='workspace';if(tab==='workspace'&&!openPreview&&window.sonicPCWorkspace?.mode!=='pc')window.sonicWorkspace.refresh().catch(e=>notify(e.message));}
-    document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
+    document.querySelectorAll('.nav').forEach(b=>{const yes=b.dataset.tab===tab||(tab==='memory'&&b.dataset.tab==='brain');b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});
     window.dispatchEvent(new CustomEvent('sonic:tab',{detail:{tab}}));
     $('pageTitle').textContent=titles[tab];graph.setVisible(tab==='brain'&&(!!csrf||openPreview)&&(!window.sonicNeural||window.sonicNeural.isGraphMode()));
     if(openPreview||!csrf)return;if(tab==='brain')refreshGraph();if(tab==='memory')loadMemory();if(tab==='devices'){loadDevice();window.sonicPC?.refresh().catch(()=>{});window.sonicPC?.history().catch(()=>{});window.sonicWindows?.refresh().catch(()=>{});}if(tab==='setup'){loadSetup();loadRuns();loadTasks();loadVoiceStatus().catch(e=>{$('voiceReadiness').textContent=e.message;});}
@@ -540,7 +540,7 @@
   }
   async function initialize(){const r=await API('/api/session');if(r.preview===true&&!ownerEntry){await applyOpenPreview(r);return;}$('loginOverlay').classList.toggle('hidden',!!r.authenticated);if(!r.authenticated){csrf=null;graph.setVisible(false);return;}
     const initialTab=currentTab;
-    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?(innerWidth<=720?'chat':(brainConfigured?'brain':'setup')):currentTab);
+    csrf=r.csrf;$('coreModel').textContent=r.model;await Promise.all([loadHistory(),loadDevice(),loadSetup(),refreshGraph(),window.sonicPersonaStudio?.load().catch(e=>notify('Persona Studio unavailable: '+e.message))]);setTab(currentTab===initialTab?'dashboard':currentTab);
     await loadTasks(true);
     window.dispatchEvent(new Event('sonic:owner-ready'));
     recoverChatDelivery().catch(e=>notify(e.message));

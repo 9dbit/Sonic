@@ -1,0 +1,49 @@
+name: SONIC 1.9 Dashboard UX Acceptance
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'scripts/e2e_ui_ia_v190.py'
+      - '.github/workflows/sonic-ia-v190.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  information-architecture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
+      options: --ipc=host --init
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install server and matching Playwright dependencies
+        run: python -m pip install -r requirements.txt playwright==1.56.0
+      - name: Check JavaScript and Python syntax
+        run: |
+          node --check web/app.js
+          node --check web/orbit-v140.js
+          node --check web/sonic-ia-v190.js
+          python -m py_compile scripts/e2e_ui_ia_v190.py
+      - name: Test Dashboard, Knowledge, Devices and Settings
+        env:
+          SONIC_QA_BROWSER: ${{ matrix.browser }}
+        run: python scripts/e2e_ui_ia_v190.py
+      - name: Upload desktop and mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-ia-v190-${{ matrix.browser }}
+          path: artifacts/sonic-ia-v190/
+          retention-days: 14
+          if-no-files-found: warn
