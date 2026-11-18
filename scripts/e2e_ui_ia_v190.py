@@ -35,7 +35,7 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as p:
   expect(page.locator("#dashboardPanel")).to_be_visible(timeout=16000)
   expect(page.locator("#pageTitle")).to_have_text("Dashboard")
   expect(page.locator("#dashAskForm")).to_be_visible()
-  assert page.locator(".sidebar [data-tab=dashboard]").get_attribute("aria-current")=="page"
+  expect(page.locator(".sidebar [data-tab=dashboard]")).to_have_attribute("aria-current","page",timeout=16000)
   assert page.locator(".sonic-dash-quick [data-sonic-open=pc]").count()==1
   page.screenshot(path=str(OUT/f"{BROWSER}-{label}-dashboard.png"),full_page=True)
   page.locator(".sidebar .nav[data-tab=brain]").click()
