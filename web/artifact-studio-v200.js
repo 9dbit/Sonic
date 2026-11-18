@@ -94,7 +94,14 @@ async function generateCode(){
   if(initialEpoch!==state.epoch||request!==state.generationSeq)return;
   if(finished.state!=="done"||!finished.html)throw Error(finished.error||"Generasi HTML tidak selesai. Draft sebelumnya tidak berubah.");
   const title=revise?(current()?.name||"Revised HTML Tool"):"Generated HTML Tool";
-  newDraft("app",finished.html,"text/html","chat-draft",title);
+  if(revise&&state.selection){
+   state.draft={...state.selection,content:finished.html};
+   state.historical=false;
+   $("asDraftName").value=state.draft.name;
+   updateMeta();
+  }else{
+   newDraft("app",finished.html,"text/html","chat-draft",title);
+  }
   show("code");codingNotice("Source lengkap diterima dari "+(provider==="local"?"Local AI":"DeepSeek")+"; periksa, Preview, lalu Save Version.");
   inform("Generated source is a draft; not executed, installed, saved, or deployed.");
  }catch(error){
