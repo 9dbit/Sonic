@@ -297,3 +297,27 @@ body.sonic-ux-v220:not([data-sonic-page="brain"]):not([data-sonic-page="memory"]
  }
  body.sonic-ux-v220.orbit-v140 #mobileMoreMenu[hidden]{display:none!important}
 }
+
+/* GPU-independent branded orb. MotionCore overlays it whenever available. */
+body.sonic-ux-v220 .v22-orb-fallback{
+ position:absolute;inset:0;display:grid;place-items:center;overflow:visible;
+ border-radius:50%;background:radial-gradient(circle at 37% 30%,rgba(16,170,244,.4),#052a65 55%,#071127 76%);
+ box-shadow:inset 0 0 9px #33ceff,0 0 16px rgba(11,143,255,.57);
+ pointer-events:none;opacity:1;transition:opacity .3s;
+}
+body.sonic-ux-v220 .v22-orb-fallback:before{
+ content:"";position:absolute;inset:1px -8px;border:2px solid rgba(62,207,255,.73);
+ border-radius:50%;transform:rotate(-23deg) scaleY(.52);box-shadow:0 0 10px rgba(4,188,255,.65);
+ animation:v22-orbital 8s linear infinite;
+}
+body.sonic-ux-v220 .v22-orb-fallback img{
+ display:block;width:77%;height:77%;max-width:77%;object-fit:contain;position:relative;
+ filter:drop-shadow(0 0 7px rgba(80,198,255,.62));
+ animation:v22-orb-breathe 3.2s ease-in-out infinite alternate;
+}
+body.sonic-ux-v220 .v22-orb-dock.v22-live-motion .v22-orb-fallback{opacity:.15}
+@keyframes v22-orbital{from{transform:rotate(-23deg) scaleY(.52)}to{transform:rotate(337deg) scaleY(.52)}}
+@keyframes v22-orb-breathe{to{transform:scale(1.07);filter:drop-shadow(0 0 11px rgba(80,219,255,.9))}}
+@media(prefers-reduced-motion:reduce){
+ body.sonic-ux-v220 .v22-orb-fallback:before,body.sonic-ux-v220 .v22-orb-fallback img{animation:none!important}
+}
