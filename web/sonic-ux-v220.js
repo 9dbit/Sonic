@@ -11,7 +11,14 @@ let activeTab='dashboard',lastPulse=0,pulseTimer=0,viewAll=false,setupDone=false
 const docks={};
 function makeDock(id){
  const d=node('div','v22-orb-dock');d.id=id;
- d.setAttribute('aria-label','SONIC animated presence');return d;
+ d.setAttribute('aria-label','SONIC animated presence');
+ // Renderable even if GPU/Canvas motion is unavailable: same SONIC brand
+ // asset plus a lightweight CSS orbit. The live MotionCore can overlay it.
+ const fallback=node('span','v22-orb-fallback');
+ fallback.setAttribute('aria-hidden','true');
+ const img=node('img');img.alt='';img.src='/assets/sonic-mark.svg?v=1.5.1';
+ fallback.append(img);d.append(fallback);
+ return d;
 }
 function placeOrb(tab){
  const anchor=$('sonicMotionAnchor');
@@ -19,7 +26,12 @@ function placeOrb(tab){
  const dock=(tab==='studio'?docks.studio:tab==='brain'||tab==='memory'?docks.knowledge:tab==='chat'?docks.chat:docks.global);
  if(!dock)return;
  if(anchor.parentElement!==dock)dock.append(anchor);
- const update=()=>{if(!document.body.classList.contains('sonic-focused'))window.sonicMotion?.updateHome?.(true);};
+ const update=()=>{
+   if(!document.body.classList.contains('sonic-focused'))window.sonicMotion?.updateHome?.(true);
+   const f=$('sonicMotionFloat'),r=f?.getBoundingClientRect();
+   const real=Boolean(r&&r.width>10&&r.height>10&&r.right>0&&r.left<innerWidth&&getComputedStyle(f).display!=='none');
+   dock.classList.toggle('v22-live-motion',real);
+ };
  requestAnimationFrame(()=>requestAnimationFrame(update));
 }
 function buildHeader(){
