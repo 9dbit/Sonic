@@ -61,6 +61,23 @@ with local_server(settings=settings) as (base,token), sync_playwright() as playw
         page.locator('[data-as-tab="versions"]').click()
         expect(page.locator("#asHistory .as-history-btn")).to_have_count(2)
         page.screenshot(path=str(OUT/(BROWSER+"-"+label+"-versions.png")),full_page=True)
+        # Assistant replies arrive asynchronously. Studio must detect HTML only
+        # after the final message text has been populated.
+        page.locator('.sidebar [data-tab="chat"]').click()
+        page.evaluate("""() => {
+            const node=document.createElement('div');node.id='asSyntheticReply';node.className='message assistant';
+            const body=document.createElement('div');body.className='body';body.textContent='Generating tool…';
+            node.append(body);document.getElementById('chatFeed').append(node);
+        }""")
+        page.evaluate("""() => {
+            const ticks=String.fromCharCode(96).repeat(3);
+            document.querySelector('#asSyntheticReply .body').textContent=
+              ticks+'html\\n<!doctype html><html><body><h1>QA generated tool</h1></body></html>\\n'+ticks;
+        }""")
+        expect(page.locator("#asSyntheticReply .as-chat-action")).to_be_visible(timeout=8000)
+        page.locator("#asSyntheticReply .as-chat-action").click()
+        expect(page.locator("#studioPanel")).to_be_visible(timeout=8000)
+        assert "QA generated tool" in page.locator("#asCode").input_value()
         assert not errors, errors
         if label=="iphone":
             assert page.evaluate("document.documentElement.scrollWidth<=innerWidth+2"),"horizontal overflow"
