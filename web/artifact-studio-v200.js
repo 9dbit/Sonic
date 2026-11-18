@@ -16,7 +16,7 @@ const demo=[
  'function update(){o.textContent="Rp "+((Number(v.value)||0)*(Number(p.value)||0)).toLocaleString("id-ID")}',
  'v.oninput=p.oninput=update;update();</script>'
 ].join("");
-const state={items:[],selection:null,draft:null,content:"",csrf:null,owner:false,filter:"all",historical:false,busy:false,seq:0,previewSeq:0};
+const state={items:[],selection:null,draft:null,content:"",csrf:null,owner:false,filter:"all",historical:false,busy:false,seq:0,previewSeq:0,epoch:0};
 const types={app:"Web App",code:"Source",image:"Image",audio:"Audio",video:"Video",website:"Website"};
 const icon={app:"▣",code:"⌘",image:"▧",audio:"♫",video:"▷",website:"◎"};
 const size=n=>n>=1048576?(n/1048576).toFixed(1)+" MB":n>=1024?(n/1024).toFixed(1)+" KB":(n||0)+" B";
@@ -113,17 +113,19 @@ function library(){
  for(const a of subset)box.append(card(a));
 }
 async function refresh(){
- if(!await session()){state.items=[];library();updateMeta();inform("Mode publik: artifact owner tidak tersedia.",true);return}
- const d=await api("");state.items=d.items;
+ const epoch=state.epoch;
+ if(!await session()){if(epoch===state.epoch){state.items=[];library();updateMeta();inform("Mode publik: artifact owner tidak tersedia.",true)}return}
+ const d=await api("");if(epoch!==state.epoch)return;
+ state.items=d.items;
  $("asQuota").textContent=d.total+" items · "+size(d.total_bytes)+" / "+size(d.quota_bytes);
  library();updateMeta();
 }
 async function load(id,rev){
  if(state.draft&&!confirm("Buang draft yang belum tersimpan?"))return;
- const seq=++state.seq;
+ const seq=++state.seq,epoch=state.epoch;
  try{
   const d=await api("/"+encodeURIComponent(id)+(rev?"?version="+rev:""));
-  if(seq!==state.seq)return;
+  if(seq!==state.seq||epoch!==state.epoch)return;
   state.selection={...d};state.content=d.content;state.draft=null;state.historical=d.viewed_version!==d.version;
   updateMeta();library();show("preview");
   inform(state.historical?"Versi lama hanya untuk preview; kembali ke versi aktif sebelum edit.":"Artifact loaded: "+d.name);
@@ -302,7 +304,7 @@ function init(){
  }
  const feed=$("chatFeed");if(feed){new MutationObserver(scanChat).observe(feed,{childList:true});scanChat()}
  window.addEventListener("sonic:tab",e=>{if(e.detail?.tab==="studio")refresh().catch(err=>inform(err.message,true))});
- const clear=()=>{state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";library();updateMeta();render()};
+ const clear=()=>{state.epoch++;state.seq++;state.previewSeq++;state.owner=false;state.csrf=null;state.items=[];state.selection=null;state.draft=null;state.content="";$("asQuota").textContent="Owner login required";library();updateMeta();render()};
  window.addEventListener("sonic:overview",e=>{if(e.detail?.kind==="clear")clear()});
  window.addEventListener("sonic:logout",clear);
  window.SonicArtifactStudio={open,newDraft,fromChat:draftFromMessage};
