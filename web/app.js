@@ -223,7 +223,7 @@
       speak(r.reply,{force:!!options.readAloud});
     }catch(error){pending.classList.add('error');pending.querySelector('.body').textContent=error.message;brainAnswer(error.message,true);activityState('error');
       if(!error.status||error.status>=500)pending.append(button(error.terminal?'Kirim permintaan baru':'Periksa hasil',()=>send(source,{...options,overrideText:text,requestId:error.terminal?crypto.randomUUID():requestId,pending}),'delivery-retry'));
-      if(source==='chat'&&/\\b(html|javascript|css|coding|aplikasi|app|website|tool)\\b/i.test(text)){
+      if(source==='chat'&&/\b(html|javascript|css|coding|aplikasi|app|website|tool)\b/i.test(text)){
         pending.append(button('Buka Coding Studio',()=>window.SonicArtifactStudio?.openGenerator(text.slice(0,1200)),'delivery-retry'));
       }}
     finally{setWaiting(false);if(!input.value)input.style.height='45px';$('chatFeed').scrollTop=$('chatFeed').scrollHeight;if(innerWidth>650&&currentTab!=='brain')input.focus();}
