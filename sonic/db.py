@@ -78,6 +78,16 @@ class ArtifactVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
+class ArtifactPreview(Base):
+    """Short-lived browser-only HTML source, scoped to one owner session."""
+    __tablename__ = "artifact_previews_v200"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_session: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    html: Mapped[str] = mapped_column(Text, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
