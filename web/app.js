@@ -2,8 +2,8 @@
   'use strict';
   const $=id=>document.getElementById(id);
   const ownerEntry=location.pathname==='/owner';
-  const tabs={dashboard:'dashboardPanel',brain:'brainPanel',chat:'chatPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
-  const titles={dashboard:'Dashboard',brain:'Knowledge',chat:'Command Center',workspace:'Workspace',memory:'Memory Vault',devices:'Device Hub',setup:'SONIC Setup'};
+  const tabs={dashboard:'dashboardPanel',brain:'brainPanel',chat:'chatPanel',studio:'studioPanel',workspace:'workspacePanel',memory:'memoryPanel',devices:'devicesPanel',setup:'setupPanel'};
+  const titles={dashboard:'Dashboard',brain:'Knowledge',chat:'Chat',studio:'Artifact Studio',workspace:'Workspace',memory:'Memory Vault',devices:'Devices',setup:'Settings'};
   const categoryNames={system:'System',memory:'Memories',topic:'Topics',tool:'Tools',device:'Devices',integration:'Integration'};
   const providerLabels={openai:'OpenAI',openrouter:'OpenRouter',deepseek:'DeepSeek',local:'Local GGUF'};
   let csrf=null,openPreview=false,previewCsrf=null,previewModel={provider:'deepseek',model:'deepseek-flash'},previewModels=null,currentTab='dashboard',waiting=false,voiceOn=false,speech=null,brainConfigured=false,visionConfigured=false,providerTesting=false,toastTimer,liveVoice=null,compatibleVoice=null,wake=null,speechAudio=null;
