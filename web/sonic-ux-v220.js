@@ -281,7 +281,11 @@ function setup(){
  window.addEventListener('sonic:graph-loaded',event=>{
   const nodes=Array.isArray(event.detail?.nodes)?event.detail.nodes:[];
   const count=nodes.filter(n=>n.category==='integration').length;
-  statusKnowledge(count?'Graph refreshed · '+count+' integration node'+(count>1?'s':''):'No verified integration nodes',Boolean(count));
+  // A node in the graph does NOT prove network transfer. Only a verified
+  // integration route event is allowed to illuminate the active indicator.
+  if(!$('v22KnowledgeStatus')?.classList.contains('is-active')){
+    statusKnowledge(count?'Graph ready · '+count+' integration node'+(count>1?'s':'')+' · idle':'No verified integration nodes',false);
+  }
  });
  window.addEventListener('sonic:integration-visual',event=>{
   if(event.detail?.active){
