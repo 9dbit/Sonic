@@ -49,9 +49,12 @@
    this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
    this.focused=false;this.lastTap=-Infinity;this.home=null;this.running=true;this.paused=false;this.lastTime=0;this.time=0;
-   this.renderer='orb-v140';
+   // The v2.3 console uses the static SONIC mark; retain voice, focus and gestures.
+   // Do not start a hidden 60fps rendering loop when the icon is static.
+   this.staticIconMode=document.body.classList.contains('sonic-ux-v230');
+   this.renderer=this.staticIconMode?'sonic-static-v230':'orb-v140';
    document.body.append(this.float);this.updateHome(true);this.attach();
-   this.frameRequest=requestAnimationFrame(t=>this.frame(t));
+   this.frameRequest=this.staticIconMode?0:requestAnimationFrame(t=>this.frame(t));
   }
   attach(){
    const press=()=>{const now=performance.now();if(math.doubleTap(this.lastTap,now)){this.lastTap=-Infinity;this.setFocus(true);window.dispatchEvent(new CustomEvent('sonic:invoke',{detail:{consent:'double_tap'}}));}else{this.lastTap=now;this.float.classList.add('preview');clearTimeout(this.tapTimer);this.tapTimer=setTimeout(()=>this.float.classList.remove('preview'),1100);}};
