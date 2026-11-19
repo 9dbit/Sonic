@@ -9,7 +9,7 @@ def test_theme_loads_last_without_replacing_existing_controllers():
     assert "sonic-ux-v230 sonic-auth-locked" in html
     assert html.index("sonic-ux-v220.css") < html.index("sonic-ux-v230.css") < html.index("sonic-ux-v220.js")
     assert 'id="talkSonic"' in html
-    assert 'id="voiceDialog"' in html
+    assert 'id="voiceConsent"' in html
     assert 'id="graphStage"' in html
 
 def test_graphite_theme_keeps_blue_for_actions_and_keeps_mobile_nav():
