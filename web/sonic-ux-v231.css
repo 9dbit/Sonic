@@ -215,8 +215,11 @@ body.sonic-ux-v231.sonic-focused #voiceSessionBar .voice-live time{
   background:#327ce8!important;border:1px solid #327ce8!important;
  }
  /* Exactly one active tab and one SONIC icon on regular mobile pages. */
- body.sonic-ux-v231 .v22-orb-dock,
- body.sonic-ux-v231 .sonic-motion-float:not(.focused){
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22GlobalOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22StudioOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22KnowledgeOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22ChatOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 .sonic-motion-float:not(.focused){
   display:none!important;visibility:hidden!important;
  }
  body.sonic-ux-v231 .v22-studio-hero{padding-right:8px!important}
