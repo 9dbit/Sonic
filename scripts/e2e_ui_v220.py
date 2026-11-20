@@ -105,18 +105,13 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
         page.screenshot(path=str(OUT/f"{BROWSER}-{label}-knowledge.png"),full_page=True)
 
         if mobile:
-            # The actual animated SONIC canvas remains anchored on the right.
+            # SONIC v2.3.1 intentionally displays only the static header mark
+            # on regular mobile pages. Hidden orbit docks are not a regression.
             for destination,dock in [("brain","v22KnowledgeOrbDock"),("studio","v22StudioOrbDock"),("chat","v22ChatOrbDock")]:
                 page.locator('.sidebar .nav[data-tab="'+destination+'"]').click()
-                expect(page.locator("#"+dock)).to_be_visible()
-                page.wait_for_timeout(200)
-                # MotionCore may not start without GPU in CI. The approved
-                # animated branded orb is a real, always-rendered fallback.
-                bounds=page.locator("#"+dock+" .v22-orb-fallback").bounding_box()
-                assert bounds, "missing visible SONIC orb"
-                assert bounds["x"] >= width*.48 and bounds["x"]+bounds["width"] <= width+2,(destination,bounds)
-                assert 0 <= bounds["y"] < height,(destination,bounds)
-                assert page.locator("#"+dock+" .v22-orb-fallback img").get_attribute("src").startswith("/assets/sonic-mark.svg")
+                expect(page.locator("#"+dock)).to_be_hidden()
+                expect(page.locator("#sonicHeaderOrb img")).to_be_visible()
+                assert page.locator("#sonicHeaderOrb img").get_attribute("src").startswith("/assets/sonic-mark.svg")
             page.locator("#mobileMoreNav").click()
             expect(page.locator("#mobileMoreMenu")).to_be_visible()
             expect(page.locator('[data-mobile-go=workspace]')).to_be_visible()
@@ -124,7 +119,7 @@ with local_server(settings=SETTINGS) as (base,owner),sync_playwright() as playwr
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"),"horizontal overflow"
         assert not errors,errors
         results.append({"browser":BROWSER,"viewport":label,"chat":True,"studio":True,
-                        "webgl_graph":True,"live_orb_visible":True,
+                        "webgl_graph":True,"static_mark_visible":True,
                         "sandbox":True,"no_horizontal_overflow":True,"javascript_errors":errors})
         page.close()
     browser.close()
