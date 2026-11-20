@@ -17,7 +17,7 @@
    const hint=document.createElement('p');hint.id='sonicVoiceFocusHint';
     hint.setAttribute('role','status');hint.setAttribute('aria-live','polite');
     hint.textContent='SONIC: Double tap untuk berbicara lewat OpenAI.';this.voiceHint=hint;
-   const home=document.createElement('button');home.type='button';home.textContent='Kembali ke posisi awal';home.addEventListener('click',()=>this.returnHome());
+   const home=document.createElement('button');home.type='button';home.textContent='Minimize voice';home.addEventListener('click',()=>this.returnHome());
    this.retryVoice=document.createElement('button');this.retryVoice.type='button';this.retryVoice.id='sonicVoiceRetry';
     this.retryVoice.textContent='Coba suara lagi';this.retryVoice.hidden=true;
     this.retryVoice.addEventListener('click',()=>{
@@ -49,9 +49,12 @@
    this.ctx=this.canvas.getContext('2d',{alpha:true});this.reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    this.state='idle';this.speed=math.targetSpeed('idle',this.reduced);this.energy=0;
    this.focused=false;this.lastTap=-Infinity;this.home=null;this.running=true;this.paused=false;this.lastTime=0;this.time=0;
-   this.renderer='orb-v140';
+   // The v2.3 console uses the static SONIC mark; retain voice, focus and gestures.
+   // Do not start a hidden 60fps rendering loop when the icon is static.
+   this.staticIconMode=document.body.classList.contains('sonic-ux-v230');
+   this.renderer=this.staticIconMode?'sonic-static-v230':'orb-v140';
    document.body.append(this.float);this.updateHome(true);this.attach();
-   this.frameRequest=requestAnimationFrame(t=>this.frame(t));
+   this.frameRequest=this.staticIconMode?0:requestAnimationFrame(t=>this.frame(t));
   }
   attach(){
    const press=()=>{const now=performance.now();if(math.doubleTap(this.lastTap,now)){this.lastTap=-Infinity;this.setFocus(true);window.dispatchEvent(new CustomEvent('sonic:invoke',{detail:{consent:'double_tap'}}));}else{this.lastTap=now;this.float.classList.add('preview');clearTimeout(this.tapTimer);this.tapTimer=setTimeout(()=>this.float.classList.remove('preview'),1100);}};
@@ -82,13 +85,15 @@
    if(apply&&!this.focused)this.place(this.home);
   }
   place(rect){for(const key of ['left','top','width','height'])this.float.style[key]=rect[key]+'px';}
-  setFocus(on){if(on===this.focused)return;this.updateHome(false);this.focused=on;
+  setFocus(on){if(on===this.focused)return;
+   const homeFocus=()=>this.focusControls.querySelector('button:last-child')||this.float;
+   this.float.tabIndex=on&&this.staticIconMode?-1:0;this.updateHome(false);this.focused=on;
    this.float.classList.toggle('focused',on);this.float.classList.remove('preview');this.float.setAttribute('aria-pressed',String(on));
    document.body.classList.toggle('sonic-focused',on);this.focusControls.hidden=!on;
    if(on){this.backgroundInert=new Map();for(const node of document.querySelectorAll('.panel,.sidebar,.topbar,.orbit-overview,#nodeDetailPopup')){this.backgroundInert.set(node,node.inert);node.inert=true;}}
    else{for(const [node,prior] of this.backgroundInert||[])node.inert=prior;this.backgroundInert=null;}
    window.dispatchEvent(new CustomEvent('sonic:focus',{detail:{focused:on}}));
-   if(on){this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));this.float.focus({preventScroll:true});}
+   if(on){this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));(this.staticIconMode?homeFocus():this.float).focus({preventScroll:true});}
    else this.place(this.home);
   }
   returnHome(){this.setFocus(false);}

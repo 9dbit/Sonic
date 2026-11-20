@@ -1,0 +1,374 @@
+/* SONIC v2.2 Premium UI: real product shell, no fabricated data.
+ * Highest-priority layer. Keeps existing API controllers, WebGL and consent.
+ */
+body.sonic-ux-v220 {
+ --v22-bg:#050b16;--v22-panel:#0c182b;--v22-panel2:#101f34;
+ --v22-edge:rgba(83,159,241,.30);--v22-blue:#1b83ff;
+ --v22-cyan:#24c8ff;--v22-ink:#eff6ff;--v22-muted:#9db5d4;
+}
+body.sonic-ux-v220 .content {
+ background:radial-gradient(ellipse at 80% 4%,rgba(9,71,156,.12),transparent 48%),var(--v22-bg)!important;
+}
+body.sonic-ux-v220 .topbar{background:#090f1a!important;border-color:rgba(77,152,245,.23)!important}
+body.sonic-ux-v220 .topbar .eyebrow{color:#7dbdff!important;letter-spacing:.11em!important}
+body.sonic-ux-v220 .sidebar .nav.active{background:linear-gradient(125deg,#168efa,#175bdc)!important;color:#fff!important;box-shadow:0 5px 24px rgba(11,119,237,.22)!important}
+body.sonic-ux-v220 .sonic-knowledge-views button[aria-current=page],
+body.sonic-ux-v220 #neuralMobileSwitcher button[aria-pressed=true],
+body.sonic-ux-v220 #studioPanel .as-kind-tabs .active{background:linear-gradient(115deg,#128fff,#124dc6)!important;color:#fff!important;border-color:rgba(71,191,255,.56)!important}
+body.sonic-ux-v220 :is(.sonic-knowledge-views,.graph-toolbar,.v22-chat-top,#studioPanel .as-coding-card,#studioPanel .as-controls){border-color:var(--v22-edge)!important}
+body.sonic-ux-v220 .v22-orb-dock{
+ display:block;position:relative;width:88px;height:88px;min-width:88px;min-height:88px;
+ flex:0 0 88px;pointer-events:none;overflow:visible;
+}
+body.sonic-ux-v220 .v22-orb-dock #sonicMotionAnchor{display:block!important;width:100%!important;height:100%!important;position:relative!important;margin:0!important;opacity:1!important}
+body.sonic-ux-v220 #v22GlobalOrbDock{width:55px;height:55px;flex-basis:55px;min-width:55px;min-height:55px;order:4}
+body.sonic-ux-v220 .sonic-motion-float:not(.focused){
+ z-index:32!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+ filter:drop-shadow(0 0 10px rgba(7,156,255,.35));
+}
+body.sonic-ux-v220 .sonic-motion-float.focused{z-index:200!important}
+body.sonic-ux-v220 .v22-studio-hero{display:flex;align-items:center;gap:13px;position:relative;min-height:87px;padding:6px 11px 8px;min-width:0}
+body.sonic-ux-v220 .v22-studio-icon{display:grid;place-items:center;color:#dceeff;font:700 19px/1 ui-monospace,monospace;flex:none;width:48px;height:48px;border:1px solid #299dff;border-radius:14px;background:radial-gradient(circle at 25% 20%,#133e7b,#09142a);box-shadow:0 0 15px rgba(8,143,255,.23)}
+body.sonic-ux-v220 .v22-studio-name{flex:1;min-width:0}
+body.sonic-ux-v220 .v22-studio-name h2{margin:0!important;font-size:clamp(23px,2.4vw,31px)!important;letter-spacing:-.035em;color:var(--v22-ink)!important;line-height:1.15}
+body.sonic-ux-v220 .v22-studio-name p{margin:5px 0 0!important;color:#bdd3ef;font-size:12px;line-height:1.35;white-space:normal}
+body.sonic-ux-v220 #studioPanel .as-heading{display:none!important}
+body.sonic-ux-v220 #studioPanel .as-steps{display:none!important}
+body.sonic-ux-v220 #studioPanel .as-coding-card{background:linear-gradient(140deg,#112442,#0a1426)!important;padding:16px!important;gap:11px!important}
+body.sonic-ux-v220 #studioPanel .as-coding-head{display:none!important}
+body.sonic-ux-v220 #studioPanel .as-coding-fields{gap:10px!important}
+body.sonic-ux-v220 #studioPanel .as-coding-prompt{font-size:12px!important;font-weight:650;color:#d9eaff}
+body.sonic-ux-v220 #studioPanel #asCodingPrompt{min-height:55px!important;max-height:140px!important;font-size:14px!important;border-color:rgba(105,171,242,.41)!important;background:#09172b!important;border-radius:12px!important;resize:vertical}
+body.sonic-ux-v220 #studioPanel .as-coding-controls{gap:9px!important}
+body.sonic-ux-v220 #studioPanel .as-coding-provider{font-size:11px!important;font-weight:600!important;color:#c6daf5!important}
+body.sonic-ux-v220 #studioPanel .as-coding-provider select{border-radius:12px!important;background:#10223b!important;color:#e7f2ff!important}
+body.sonic-ux-v220 #studioPanel .as-coding-revise{font-size:11px!important;color:#d3e4fa!important}
+body.sonic-ux-v220 #studioPanel #asGenerate{border-radius:12px!important;background:linear-gradient(125deg,#18b6ff,#0757e8)!important;color:#fff!important;border-color:#24c9ff!important;box-shadow:0 4px 18px rgba(0,118,255,.27)}
+body.sonic-ux-v220 #studioPanel .as-coding-hint{display:none!important}
+body.sonic-ux-v220 #studioPanel .as-coding-status{font-size:11px!important;background:transparent!important;border:0!important;color:#b2c8e3!important;padding:0!important}
+body.sonic-ux-v220 #studioPanel .as-coding-status.is-error{background:#2b1d2b!important;border:1px solid #985168!important;padding:10px!important;color:#ffb7c3!important;border-radius:12px!important}
+body.sonic-ux-v220 .v22-generator-help{display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(115deg,#0b213b,#0c1528);border:1px solid rgba(42,169,252,.45);border-radius:13px;box-shadow:inset 2px 0 0 rgba(20,181,252,.7)}
+body.sonic-ux-v220 .v22-info-symbol{font-size:18px;font-weight:700;width:29px;height:29px;display:grid;place-items:center;border-radius:50%;border:1px solid #53bcff;color:#5ed8ff;flex:none}
+body.sonic-ux-v220 .v22-generator-help strong{display:block;font-size:13px;color:#f2f8ff}
+body.sonic-ux-v220 .v22-generator-help p{margin:4px 0 0;color:#bfd0e7;font-size:11px;line-height:1.55}
+body.sonic-ux-v220 #studioPanel .as-controls{background:transparent!important;border:0!important;gap:9px!important;padding:4px 0!important}
+body.sonic-ux-v220 #studioPanel .as-search{border:1px solid rgba(96,165,239,.45)!important;border-radius:999px!important;background:linear-gradient(100deg,#10243d,#122a47)!important;max-width:none!important}
+body.sonic-ux-v220 #studioPanel .as-kind-tabs button{border:1px solid rgba(100,160,233,.46)!important;border-radius:999px!important;padding:7px 13px!important;font-size:11px!important;background:#0b1729!important;color:#dce8f7!important}
+body.sonic-ux-v220 #studioPanel .as-kind-tabs .active{background:linear-gradient(115deg,#04a5ed,#084ef2)!important}
+body.sonic-ux-v220 #studioPanel #asUrlBtn{border-radius:999px!important;font-size:11px!important}
+body.sonic-ux-v220 .v22-recent-artifacts{display:flex;flex-direction:column;gap:11px;min-width:0;padding:2px 0 8px}
+body.sonic-ux-v220 .v22-recent-heading{display:flex;align-items:center;flex-wrap:wrap;gap:9px;min-width:0}
+body.sonic-ux-v220 .v22-recent-heading h3{margin:0 auto 0 0!important;color:#f5f8ff;font-size:17px!important;font-weight:730}
+body.sonic-ux-v220 .v22-view-all{border:0!important;background:transparent!important;color:#32c5ff!important;font-size:11px!important;padding:7px 4px!important}
+body.sonic-ux-v220 .v22-recent-heading .as-heading-actions{display:flex;gap:6px!important}
+body.sonic-ux-v220 .v22-recent-heading .as-heading-actions .as-button{border-radius:999px!important;min-height:27px!important;padding:6px 10px!important;font-size:10px!important}
+body.sonic-ux-v220 .v22-recent-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;min-width:0}
+body.sonic-ux-v220 .v22-artifact-card{display:flex!important;flex-direction:column!important;text-align:left!important;gap:0!important;padding:7px!important;border:1px solid rgba(63,149,239,.50)!important;border-radius:15px!important;background:#0d1c31!important;min-width:0!important;overflow:hidden}
+body.sonic-ux-v220 .v22-artifact-card:hover{border-color:#2db7ff!important;box-shadow:0 0 21px rgba(8,131,255,.20)!important}
+body.sonic-ux-v220 .v22-artifact-visual{position:relative;display:grid;place-items:center;width:100%;min-height:122px;overflow:hidden;border-radius:10px;background:radial-gradient(circle at 70% 30%,rgba(27,109,251,.58),transparent 45%),linear-gradient(140deg,#0e153a,#131f5e 68%,#092751)}
+body.sonic-ux-v220 .v22-artifact-visual[data-kind=image]{background:radial-gradient(circle at 45% 30%,#17719a,#082b4a 60%,#121a42)}
+body.sonic-ux-v220 .v22-artifact-visual[data-kind=audio]{background:radial-gradient(circle at 55% 30%,#215eac,#0b1738 65%,#151d4c)}
+body.sonic-ux-v220 .v22-artifact-visual[data-kind=video]{background:radial-gradient(circle at 50% 40%,#144f9d,#080c2b 68%,#111b42)}
+body.sonic-ux-v220 .v22-preview-label{position:absolute;top:8px;left:9px;font-size:8px;color:#c9e9ff;letter-spacing:.13em;opacity:.76}
+body.sonic-ux-v220 .v22-preview-glyph{font:800 38px ui-monospace,monospace;letter-spacing:-.09em;color:#b7e7ff;text-shadow:0 0 15px rgba(75,197,255,.6)}
+body.sonic-ux-v220 .v22-artifact-caption{padding:9px 7px 8px;display:block;max-width:100%;min-width:0}
+body.sonic-ux-v220 .v22-artifact-caption strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#edf6ff;font-size:12px}
+body.sonic-ux-v220 .v22-artifact-caption small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;color:#99b2d2;margin-top:5px}
+body.sonic-ux-v220 .v22-no-artifacts{grid-column:1/-1;border:1px dashed rgba(85,149,231,.4);padding:20px;background:#0a172a;border-radius:13px;text-align:center}
+body.sonic-ux-v220 .v22-no-artifacts strong{font-size:13px;color:#eff7ff}
+body.sonic-ux-v220 .v22-no-artifacts p{color:#9db7d5;font-size:11px;margin:7px 0 12px}
+body.sonic-ux-v220 .v22-new-artifact{color:#e8f6ff!important;background:#1668db!important;border:1px solid #328fff!important;border-radius:999px!important;padding:9px 14px!important;font-size:11px!important}
+body.sonic-ux-v220 .v22-knowledge-intro{display:flex;align-items:center;justify-content:space-between;position:relative;min-height:74px;margin:8px 16px -5px;padding:0 5px}
+body.sonic-ux-v220 .v22-knowledge-orb-label{font-size:10px;letter-spacing:.17em;color:#75b7f3;font-weight:750}
+body.sonic-ux-v220 #knowledgeViews{border-radius:999px!important;background:#0c1a2e!important}
+body.sonic-ux-v220 #knowledgeViews button{border-radius:999px!important;font-size:12px!important;padding:9px 15px!important}
+body.sonic-ux-v220 #brainPanel{background:radial-gradient(ellipse at 55% 46%,rgba(14,58,137,.16),transparent 61%),#060c18!important;border-color:rgba(69,144,237,.3)!important}
+body.sonic-ux-v220 .v22-knowledge-status{display:flex;align-items:center;gap:11px;border:1px solid rgba(57,149,252,.44);background:linear-gradient(120deg,#0f1e37,#0c1d3a);border-radius:13px;padding:11px 13px;color:#dcecff;min-height:60px}
+body.sonic-ux-v220 .v22-live-light{width:27px;height:27px;border-radius:50%;flex:none;background:radial-gradient(circle,#5ad1ff,#1967f9 48%,#10214e 75%);box-shadow:0 0 17px rgba(18,117,255,.38)}
+body.sonic-ux-v220 .v22-knowledge-status.is-active .v22-live-light{box-shadow:0 0 22px #0cb9ff;animation:v22-glow 1.5s ease-in-out infinite alternate}
+body.sonic-ux-v220 .v22-live-copy{display:flex;flex-direction:column;min-width:0;gap:4px;flex:1}
+body.sonic-ux-v220 .v22-live-copy strong{font-size:12px;color:#ebf6ff}
+body.sonic-ux-v220 .v22-live-copy small{font-size:10px;color:#a7c0e0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.sonic-ux-v220 .v22-signal-bars{display:flex;gap:3px;align-items:flex-end;height:21px}
+body.sonic-ux-v220 .v22-signal-bars i{display:block;width:4px;height:7px;background:#406c9d;border-radius:2px}
+body.sonic-ux-v220 .v22-knowledge-status.is-active .v22-signal-bars i{background:#27b9ff;animation:v22-signal 900ms ease-in-out infinite alternate}
+body.sonic-ux-v220 .v22-signal-bars i:nth-child(2){height:11px;animation-delay:130ms}
+body.sonic-ux-v220 .v22-signal-bars i:nth-child(3){height:15px;animation-delay:260ms}
+body.sonic-ux-v220 .v22-signal-bars i:nth-child(4){height:19px;animation-delay:390ms}
+body.sonic-ux-v220 .v22-graph-tools{display:block;margin:8px 0;color:#b1caeb;font-size:10px}
+body.sonic-ux-v220 .v22-graph-tools summary{cursor:pointer;max-width:max-content;padding:6px 11px;border:1px solid #2d527e;border-radius:999px;list-style:none}
+body.sonic-ux-v220 .v22-graph-tools summary:after{content:" ＋"}
+body.sonic-ux-v220 .v22-graph-tools[open] summary:after{content:" −"}
+body.sonic-ux-v220 .v22-graph-advanced-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+body.sonic-ux-v220 .v22-graph-advanced-actions button{font-size:10px!important;padding:6px 10px!important;border-radius:999px!important;background:#172d4b!important;border:1px solid #355d8c!important;color:#c7e7ff!important}
+@keyframes v22-glow{to{box-shadow:0 0 30px #0cb9ff}}
+@keyframes v22-signal{to{opacity:.45;transform:scaleY(.55)}}
+body.sonic-ux-v220 .v22-chat-top{display:flex;flex-direction:column;gap:9px;padding:8px 11px;background:#0c1729;border-bottom:1px solid rgba(83,157,233,.32);min-width:0;flex:none}
+body.sonic-ux-v220 .v22-chat-model{display:flex;align-items:center;gap:11px;min-height:46px}
+body.sonic-ux-v220 .v22-model-control{flex:1;min-width:0}
+body.sonic-ux-v220 .v22-model-control .runtime-widget{display:block!important;margin:0!important;width:100%;background:#10223a!important;border:1px solid rgba(61,134,232,.31)!important;border-radius:999px!important;padding:0!important}
+body.sonic-ux-v220 .v22-model-control .runtime-widget>summary{display:flex!important;align-items:center;gap:8px;padding:10px 12px!important;white-space:nowrap;overflow:hidden;min-height:39px}
+body.sonic-ux-v220 .v22-model-control .runtime-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px!important;color:#e9f5ff!important}
+body.sonic-ux-v220 .v22-model-control .runtime-state{font-size:10px!important;color:#4bf2a0!important;background:rgba(0,106,60,.14);border:1px solid rgba(25,221,115,.36);border-radius:999px;padding:5px 8px}
+body.sonic-ux-v220 .v22-model-control .runtime-widget[data-ready=false] .runtime-state{color:#ffbd7e!important;border-color:#8c513e!important}
+body.sonic-ux-v220 .v22-model-control .runtime-content{font-size:11px;border-radius:14px;border:1px solid #2f547f;padding:12px;background:#101e31}
+body.sonic-ux-v220 .v22-chat-actions{display:flex;gap:12px;align-items:center;justify-content:space-between;min-width:0}
+body.sonic-ux-v220 .v22-chat-device{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
+body.sonic-ux-v220 .v22-device-icon{color:#79beff;font-size:18px}
+body.sonic-ux-v220 .v22-chat-device strong{font-size:11px;font-weight:700}
+body.sonic-ux-v220 .v22-device-status{color:#9baec6;font-size:10px}
+body.sonic-ux-v220 .v22-device-status[data-online=true]{color:#46e19a!important}
+body.sonic-ux-v220 .v22-device-status[data-online=true]:before{content:"● ";font-size:10px}
+body.sonic-ux-v220 .v22-chat-research{flex:1;min-width:0}
+body.sonic-ux-v220 .v22-chat-research #agentResearchToolbar{padding:0!important;margin:0!important;border:0!important;background:transparent!important;min-width:0}
+body.sonic-ux-v220 .v22-chat-research .agent-mode-top{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;min-width:0}
+body.sonic-ux-v220 .v22-chat-research .agent-mode-buttons{border-radius:999px!important;background:#101f34!important;border:1px solid #355173!important;display:flex!important;gap:0!important;overflow:hidden}
+body.sonic-ux-v220 .v22-chat-research .agent-mode-buttons button{border-radius:999px!important;font-size:11px!important;min-height:30px!important;padding:5px 12px!important;background:transparent!important}
+body.sonic-ux-v220 .v22-chat-research .agent-mode-buttons button[aria-pressed=true]{background:linear-gradient(115deg,#208dff,#1760db)!important;color:#fff!important}
+body.sonic-ux-v220 .v22-chat-research .agent-research-choice{font-size:0!important;gap:0!important}
+body.sonic-ux-v220 .v22-chat-research #agentPurpose{font-size:11px!important;min-height:30px!important;max-width:140px!important;background:#132b45!important;border:1px solid #37577c!important}
+body.sonic-ux-v220 .v22-chat-code{border-radius:999px!important;background:#122a47!important;border:1px solid #356394!important;color:#b9dcff!important;min-height:29px!important;padding:6px 10px!important;font-size:11px!important;white-space:nowrap}
+body.sonic-ux-v220 .chat-panel .as-chat-banner{display:none!important}
+body.sonic-ux-v220 .chat-panel .message.error{border:1px solid rgba(80,149,241,.27);background:linear-gradient(120deg,#0a1b34,#0a1223);border-radius:15px;padding:13px!important;max-width:100%!important}
+body.sonic-ux-v220 .chat-panel .message.error .body{background:linear-gradient(110deg,rgba(114,57,47,.26),rgba(84,32,57,.28));border:1px solid rgba(248,159,53,.55);border-radius:12px;color:#ffe1c1!important;padding:13px!important;font-size:13px!important;line-height:1.5}
+body.sonic-ux-v220 .v22-open-coding{display:inline-flex!important;align-items:center;justify-content:center;padding:10px 14px!important;margin:10px 0 0!important;border-radius:11px!important;background:linear-gradient(110deg,#138eff,#115de2)!important;color:white!important;border:1px solid #35b5ff!important;font-size:12px!important}
+body.sonic-ux-v220 .chat-panel .message.v22-recovery .delivery-retry{display:none!important}
+body.sonic-ux-v220 .v22-chat-advanced{font-size:11px;color:#9fb4cf;max-width:100%;margin:0 0 4px}
+body.sonic-ux-v220 .v22-chat-advanced>summary{cursor:pointer;font-size:10px;padding:6px 9px;color:#a9cbed}
+body.sonic-ux-v220 .v22-chat-advanced #pcTools{margin:4px 0!important}
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140 .app{background:#030913!important;padding-bottom:calc(69px + env(safe-area-inset-bottom,0px))!important;overflow-x:clip!important}
+ body.sonic-ux-v220.orbit-v140 .content{min-width:0!important;width:100%!important;overflow-x:clip!important}
+ body.sonic-ux-v220.orbit-v140 .topbar{height:65px!important;min-height:65px!important;padding:6px 14px!important;position:relative;display:flex!important;align-items:center!important;gap:10px!important}
+ body.sonic-ux-v220.orbit-v140 .topbar .topbar-intro{min-width:0!important;flex:1!important;display:block!important;padding:0!important}
+ body.sonic-ux-v220.orbit-v140 .topbar .top-title{display:flex!important;flex-direction:column!important;gap:1px!important;align-items:flex-start!important}
+ body.sonic-ux-v220.orbit-v140 .topbar .top-title h1{display:none!important}
+ body.sonic-ux-v220.orbit-v140 .topbar .eyebrow{font-size:9px!important;white-space:normal!important;line-height:1.35!important}
+ body.sonic-ux-v220.orbit-v140 .topbar .eyebrow b{font-size:9px!important;white-space:nowrap}
+ body.sonic-ux-v220.orbit-v140 .topbar .orbit-header-orb{width:42px!important;min-width:42px!important;height:48px!important;display:grid!important;place-items:center!important}
+ body.sonic-ux-v220.orbit-v140 .topbar .top-right{display:flex!important;flex:none!important;align-items:center!important;width:auto!important;grid-column:auto!important;grid-row:auto!important;margin:0!important;gap:5px!important}
+ body.sonic-ux-v220.orbit-v140 .topbar #talkSonic{width:43px!important;min-width:43px!important;height:43px!important;min-height:43px!important;border-radius:50%!important;background:linear-gradient(145deg,#1d95ff,#195bd8)!important;border:1px solid #44b0ff!important}
+ body.sonic-ux-v220.orbit-v140 #v22GlobalOrbDock{display:none!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar{position:fixed!important;left:8px!important;right:8px!important;bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;width:calc(100% - 16px)!important;height:61px!important;min-height:61px!important;padding:4px!important;z-index:105!important;background:linear-gradient(140deg,#09182b,#0b192d)!important;border:1px solid rgba(90,166,245,.35)!important;border-radius:24px!important;box-shadow:0 8px 26px #0008!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar .sidebar-content{height:100%!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px!important;padding:0!important;margin:0!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav,body.sonic-ux-v220.orbit-v140 .sidebar #mobileMoreNav{width:100%!important;height:51px!important;min-height:51px!important;min-width:0!important;max-width:100%!important;padding:5px 1px!important;border-radius:17px!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:4px!important;overflow:hidden!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav[data-tab=memory],body.sonic-ux-v220.orbit-v140 .sidebar .nav[data-tab=workspace],body.sonic-ux-v220.orbit-v140 .sidebar .nav[data-tab=devices],body.sonic-ux-v220.orbit-v140 .sidebar .nav[data-tab=setup]{display:none!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar #mobileMoreNav{display:flex!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav svg,body.sonic-ux-v220.orbit-v140 .sidebar #mobileMoreNav svg{width:20px!important;height:20px!important;flex:none}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav span[data-short]{font-size:0!important;line-height:0!important;white-space:normal!important;min-height:12px}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav span[data-short]::after{font-size:10px!important;line-height:1.1!important;font-weight:650;white-space:normal!important;letter-spacing:-.01em}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav[data-tab=studio] span[data-short]::after{content:"Artifact\A Studio"!important;white-space:pre!important;font-size:9px!important;line-height:1.0!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav.active{box-shadow:inset 0 0 0 1px rgba(43,202,255,.48),0 0 16px rgba(8,137,255,.2)!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar #mobileMoreNav span{font-size:10px!important}
+ body.sonic-ux-v220.orbit-v140 .sonic-motion-float:not(.focused){z-index:24!important;pointer-events:auto!important;display:block!important}
+ body.sonic-ux-v220.orbit-v140 .v22-orb-dock{width:69px!important;height:69px!important;min-width:69px!important;min-height:69px!important;flex-basis:69px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel{margin:7px 8px 8px!important;padding:0 0 75px!important;max-height:calc(var(--sonic-visual-vh,100dvh) - 75px)!important;overflow-y:auto!important;overscroll-behavior:contain}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .sonic-artifact-root{padding:0 1px 12px!important;gap:11px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-studio-hero{min-height:80px!important;padding:6px 3px 4px!important;gap:11px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-studio-icon{width:40px;height:40px;border-radius:11px;font-size:16px}
+ body.sonic-ux-v220.orbit-v140 .v22-studio-name h2{font-size:22px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-studio-name p{font-size:11px;line-height:1.35}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-card{padding:13px!important;border-radius:15px!important;gap:9px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-fields{flex-direction:column!important;gap:9px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-prompt{gap:7px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel #asCodingPrompt{min-height:61px!important;font-size:14px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-controls{width:100%!important;display:grid!important;grid-template-columns:1fr auto!important;gap:9px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-provider{grid-column:1/-1!important;width:100%!important;min-width:0}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-provider select{height:37px!important;min-height:37px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-revise{grid-column:1!important;align-self:center!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel #asGenerate{grid-column:2!important;min-width:104px!important;min-height:35px!important;padding:7px 12px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-coding-status{font-size:10px!important;line-height:1.45!important}
+ body.sonic-ux-v220.orbit-v140 .v22-generator-help{padding:10px 11px!important;border-radius:12px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-generator-help strong{font-size:12px}
+ body.sonic-ux-v220.orbit-v140 .v22-generator-help p{font-size:10px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-controls{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-search{height:39px!important;max-width:100%!important;min-width:0!important;width:100%!important;flex:auto!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-kind-tabs{max-width:100%!important;width:100%!important;overflow-x:auto!important;order:2!important;gap:5px!important;scrollbar-width:none}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-kind-tabs button{font-size:10px!important;min-height:31px!important;min-width:auto!important;padding:6px 11px!important;white-space:nowrap!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel #asUrlBtn{order:3;align-self:flex-start;min-height:27px!important;padding:5px 11px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-recent-heading{gap:6px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-recent-heading h3{font-size:16px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-recent-heading .as-heading-actions{width:100%;order:3;margin-top:2px;gap:6px}
+ body.sonic-ux-v220.orbit-v140 .v22-recent-heading .as-heading-actions .as-button{font-size:10px!important;min-height:27px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-recent-grid{gap:9px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-artifact-card{border-radius:13px!important;padding:6px!important;min-height:0!important}
+ body.sonic-ux-v220.orbit-v140 .v22-artifact-visual{min-height:112px}
+ body.sonic-ux-v220.orbit-v140 .v22-artifact-caption strong{font-size:11px}
+ body.sonic-ux-v220.orbit-v140 .v22-artifact-caption small{font-size:9px}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-layout{display:flex!important;flex-direction:column!important;gap:10px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-sidebar{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel.v22-show-library .as-sidebar{display:flex!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-work{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel.v22-has-artifact .as-work{display:flex!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-inspector{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel.v22-has-artifact .as-inspector{display:grid!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-stage{min-height:280px!important}
+ body.sonic-ux-v220.orbit-v140 #studioPanel .as-iframe{min-height:285px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-knowledge-intro{min-height:74px!important;margin:3px 8px -5px!important;padding:0 4px!important}
+ body.sonic-ux-v220.orbit-v140 #knowledgeViews{margin:2px 8px 9px!important;padding:4px!important;gap:4px!important;max-width:calc(100% - 16px)!important;overflow-x:auto!important;border-radius:15px!important}
+ body.sonic-ux-v220.orbit-v140 #knowledgeViews button{font-size:11px!important;padding:8px 10px!important;min-height:32px!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel{position:relative;display:flex!important;flex-direction:column!important;gap:0!important;padding:10px 11px!important;margin:0 8px 8px!important;border-radius:19px!important;max-height:calc(var(--sonic-visual-vh,100dvh) - 215px)!important;min-height:0!important;overflow-y:auto!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel.hidden{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;position:relative!important;min-height:44px!important;padding:3px 2px 10px!important;background:transparent!important}
+ body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher strong{font-size:18px!important;color:#eaf4ff}
+ body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher .neural-switch-buttons{display:flex!important;gap:3px!important;border:1px solid #2f517c!important;border-radius:999px!important;padding:3px!important;background:#0e1d33!important}
+ body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher .neural-switch-buttons button{font-size:11px!important;min-height:30px!important;padding:6px 12px!important;border-radius:999px!important;background:transparent!important}
+ body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher .neural-switch-buttons button[aria-pressed=true]{background:linear-gradient(100deg,#0ab1fa,#135de9)!important}
+/* Selection responds immediately; stale transition colors made List look active in 3D mode. */
+body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher .neural-switch-buttons button{transition:none!important;animation:none!important}
+body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher .neural-switch-buttons button[aria-pressed=false]{background:#0e1d33!important;color:#aec2da!important}
+body.sonic-ux-v220.orbit-v140 #neuralMobileSwitcher .neural-switch-buttons button[aria-pressed=true]{background:#166ce2!important;color:#fff!important}
+ body.sonic-ux-v220.orbit-v140:not(.neural-knowledge-mode) #brainPanel #graphStage{position:relative!important;display:block!important;width:100%!important;height:min(55dvh,485px)!important;min-height:315px!important;border:1px solid rgba(52,128,228,.27)!important;background:radial-gradient(ellipse at 50% 45%,rgba(14,69,164,.24),transparent 58%),radial-gradient(circle at 50% 42%,#0b1630,#040b16 78%)!important;border-radius:16px!important;overflow:hidden!important;margin:0!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .neural-field-label{display:none!important}
+ body.sonic-ux-v220.orbit-v140:not(.neural-knowledge-mode) #brainPanel .graph-toolbar{display:flex!important;position:absolute!important;top:64px!important;left:17px!important;right:auto!important;bottom:auto!important;transform:none!important;z-index:17!important;max-width:calc(100% - 42px)!important;width:max-content!important;min-height:0!important;border:0!important;background:transparent!important;padding:0!important;gap:5px!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .graph-toolbar button{border-radius:50%!important;width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;padding:6px!important;display:grid!important;place-items:center!important;background:#132642!important;color:#cce8ff!important;border:1px solid #335e8a!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .graph-toolbar button span{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .graph-toolbar :is(#fitGraph,#focusIntegration,#dimensionGraph,#rotateGraph,#v22TraceIntegration){display:none!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .graph-toolbar #toggleFilters{display:grid!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .graph-toolbar #refreshGraph{display:grid!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel :is(.brain-right,.brain-console,.brain-answer,.graph-engine){display:none!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .brain-side:not(.open){display:none!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .brain-side.open{display:flex!important;position:absolute!important;top:50px!important;left:10px!important;right:10px!important;width:auto!important;max-height:72%!important;overflow-y:auto!important;z-index:40!important;background:#101c2e!important;border:1px solid #3c7fc1!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .brain-right:has(#graphFilters.open){display:block!important;position:absolute!important;top:51px!important;right:11px!important;z-index:43!important;max-width:300px!important;max-height:76%!important;overflow-y:auto!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel #graphFilters.open{display:block!important;background:#101c2e!important;border:1px solid #3375ae!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .v22-knowledge-status{margin-top:10px!important;gap:9px!important;padding:10px 11px!important;min-height:57px!important;border-radius:12px!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .v22-live-copy strong{font-size:11px!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .v22-live-copy small{font-size:9px!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel .v22-graph-tools{margin:7px 0 0!important}
+ body.sonic-ux-v220.orbit-v140.neural-knowledge-mode #brainPanel #neuralKnowledgeList{min-height:180px!important;max-height:calc(var(--sonic-visual-vh,100dvh) - 320px)!important;overflow-y:auto!important}
+ body.sonic-ux-v220.orbit-v140.neural-knowledge-mode #brainPanel :is(.v22-knowledge-status,.v22-graph-tools){display:none!important}
+ body.sonic-ux-v220.orbit-v140.neural-knowledge-mode .sonic-motion-float:not(.focused){display:block!important;opacity:1!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel{display:flex!important;flex-direction:column!important;margin:7px 8px 5px!important;border-radius:17px!important;height:calc(var(--sonic-visual-vh,100dvh) - 150px - env(safe-area-inset-bottom,0px))!important;min-height:250px!important;max-height:none!important;overflow:hidden!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel.hidden{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-top{padding:9px 10px!important;gap:8px!important;flex:none}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-model{min-height:43px!important;gap:6px!important}
+ body.sonic-ux-v220.orbit-v140 #v22ChatOrbDock{width:49px!important;height:49px!important;min-height:49px!important;min-width:49px!important;flex-basis:49px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-model-control .runtime-widget>summary{padding:8px 9px!important;min-height:36px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-model-control .runtime-title{font-size:11px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-model-control .runtime-state{font-size:9px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:7px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-device{font-size:11px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-research{width:100%!important;min-width:0!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-research .agent-mode-top{justify-content:space-between!important;gap:6px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-research .agent-mode-buttons button{padding:5px 10px!important;min-height:30px!important;font-size:10px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-research #agentPurpose{font-size:10px!important;max-width:120px!important;min-height:30px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-code{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .chat-feed{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;margin:0!important;padding:11px 11px 8px!important;scrollbar-width:thin}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .message{font-size:12px!important;max-width:100%!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .message .body{font-size:13px!important;line-height:1.55!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .compose-wrap{flex:none!important;background:#0a1525!important;border-top:1px solid #2d496b!important;padding:8px 10px 10px!important;max-height:176px!important;overflow-y:auto!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important;min-height:54px!important;padding:8px 9px!important;border-radius:17px!important;background:#101f34!important;border:1px solid rgba(79,147,234,.40)!important;box-shadow:none!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm .compose-actions{display:contents!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm #message{grid-column:2!important;grid-row:1!important;min-height:33px!important;max-height:82px!important;font-size:14px!important;line-height:1.45!important;resize:none!important;margin:0!important;background:transparent!important;align-self:center!important;padding:5px 1px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm .compose-left{grid-column:1!important;grid-row:1!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:5px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm .icon-button{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;padding:7px!important;border-radius:50%!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm #send{grid-column:3!important;grid-row:1!important;min-width:35px!important;width:35px!important;height:35px!important;min-height:35px!important;border-radius:12px!important;background:linear-gradient(135deg,#14acfd,#0c57eb)!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm #voice{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm.show-extras #voice{display:flex!important;grid-row:2}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm.show-extras{grid-template-rows:auto auto!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm.show-extras .compose-left{flex-wrap:wrap!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm.show-extras #camera,
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm.show-extras #screen,
+ body.sonic-ux-v220.orbit-v140 #chatPanel #chatForm.show-extras #image{display:flex!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .chat-security-details{font-size:10px!important;margin:0 3px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-chat-advanced{display:none!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .hero{padding:28px 12px!important}
+ body.sonic-ux-v220.orbit-v140.mobile-keyboard-open #chatPanel{height:calc(var(--sonic-visual-vh,100dvh) - 83px)!important;min-height:190px!important}
+}
+@media(max-width:365px){
+ body.sonic-ux-v220.orbit-v140 .v22-studio-name h2{font-size:19px!important}
+ body.sonic-ux-v220.orbit-v140 #brainPanel{padding:8px!important}
+ body.sonic-ux-v220.orbit-v140 #chatPanel .v22-model-control .runtime-title{font-size:10px!important}
+ body.sonic-ux-v220.orbit-v140 .sidebar .nav span[data-short]::after{font-size:9px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-orb-dock{width:60px!important;height:60px!important;min-width:60px!important;min-height:60px!important;flex-basis:60px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ body.sonic-ux-v220 .v22-live-light,body.sonic-ux-v220 .v22-signal-bars i{animation:none!important}
+ body.sonic-ux-v220 *{scroll-behavior:auto!important}
+}
+
+/* Route-aware display: the Knowledge orb belongs only to Knowledge. */
+body.sonic-ux-v220:not([data-sonic-page="brain"]):not([data-sonic-page="memory"]) .v22-knowledge-intro{display:none!important}
+body.sonic-ux-v220:not([data-sonic-page="brain"]):not([data-sonic-page="memory"]) #knowledgeViews{display:none!important}
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="dashboard"] #v22GlobalOrbDock,
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="workspace"] #v22GlobalOrbDock,
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="devices"] #v22GlobalOrbDock,
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="setup"] #v22GlobalOrbDock{
+  display:block!important;position:absolute!important;right:15px;top:67px!important;
+  width:58px!important;height:58px!important;min-height:58px!important;
+  min-width:58px!important;z-index:15;pointer-events:none;
+ }
+ body.sonic-ux-v220.orbit-v140 #mobileMoreMenu[hidden]{display:none!important}
+}
+
+/* GPU-independent branded orb. MotionCore overlays it whenever available. */
+body.sonic-ux-v220 .v22-orb-fallback{
+ position:absolute;inset:0;display:grid;place-items:center;overflow:visible;
+ border-radius:50%;background:radial-gradient(circle at 37% 30%,rgba(16,170,244,.4),#052a65 55%,#071127 76%);
+ box-shadow:inset 0 0 9px #33ceff,0 0 16px rgba(11,143,255,.57);
+ pointer-events:none;opacity:1;transition:opacity .3s;
+}
+body.sonic-ux-v220 .v22-orb-fallback:before{
+ content:"";position:absolute;inset:1px -8px;border:2px solid rgba(62,207,255,.73);
+ border-radius:50%;transform:rotate(-23deg) scaleY(.52);box-shadow:0 0 10px rgba(4,188,255,.65);
+ animation:v22-orbital 8s linear infinite;
+}
+body.sonic-ux-v220 .v22-orb-fallback img{
+ display:block;width:77%;height:77%;max-width:77%;object-fit:contain;position:relative;
+ filter:drop-shadow(0 0 7px rgba(80,198,255,.62));
+ animation:v22-orb-breathe 3.2s ease-in-out infinite alternate;
+}
+body.sonic-ux-v220 .v22-orb-dock.v22-live-motion .v22-orb-fallback{opacity:.15}
+@keyframes v22-orbital{from{transform:rotate(-23deg) scaleY(.52)}to{transform:rotate(337deg) scaleY(.52)}}
+@keyframes v22-orb-breathe{to{transform:scale(1.07);filter:drop-shadow(0 0 11px rgba(80,219,255,.9))}}
+@media(prefers-reduced-motion:reduce){
+ body.sonic-ux-v220 .v22-orb-fallback:before,body.sonic-ux-v220 .v22-orb-fallback img{animation:none!important}
+}
+
+/* Scroll-independent SONIC presence. The studio panel has its own scroll
+ * container: an in-flow orb would disappear after browsing a saved artifact. */
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140 #v22StudioOrbDock,
+ body.sonic-ux-v220.orbit-v140 #v22KnowledgeOrbDock,
+ body.sonic-ux-v220.orbit-v140 #v22ChatOrbDock{
+  position:fixed!important;top:76px!important;right:14px!important;left:auto!important;
+  width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;
+  flex-basis:58px!important;margin:0!important;z-index:24!important;pointer-events:none;
+ }
+ body.sonic-ux-v220.orbit-v140 .v22-studio-hero{padding-right:75px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-chat-model{padding-right:65px!important}
+ body.sonic-ux-v220.orbit-v140 .v22-knowledge-intro{padding-right:77px!important}
+ body.sonic-ux-v220.orbit-v140 #v22GlobalOrbDock{position:fixed!important;top:76px!important;right:14px!important}
+}
+
+/* v2.2 mobile: the Artifact Studio content scrolls independently.
+   Keep SONIC's dock in the viewport rather than in a scrolled-off hero. */
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140[data-sonic-page="studio"] #v22StudioOrbDock{
+  position:fixed!important;
+  top:78px!important;
+  right:20px!important;
+  z-index:35!important;
+  display:block!important;
+  margin:0!important;
+  transform:none!important;
+ }
+}
+
+/* Exactly one active mobile destination, irrespective of legacy button styles. */
+@media(max-width:720px){
+ body.sonic-ux-v220.orbit-v140 .sidebar-content .nav:not(.active){
+  background:transparent!important;background-image:none!important;
+  border-color:transparent!important;box-shadow:none!important;color:#a9bcd5!important;
+ }
+ body.sonic-ux-v220.orbit-v140 .sidebar-content .nav:not(.active):before{
+  display:none!important;content:none!important;
+ }
+}
+
+/* Advanced Research settings are context-specific, not permanent Chat clutter. */
+body.sonic-ux-v220 .v22-chat-research .research-options{display:none!important}
+body.sonic-ux-v220 .v22-chat-research:has(#agentModeResearch[aria-pressed="true"]) .research-options{
+ display:block!important;margin-top:6px!important;
+}

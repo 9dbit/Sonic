@@ -22,6 +22,7 @@
       this.stage=stage;this.callbacks=callbacks;this.nodes=[];this.edges=[];this.lookup=new Map();this.positions=new Map();
       this.filters=new Set(Object.keys(PALETTE));this.selected=null;this.path=[];this.depth=1;this.visible=false;
       this.yaw=-0.15;this.pitch=0.08;this.distance=700;this.target=[0,0,0];this.pan=[0,0];this.is3D=true;this.autoRotate=true;this.orbitPauseUntil=0;this.cameraTween=null;
+      this.signalRoute=[];this.signalStart=0;this.signalUntil=0;this.signalReason='';
       this.reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;this.pointers=new Map();this.lastFrame=0;
       this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');
       this.labels=document.createElement('canvas');this.labels.className='graph-labels';this.labels.setAttribute('aria-hidden','true');
@@ -32,6 +33,10 @@
       this.canvas.addEventListener('webglcontextrestored',()=>{this.initGL();this.invalidate();});
       this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(stage);
       this.attachInput();
+      // Only show a travelling light for a real graph refresh or user-requested
+      // integration trace. This is a visual trace, not fabricated API traffic.
+      window.addEventListener('sonic:graph-loaded',()=>this.signalIntegration('graph-refresh'));
+      window.addEventListener('sonic:signal-integration',()=>this.signalIntegration('owner-request'));
       document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(this.frame);this.frame=null;}else if(this.visible)this.invalidate();});
       this.resize();
     }
@@ -65,6 +70,23 @@
       this.layout();if(this.selected&&!this.lookup.has(this.selected))this.selected=null;
       if(!this.initialized){this.fit();this.initialized=true;}this.updateHighlight();this.invalidate();
       this.stage.dataset.nodes=String(this.nodes.length);this.stage.dataset.edges=String(this.edges.length);
+    }
+    signalIntegration(reason='graph-refresh'){
+      const hub=this.nodes.find(n=>n.category==='system'&&/^SONIC$/i.test(String(n.label||'')));
+      const destination=this.nodes.find(n=>n.category==='integration');
+      const route=hub&&destination?shortestPath(hub.id,destination.id,this.edges):[];
+      if(route.length<2){
+        this.signalRoute=[];this.signalUntil=0;
+        window.dispatchEvent(new CustomEvent('sonic:integration-visual',{detail:{active:false,reason:'no-confirmed-route'}}));
+        return false;
+      }
+      this.signalRoute=route;
+      this.signalStart=performance.now();
+      this.signalUntil=this.signalStart+(this.reduced?900:2800);
+      this.signalReason=reason;
+      this.invalidate();
+      window.dispatchEvent(new CustomEvent('sonic:integration-visual',{detail:{active:true,reason,pathLength:route.length}}));
+      return true;
     }
     layout(){
       const layout=window.SonicGraphLayout.grouped(this.nodes);
@@ -116,7 +138,8 @@
         }
         if(this.autoRotate&&this.is3D&&!this.reduced&&!this.pointers.size&&!this.cameraTween&&time>this.orbitPauseUntil){this.yaw=Math.sin(time*.00005)*.22;this.dirty=true;}
         if(this.dirty){this.render();this.dirty=false;}this.lastFrame=time;}
-      if(this.dirty||this.cameraTween||(this.autoRotate&&!this.reduced))this.frame=requestAnimationFrame(t=>this.tick(t));
+      if(this.signalUntil>time)this.dirty=true;
+      if(this.dirty||this.cameraTween||(this.autoRotate&&!this.reduced)||this.signalUntil>time)this.frame=requestAnimationFrame(t=>this.tick(t));
     }
     project(p){
       let [x,y,z]=p.map((v,a)=>v-this.target[a]);
@@ -178,6 +201,38 @@
         place=place||{rect:{l:p.x-tw/2,r:p.x+tw/2,t:p.y+p.r+4,b:p.y+p.r+19},y:p.y+p.r+15};occupied.push(place.rect);
         ctx.fillText(label,p.x,place.y);
         labelCounts.set(n.category,(labelCounts.get(n.category)||0)+1);
+      }
+      // Real graph path only: animate a travelling light toward the existing
+      // Integration node. All points originate from server-provided nodes/edges.
+      if(this.signalUntil>performance.now()&&this.signalRoute.length>1){
+        const route=this.signalRoute.map(id=>projected.get(id)).filter(Boolean);
+        if(route.length===this.signalRoute.length){
+          ctx.save();ctx.lineWidth=1.7;ctx.lineCap='round';ctx.strokeStyle='rgba(73,189,255,.52)';
+          ctx.shadowColor='#1aaeff';ctx.shadowBlur=11;ctx.beginPath();ctx.moveTo(route[0].x,route[0].y);
+          for(let i=1;i<route.length;i++)ctx.lineTo(route[i].x,route[i].y);
+          ctx.stroke();
+          const durations=[];let total=0;
+          for(let i=1;i<route.length;i++){const len=Math.hypot(route[i].x-route[i-1].x,route[i].y-route[i-1].y);durations.push(len);total+=len;}
+          if(total>1){
+            const elapsed=performance.now()-this.signalStart;
+            const progress=(elapsed%1400)/1400;
+            let offset=progress*total;
+            for(let i=1;i<route.length;i++){
+              if(offset>durations[i-1]){offset-=durations[i-1];continue;}
+              const t=offset/Math.max(1,durations[i-1]);
+              const x=route[i-1].x+(route[i].x-route[i-1].x)*t;
+              const y=route[i-1].y+(route[i].y-route[i-1].y)*t;
+              const halo=ctx.createRadialGradient(x,y,0,x,y,15);
+              halo.addColorStop(0,'rgba(255,255,255,.98)');
+              halo.addColorStop(.24,'rgba(62,210,255,.95)');
+              halo.addColorStop(1,'rgba(24,134,255,0)');
+              ctx.shadowBlur=0;ctx.fillStyle=halo;
+              ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.fill();
+              break;
+            }
+          }
+          ctx.restore();
+        }
       }
       this.projected=projected;this.stage.dataset.renderedNodes=String(visible.length);this.stage.dataset.engine=this.engine;
       this.callbacks.onRender?.({engine:this.engine,nodes:visible.length});

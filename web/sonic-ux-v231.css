@@ -1,0 +1,264 @@
+/* SONIC v2.3.1: mobile usability and honest public preview.
+ * Keep all owner routes and authenticated API boundaries intact.
+ * Imported AFTER the graphite v2.3 stylesheet. */
+body.sonic-ux-v231 {
+ --v231-surface:#111316;
+ --v231-panel:#1b1d20;
+ --v231-muted:#a7adb6;
+ --v231-rule:rgba(255,255,255,.10);
+ --v231-action:#327ce8;
+}
+body.sonic-ux-v231 .v22-orb-fallback:before {content:none!important;animation:none!important}
+body.sonic-ux-v231 .orbit-header-orb img {animation:none!important;filter:none!important}
+body.sonic-ux-v231 .v22-model-control .runtime-widget {max-width:100%}
+body.sonic-ux-v231 .v231-owner-link {
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:37px;padding:8px 12px;border:1px solid var(--v231-rule);
+ border-radius:10px;background:#292b30;color:#f0f2f5;
+ font:650 11px/1.2 Inter,-apple-system,system-ui,sans-serif;
+ white-space:nowrap;text-decoration:none;flex:none;
+}
+body.sonic-ux-v231 .v231-owner-link:hover {border-color:#4289ed;background:#303641}
+body.sonic-ux-v231 .v231-owner-link:focus-visible {outline:2px solid #4289ed;outline-offset:3px}
+/* A guest never sees a fake private engine status. The actual preview
+   model dropdown is moved into the Chat header by sonic-ux-v231.js. */
+body.sonic-ux-v231.sonic-open-preview #v22ModelControl .runtime-widget{display:none!important}
+body.sonic-ux-v231.sonic-open-preview #v22ModelControl #previewModelPicker {
+ display:block!important;width:100%!important;max-width:100%;min-width:0;
+}
+body.sonic-ux-v231.sonic-open-preview #v22ModelControl #previewModelPicker select {
+ display:block!important;width:100%!important;max-width:100%;min-height:40px;
+ border:1px solid rgba(255,255,255,.13)!important;
+ border-radius:9px!important;background:#282b30!important;
+ color:#edf0f5!important;font-size:12px!important;
+}
+body.sonic-ux-v231.sonic-open-preview .v22-chat-device {
+ min-width:0;white-space:normal!important;
+}
+body.sonic-ux-v231.sonic-open-preview #v22PCOnline {color:#a8adb6!important}
+body.sonic-ux-v231.sonic-open-preview .v22-device-status[data-online=true]:before {content:none!important}
+/* Studio is owner-only by design. Put the sign-in step where the dead
+   Generate button used to be, instead of falsely appearing ready. */
+body.sonic-ux-v231 .v231-owner-gate {
+ display:flex;flex-direction:column;align-items:flex-start;gap:9px;
+ padding:19px;border:1px solid var(--v231-rule);border-radius:14px;
+ background:#1b1d20;color:#e9ecf1;
+}
+body.sonic-ux-v231 .v231-owner-gate .v231-gate-tag {
+ font-size:10px;font-weight:700;color:#a5abb5;letter-spacing:.09em;
+}
+body.sonic-ux-v231 .v231-owner-gate h3{margin:0;color:#f5f6f8;font-size:19px;line-height:1.24}
+body.sonic-ux-v231 .v231-owner-gate p{
+ margin:0 0 3px;max-width:44ch;color:#afb5bd;font-size:12px;line-height:1.55;
+}
+body.sonic-ux-v231 .v231-owner-gate .v231-owner-link {
+ min-height:43px;padding:12px 16px;border-color:#327ce8;
+ background:#327ce8;color:white;font-size:12px;
+}
+body.sonic-ux-v231.sonic-open-preview #studioPanel :is(.as-coding-card,.v22-generator-help,
+ .as-controls,.v22-recent-artifacts,.as-layout,.as-notice) {
+ display:none!important;
+}
+body.sonic-ux-v231.sonic-open-preview #studioPanel .v231-owner-gate {
+ display:flex!important;
+}
+/* Static voice focus: keep native audio and transport controls, but prevent
+   the old "blank stage" caused by hiding the only animated canvas. */
+body.sonic-ux-v231.sonic-focused #sonicFocusShade {
+ z-index:190!important;
+ display:block!important;visibility:visible!important;
+ background:radial-gradient(ellipse at 50% 42%,#1d2128 0%,#101217 48%,#08090b 85%)!important;
+ opacity:1!important;
+}
+body.sonic-ux-v231.sonic-focused #sonicFocusShade::after{
+ content:"";display:block;position:absolute;
+ left:50%;top:43%;
+ transform:translate(-50%,-50%);
+ width:clamp(118px,35vw,185px);height:clamp(135px,40vw,208px);
+ background:url('/assets/sonic-mark.svg?v=2.3.1') center / contain no-repeat;
+ pointer-events:none;animation:none!important;filter:none!important;
+}
+body.sonic-ux-v231.sonic-focused #sonicMotionFloat.focused {
+ z-index:191!important;opacity:0!important;pointer-events:none!important;
+}
+/* The voice session bar lives inside <main>. Never hide its ancestor. */
+body.sonic-ux-v231.sonic-focused :is(.sidebar,.topbar,#mobileMoreMenu){
+ visibility:hidden!important;pointer-events:none!important;
+}
+body.sonic-ux-v231.sonic-focused #orbitVoiceCaption{
+ display:flex!important;position:fixed!important;z-index:204!important;
+ top:calc(43% + min(24vw,117px))!important;bottom:auto!important;
+ left:50%!important;right:auto!important;
+ transform:translateX(-50%)!important;
+ max-width:calc(100vw - 30px)!important;
+ gap:8px!important;white-space:normal!important;
+ color:#f0f2f5!important;opacity:1!important;
+}
+body.sonic-ux-v231.sonic-focused #orbitVoiceCaption[hidden]{display:none!important}
+body.sonic-ux-v231.sonic-focused #orbitVoiceCaption strong{
+ font-size:20px!important;font-weight:750!important;letter-spacing:.35em!important;
+}
+body.sonic-ux-v231.sonic-focused #orbitVoiceCaption span{
+ color:#8fb7ef!important;font-size:12px!important;
+}
+body.sonic-ux-v231.sonic-focused #orbitVoiceCaption small{
+ color:#a2a8b2!important;font-size:10px!important;
+}
+body.sonic-ux-v231.sonic-focused .sonic-focus-controls {
+ position:fixed!important;z-index:205!important;
+ left:50%!important;right:auto!important;
+ bottom:max(35px,env(safe-area-inset-bottom,0px))!important;
+ transform:translateX(-50%)!important;
+ width:min(92vw,460px)!important;
+ max-width:calc(100vw - 20px)!important;
+ display:flex!important;align-items:center;justify-content:center;
+ gap:10px!important;text-align:center;
+}
+body.sonic-ux-v231 .sonic-focus-controls[hidden]{display:none!important}
+body.sonic-ux-v231.sonic-focused .sonic-focus-controls #sonicVoiceFocusHint{
+ color:#d1d4da!important;font-size:13px!important;
+ margin:0 0 4px!important;
+}
+body.orbit-v140.sonic-ux-v231.sonic-focused .sonic-focus-controls button{
+ background:#2a2d32!important;color:#f2f3f5!important;
+ border:1px solid rgba(255,255,255,.13)!important;
+ border-radius:10px!important;padding:11px 13px!important;
+ box-shadow:none!important;
+}
+body.orbit-v140.sonic-ux-v231.sonic-focused .sonic-focus-controls #sonicVoiceFocusStop{
+ background:#39272b!important;border-color:rgba(251,142,152,.26)!important;
+ color:#ffcbce!important;
+}
+body.orbit-v140.sonic-ux-v231.sonic-focused #voiceSessionBar:not(.hidden) {
+ position:fixed!important;z-index:215!important;top:max(12px,env(safe-area-inset-top,0px))!important;
+ left:50%!important;right:auto!important;bottom:auto!important;
+ transform:translateX(-50%)!important;
+ width:min(92vw,430px)!important;max-width:calc(100vw - 20px)!important;
+ border:1px solid rgba(255,255,255,.12)!important;
+ border-radius:14px!important;
+ background:#1c1e23!important;box-shadow:0 12px 35px #0008!important;
+ padding:12px!important;
+}
+body.sonic-ux-v231.sonic-focused #voiceSessionBar button {
+ background:#292c30!important;color:#e4e8ee!important;
+ border:1px solid var(--v231-rule)!important;
+ border-radius:9px!important;
+}
+body.sonic-ux-v231.sonic-focused #voiceSessionBar .voice-live time{
+ color:#8fb7ef!important;
+}
+@media(max-width:720px){
+ html,body.sonic-ux-v231,body.sonic-ux-v231 .app,
+ body.sonic-ux-v231 .content {
+  max-width:100%!important;overflow-x:clip!important;
+ }
+ body.orbit-v140.sonic-ux-v220.sonic-ux-v230.sonic-ux-v231 .topbar {
+  display:grid!important;
+  grid-template-columns:42px minmax(0,1fr) auto!important;
+  grid-template-rows:56px!important;
+  align-items:center!important;
+  width:100%!important;max-width:100vw!important;min-width:0!important;
+  min-height:62px!important;height:62px!important;
+  padding:3px 12px!important;
+  gap:8px!important;
+  position:sticky!important;top:0!important;
+  overflow:hidden!important;
+ }
+ body.sonic-ux-v231 .topbar .orbit-header-orb{
+  grid-column:1!important;grid-row:1!important;
+  display:grid!important;place-items:center!important;
+  width:40px!important;min-width:40px!important;height:43px!important;
+  padding:0!important;align-self:center!important;
+ }
+ body.sonic-ux-v231 .topbar .orbit-header-orb img{
+  width:39px!important;height:41px!important;filter:none!important;
+ }
+ body.orbit-v140.sonic-ux-v220.sonic-ux-v230.sonic-ux-v231 .topbar-intro{
+  grid-column:2!important;grid-row:1!important;
+  display:flex!important;min-width:0!important;width:100%!important;
+  padding:0!important;margin:0!important;
+  overflow:hidden!important;align-items:center!important;
+ }
+ body.sonic-ux-v231 .topbar .top-title {min-width:0!important}
+ body.sonic-ux-v231 .topbar .eyebrow{
+  display:block!important;font-size:0!important;line-height:1.4!important;
+  white-space:nowrap!important;overflow:hidden!important;
+  text-overflow:ellipsis!important;
+ }
+ body.sonic-ux-v231 .topbar .eyebrow:before {
+  content:"SONIC";font-size:13px!important;font-weight:750;
+  color:#f0f2f4;letter-spacing:.15em;line-height:1.4;
+ }
+ body.sonic-ux-v231 .topbar .eyebrow b{display:none!important}
+ body.orbit-v140.sonic-ux-v220.sonic-ux-v230.sonic-ux-v231 .topbar .top-right{
+  display:flex!important;position:static!important;
+  grid-column:3!important;grid-row:1!important;
+  flex:0 0 auto!important;justify-content:flex-end!important;
+  width:auto!important;min-width:0!important;max-width:none!important;
+  height:auto!important;min-height:0!important;
+  top:auto!important;right:auto!important;left:auto!important;bottom:auto!important;
+  margin:0!important;padding:0!important;gap:6px!important;
+  transform:none!important;
+ }
+ body.sonic-ux-v231 .topbar .top-right :is(#brainPill,#devicePill,#wakeToggle,.orbit-preview-pill){
+  display:none!important;
+ }
+ body.sonic-ux-v231.sonic-open-preview .topbar #previewModelPicker{display:none!important}
+ body.sonic-ux-v231 .topbar .v231-owner-link{
+  padding:7px 11px!important;font-size:11px!important;min-height:34px!important;
+ }
+ body.orbit-v140.sonic-ux-v220.sonic-ux-v230.sonic-ux-v231 .topbar #talkSonic {
+  display:grid!important;place-items:center!important;flex:0 0 38px!important;
+  width:38px!important;min-width:38px!important;max-width:38px!important;
+  height:38px!important;min-height:38px!important;
+  padding:0!important;border-radius:10px!important;
+  background:#327ce8!important;border:1px solid #327ce8!important;
+ }
+ /* Exactly one active tab and one SONIC icon on regular mobile pages. */
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22GlobalOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22StudioOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22KnowledgeOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 #v22ChatOrbDock,
+ body.sonic-ux-v231.sonic-ux-v220.orbit-v140 .sonic-motion-float:not(.focused){
+  display:none!important;visibility:hidden!important;
+ }
+ body.sonic-ux-v231 .v22-studio-hero{padding-right:8px!important}
+ body.sonic-ux-v231 .v22-chat-model{padding-right:0!important;min-width:0!important}
+ body.sonic-ux-v231 .v22-knowledge-intro{padding-right:5px!important}
+ body.orbit-v140.sonic-ux-v220.sonic-ux-v230.sonic-ux-v231 .sidebar{
+  background:#1b1d20!important;
+  border-color:rgba(255,255,255,.1)!important;
+  border-radius:14px!important;
+ }
+ body.sonic-ux-v231 #mobileMoreMenu:not([hidden]){
+  z-index:170!important;background:#222428!important;
+  border:1px solid rgba(255,255,255,.14)!important;border-radius:13px!important;
+ }
+ body.sonic-ux-v231 #mobileMoreMenu button{background:#2c2e33!important;border-radius:9px!important}
+ body.sonic-ux-v231 #studioPanel {max-width:calc(100vw - 16px)!important}
+ body.sonic-ux-v231.sonic-open-preview #studioPanel .v231-owner-gate{margin:0 6px 15px}
+ body.sonic-ux-v231.sonic-open-preview #studioPanel .v22-studio-hero{min-height:64px!important}
+ body.sonic-ux-v231.sonic-open-preview #studioPanel .v22-studio-hero .v22-studio-name p{
+  font-size:11px!important;
+ }
+ body.sonic-ux-v231.sonic-focused .sidebar,
+ body.sonic-ux-v231.sonic-focused #mobileMoreMenu{
+  display:none!important;
+ }
+ body.sonic-ux-v231.sonic-focused #voiceSessionBar:not(.hidden){
+  top:max(12px,env(safe-area-inset-top,0px))!important;
+  padding:11px!important;
+ }
+ body.sonic-ux-v231.sonic-focused .sonic-focus-controls{
+  bottom:max(36px,env(safe-area-inset-bottom,0px))!important;
+  width:calc(100vw - 30px)!important;
+ }
+}
+@media(max-width:370px){
+ body.sonic-ux-v231 .topbar .v231-owner-link{font-size:10px!important;padding:7px 8px!important}
+ body.sonic-ux-v231 .topbar .eyebrow:before{font-size:12px!important}
+ body.sonic-ux-v231 .topbar #talkSonic{width:36px!important;min-width:36px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ body.sonic-ux-v231 *{animation:none!important;scroll-behavior:auto!important}
+}
