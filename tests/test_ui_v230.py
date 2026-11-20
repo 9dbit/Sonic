@@ -6,7 +6,7 @@ WEB=ROOT/"web"
 
 def test_theme_loads_last_without_replacing_existing_controllers():
     html=(WEB/"index.html").read_text(encoding="utf-8")
-    assert "sonic-ux-v230 sonic-auth-locked" in html
+    assert "sonic-auth-locked sonic-ux-v230" in html
     assert html.index("sonic-ux-v220.css") < html.index("sonic-ux-v230.css") < html.index("sonic-ux-v220.js")
     assert 'id="talkSonic"' in html
     assert 'id="voiceConsent"' in html
