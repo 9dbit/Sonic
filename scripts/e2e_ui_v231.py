@@ -67,9 +67,22 @@ with local_server(settings=SETTINGS) as (base,token),sync_playwright() as pw:
         # a usable authoring workspace only after owner authentication.
         page.locator("#sonicOwnerAccess").click()
         expect(page.locator("#loginOverlay")).to_be_visible()
+        page.wait_for_url(re.compile(r".*/owner$"),timeout=12000)
         page.locator("#ownerToken").fill(token)
+        login_responses=[]
+        page.on("response",lambda response:login_responses.append((response.status,response.url.split("/")[-1]))
+            if "/api/owner/login" in response.url else None)
         page.locator('#loginForm button[type="submit"]').click()
-        expect(page.locator("#loginOverlay")).to_be_hidden(timeout=18000)
+        try:
+            expect(page.locator("#loginOverlay")).to_be_hidden(timeout=18000)
+        except AssertionError:
+            print("SONIC_OWNER_LOGIN_DIAGNOSTICS",
+                {"viewport":name,"url":page.url,
+                 "error":page.locator("#loginError").text_content(),
+                 "responses":login_responses,
+                 "preview":page.locator("body").get_attribute("class")},flush=True)
+            page.screenshot(path=str(OUT/f"{BROWSER}-{name}-owner-login-failed.png"))
+            raise
         page.locator('.sidebar .nav[data-tab="studio"]').click()
         expect(page.locator("#studioPanel")).to_be_visible()
         expect(page.locator("#v231OwnerGate")).to_have_count(0)
