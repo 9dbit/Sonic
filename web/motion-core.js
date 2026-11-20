@@ -17,7 +17,7 @@
    const hint=document.createElement('p');hint.id='sonicVoiceFocusHint';
     hint.setAttribute('role','status');hint.setAttribute('aria-live','polite');
     hint.textContent='SONIC: Double tap untuk berbicara lewat OpenAI.';this.voiceHint=hint;
-   const home=document.createElement('button');home.type='button';home.textContent='Kembali ke posisi awal';home.addEventListener('click',()=>this.returnHome());
+   const home=document.createElement('button');home.type='button';home.textContent='Minimize voice';home.addEventListener('click',()=>this.returnHome());
    this.retryVoice=document.createElement('button');this.retryVoice.type='button';this.retryVoice.id='sonicVoiceRetry';
     this.retryVoice.textContent='Coba suara lagi';this.retryVoice.hidden=true;
     this.retryVoice.addEventListener('click',()=>{
@@ -85,13 +85,15 @@
    if(apply&&!this.focused)this.place(this.home);
   }
   place(rect){for(const key of ['left','top','width','height'])this.float.style[key]=rect[key]+'px';}
-  setFocus(on){if(on===this.focused)return;this.updateHome(false);this.focused=on;
+  setFocus(on){if(on===this.focused)return;
+   const homeFocus=()=>this.focusControls.querySelector('button:last-child')||this.float;
+   this.float.tabIndex=on&&this.staticIconMode?-1:0;this.updateHome(false);this.focused=on;
    this.float.classList.toggle('focused',on);this.float.classList.remove('preview');this.float.setAttribute('aria-pressed',String(on));
    document.body.classList.toggle('sonic-focused',on);this.focusControls.hidden=!on;
    if(on){this.backgroundInert=new Map();for(const node of document.querySelectorAll('.panel,.sidebar,.topbar,.orbit-overview,#nodeDetailPopup')){this.backgroundInert.set(node,node.inert);node.inert=true;}}
    else{for(const [node,prior] of this.backgroundInert||[])node.inert=prior;this.backgroundInert=null;}
    window.dispatchEvent(new CustomEvent('sonic:focus',{detail:{focused:on}}));
-   if(on){this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));this.float.focus({preventScroll:true});}
+   if(on){this.place(math.focusRect(innerWidth,innerHeight,this.home?.width||160));(this.staticIconMode?homeFocus():this.float).focus({preventScroll:true});}
    else this.place(this.home);
   }
   returnHome(){this.setFocus(false);}
